@@ -14,3 +14,8 @@ LaTeX: pdfLaTeX
 
 AutoAppendNewline: Yes
 StripTrailingWhitespace: Yes
+
+BuildType: Package
+PackageUseDevtools: Yes
+PackagePath: /Users/JonMinton/repos/economic_inactivity
+PackageInstallArgs: --no-multiarch --with-keep.source

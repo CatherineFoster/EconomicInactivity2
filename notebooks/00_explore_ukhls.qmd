@@ -1,0 +1,90 @@
+---
+title: "Getting used to UKHLS data"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+## Aim
+
+The aims of this notebook are:
+
+-   to explore how to load data from the ukhls
+
+-   To identify those variables of particular interest to the economic activity project
+
+-   To produce a condensed longitudinal version of the ukhls having only those variables of interest
+
+-   To see if I can produce the transition probabilities showing changes between different economic categories
+
+Once code has reached a sufficient level of complexity, I will attempt to convert them into functions within the utils folder, and set up associated tests in the tests directory.
+
+## Starting off
+
+-   The data are in `big_data/UKDA-6614-stata/stata/stata13_se/ukhls/`
+
+-   Within this folder, individual files are structured as follows:
+
+    -   `{W}_{name}.dta`
+
+    -   Where `{W}` indicates wave (starting at `a`)
+
+-   The files I think I need to target have `indresp` as the name portion of the file above.
+
+```{r}
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+library(tidyverse)
+library(haven)
+library(here)
+library(economic_inactivity)
+
+```
+
+```{r}
+dir(here(base_dir_location))
+
+```
+
+This confirms we're targetting the correct directory. Now to only return those files of the correct type...
+
+```{r}
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+```
+
+Now let's try to read in the first one
+
+```{r}
+dta <- haven::read_dta(indresp_files[1])
+```
+
+I want to remind myself how Haven reads in .dta files and keeps the label information
+
+```{r}
+dta[1:8, 1:8]
+
+lab_col <- dta$a_pno
+head(lab_col)
+# This shows the result of the single column as a data frame, with value and label as the two columns. 
+# There are three options for the levels parameter in as_factor (note, NOT as.factor()) - 'labels', 'values' and 'both'.
+labs_pulled <- as_factor(lab_col, levels = 'labels')
+table(labs_pulled)
+# This indicates that only labelled attributes are returned, which for this example appear to be different types of missing value. 
+# We are likely to want other variables too! 
+# There's also the mode levels = 'both' 
+both_pulled <- as_factor(lab_col, levels = 'both')
+table(both_pulled)
+
+# This returns values as well. In this case it's the person number of the respondent in the household, which is itself a partial indicator of household size. 
+```
+
+We can build a function that automatically converts columns which are of time haven_labelled into the above format.
+
+```{r}
+dta2 <- return_labels_as_factors(dta)
+```
+
+This takes a while but seems to work. I think the function above should be the first I turn into a function in its own right.
+
+```{r}
+get_col_labels(dta)
+```
