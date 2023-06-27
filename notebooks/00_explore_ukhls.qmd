@@ -19,6 +19,39 @@ The aims of this notebook are:
 
 Once code has reached a sufficient level of complexity, I will attempt to convert them into functions within the utils folder, and set up associated tests in the tests directory.
 
+## Variables we need
+
+-   from individual surveys:
+    -   Outcomes/state
+        -   `demographics_w12.jbstat` : current economic activity
+    -   Demographic determinants
+        -   `pid`: Person identifier (for linking between waves)
+        -   `demographics_w12.psex`: sex
+        -   `demographics_w12.pdvage`: age
+        -   `ethnicityandnationalidentity_12.racel`: 'race'/ethnicity
+        -   `gridvariables_w12.pmarstat`: marital status
+        -   `gridvariables_w12.nkids05`: number of children
+        -   `gridvaribles_w12.nunder16abs`: number of kids aged 0-15 with one and only one parent in HH
+    -   Caring responsibilities
+        -   `caringw12.aidxhh` : Non residents cared for: do you provide regular service or help for any sick, disabled or elderly person not living with you?
+        -   `caringw12.aidhrs`: hours per week spent caring.
+    -   Education and training:
+        -   `nisced11_dv` : highest education achieved
+        -   `feend` : Further education leaving age
+        -   `fenow` : Still in further education
+        -   Possibly something further on training
+    -   Health
+        -   `scaghq_w12`: self completion ghq module
+        -   `scasf12_w12:` self completion physical and mental health
+-   from household surveys:
+    -   Nothing yet
+-   Geographic indicators
+    -   Want local authority and travel to work areas;
+    -   potentially urban-rural too;
+    -   Probably can't do until special access versions used and permissions sought and accepted
+-   Deprivation
+    -   Possibly SIMD/IMD?
+
 ## Starting off
 
 -   The data are in `big_data/UKDA-6614-stata/stata/stata13_se/ukhls/`
@@ -86,5 +119,56 @@ dta2 <- return_labels_as_factors(dta)
 This takes a while but seems to work. I think the function above should be the first I turn into a function in its own right.
 
 ```{r}
-get_col_labels(dta)
+x <- get_col_labels(dta)
+x[str_detect(x, "economic")]
+x[str_detect(x, "sex")]
+
+x[str_detect(x, "ethnic")]
+x[str_detect(x, "marital")]
+x[str_detect(x, "children")]
+
+x[str_detect(x, "education")]
+
+
+x[str_detect(x, "health")]
+
+x[str_detect(x, "general health")]
+
+x[str_detect(x, "sm")]
+
+
 ```
+
+Variables found of interest:
+
+-   `{w}_jbstat`: Current economic activity
+
+-   `{w}_dvage`: Age from birth
+
+-   `{w}_sex` : sex
+
+-   `{w}_racel`: ethnic group
+
+-   `{w}_marstat_dv`: Harmonised de facto marital status
+
+    -   We think this is more important for understanding economic situations than whether someone is married, divorced or in a civil partnership
+
+-   `{w}_nchild_dv`: number of own children in household
+
+-   `{w}_ndepchl_dv`: Number of own dependent children in household
+
+-   `{w}_fenow`: Still in further education
+
+-   `{w}_feend`: Further education leaving age
+
+-   `{w}_qfhigh_dv`: Highest education qualification ever reported
+
+-   `{w}_sf1`: General health
+
+-   `{w}_sf2a`: Health limits typical activities
+
+-   `{w}_sf3a`: Health limits work
+
+-   `{w}_sf3b`: Health limits kind of work
+
+-   Looking for something like `scaghq`: self completion ghq score (derived)

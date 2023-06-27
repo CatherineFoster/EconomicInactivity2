@@ -1,0 +1,189 @@
+---
+title: "01_extract_pid_and_econ"
+author: "Jon Minton; Martin"
+format: html
+editor: visual
+---
+
+## Aim
+
+The aim of this document is to extract the PID, year, and economic activity status from the UKHLS. \
+Later iterations will also incorporate predictor variables.
+
+## Preparation 
+
+First we load some packages, including the economic_inactivity package created as part of this project.
+
+```{r}
+library(tidyverse)
+library(haven)
+#library(economic_inactivity)
+```
+
+Now we specify the base folder location containing all the UKHLS files we will want to access and iterate over.
+
+```{r}
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+```
+
+Now we want to just get a list of the indresp files in the above directory
+
+```{r}
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+```
+
+Now we want to declare the columns that we want to extract.
+
+Initially this will just be economic activity status and PID. But soon we will expand this to cover additional explanatory variables too.
+
+```{r}
+variable_patterns <- c(
+  "pidp",
+  "^[a-z]{1}_jbstat"
+)
+
+```
+
+Now to test we can select only the two (initially) columns of interest in the first data extract. Afterwards we will generalise to all data extracts
+
+```{r}
+data_wave_1 <- haven::read_dta(indresp_files[1])
+
+```
+
+Now to select only those variables which match the variable patterns above
+
+```{r}
+data_wave_1 %>% 
+  select(pidp, ends_with("jbstat"))
+```
+
+We can now do this for all waves...
+
+The steps are:
+
+1.  Create a dataframe with the filenames to extract from
+2.  Create a function that loads that dataframe and selects, and returns, only those columns we want to return
+    1.  The above function would also split names like a_jbstat into the wave component and the variable name
+3.  Bind the rows of all returns from the above
+
+We will end with a very long dataframe with three columns: pidp, wave, and jbstat
+
+```{r}
+extract_vars_and_make_long <- function(dta, varname){
+  out <- dta %>% 
+     # hard-coded for now
+     select(pidp, matches(paste0("^[a-z]{1}_", varname))) %>% 
+     pivot_longer(-pidp) %>% 
+    separate_wider_delim(
+      name, 
+      delim = "_", 
+      names = c("wave", "variable")
+    ) %>%
+    mutate(value = as_factor(value, levels = 'labels') %>% 
+             as.character()
+    )
+  out
+}
+
+
+```
+
+Let's try the above function on a single loaded dataset
+
+```{r}
+long_dta <- tibble(
+  file_loc = indresp_files
+) %>% 
+  mutate(
+    all_data = map(file_loc, haven::read_dta)
+  ) %>% 
+  mutate(
+    slimmed_data = map(all_data, extract_vars_and_make_long, varname = "jbstat")
+  ) %>% 
+  select(-all_data)
+
+long_dta_combined <- bind_rows(long_dta$slimmed_data)
+
+```
+
+We now need to standardise the economic activity categories across all waves
+
+We've created a spreadsheet with our proposed regroupings
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+```
+
+```{r}
+econ_act_groupings_years <- 
+  long_dta_combined %>% 
+    mutate(
+      approximate_year = map_dbl(wave, function(x) match(x, letters) + 2008)
+    ) %>% 
+    left_join(
+      econ_act_groups,
+      by  = c('value' = 'original')
+    )
+```
+
+Let's start with the simplest case:
+
+-   wave 1 (2009ish) to wave 2 (2010ish)
+
+-   broadest econ groups (level 1)
+
+-   compare same person in t1 to t2
+
+```{r}
+econ_transitions_09_10 <- 
+econ_act_groupings_years %>% 
+  select(pidp, approximate_year, econ_status= level_1_broadest) %>% 
+  filter(approximate_year %in% c(2009, 2010)) %>% 
+  group_by(pidp, approximate_year) %>% 
+  summarise(econ_status = econ_status[1]) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = approximate_year, values_from = econ_status) %>% 
+  filter(!is.na(`2009`) & !is.na(`2010`)) %>% 
+  mutate(transition = glue::glue("{`2009`} to {`2010`}" )) 
+```
+
+```{r}
+table(econ_transitions_09_10$transition)
+```
+
+Reasonable proof of principle. Much to be done on generalising this to all waves and presenting in a more usable format for conditional probabilities etc
+
+```{r}
+econ_act_groupings_years %>% 
+  select(pidp, approximate_year, econ_status= level_1_broadest) %>% 
+  filter(approximate_year %in% c(2009, 2010)) %>% 
+  group_by(pidp, approximate_year) %>% 
+  summarise(econ_status = econ_status[1]) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = approximate_year, values_from = econ_status) %>% 
+  filter(!is.na(`2009`) & !is.na(`2010`)) %>% 
+  group_by(`2009`, `2010`) %>% 
+  count() %>% 
+  group_by(`2009`) %>% 
+  mutate(prob = n / sum(n)) %>% 
+  ungroup() %>% 
+  mutate(pretty_prob = formatC(prob, digits = 3))
+
+```
+
+This seems reasonable proof of principle, but it's only for the first year.
+
+## Next steps
+
+-   Automate to all years
+
+-   Use more disaggregated categories
+
+-   Work out better ways of presenting transitions (e.g. graphically)
+
+-   Take other variables, link, and use to group (e.g. male/female; LLTI/no LLTI; age categories)
+
+-   (Longer term): think about appropriate regression framework, e.g. multinomial regression

@@ -71,6 +71,4 @@ test_that("can return correct values and labels for a given column", {
       `ECHP - SCPR` = 14, `ECHP - ONS` = 15, `ECHP - NI` = 16),
     varlabLookup2
   )
-
-
 })
