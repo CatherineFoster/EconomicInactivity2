@@ -1,0 +1,433 @@
+---
+title: "01_extract_pid_and_econ"
+author: "Jon Minton; Martin"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(haven)
+library(here)
+
+```
+
+```{r}
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+```
+
+```{r}
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+```
+
+```{r}
+variable_patterns <- c(
+  "pidp",
+  "^[a-z]{1}_jbstat"
+)
+
+```
+
+Convenience function:
+
+```{r}
+extract_vars_and_make_long <- function(dta, varname, extract_what = 'labels'){
+  out <- dta %>% 
+     # hard-coded for now
+     select(pidp, matches(paste0("^[a-z]{1}_", varname))) %>% 
+     pivot_longer(-pidp) %>% 
+    separate_wider_delim(
+      name, 
+      delim = "_", 
+      too_many = 'merge', 
+      names = c("wave", "variable")
+    ) %>%
+    mutate(value = as_factor(value, levels = extract_what) %>% 
+             as.character()
+    )
+  out
+}
+
+
+```
+
+```{r}
+long_dta <- tibble(
+  file_loc = indresp_files
+) %>% 
+  mutate(
+    all_data = map(file_loc, haven::read_dta)
+  ) %>% 
+  mutate(
+    slimmed_data = map(all_data, extract_vars_and_make_long, varname = "jbstat")
+  ) %>% 
+  select(-all_data)
+
+long_dta_combined <- bind_rows(long_dta$slimmed_data)
+
+```
+
+Now the same for age (n.b. this is a painfully inefficient way of extracting the data but we can generalise the extraction function in due course)
+
+```{r}
+tmp <- haven::read_dta(indresp_files[1])
+```
+
+```{r}
+long_dta_age <- tibble(
+  file_loc = indresp_files
+) %>% 
+  mutate(
+    all_data = map(file_loc, haven::read_dta)
+  ) %>% 
+  mutate(
+    slimmed_data = map(all_data, extract_vars_and_make_long, varname = "dvage", extract_what = 'values')
+  ) %>% 
+  select(-all_data)
+
+long_dta_combined_age <- bind_rows(long_dta_age$slimmed_data) %>% 
+  mutate(value = as.double(value))
+
+
+```
+
+Now to do the same with sex
+
+```{r}
+long_dta_sex <- tibble(
+  file_loc = indresp_files
+) %>% 
+  mutate(
+    all_data = map(file_loc, haven::read_dta)
+  ) %>% 
+  mutate(
+    slimmed_data = map(all_data, extract_vars_and_make_long, varname = "sex")
+  ) %>% 
+  select(-all_data)
+
+long_dta_combined_sex <- bind_rows(long_dta_sex$slimmed_data) %>% 
+  filter(variable == 'sex')
+
+
+```
+
+We now need to standardise the economic activity categories across all waves
+
+We've created a spreadsheet with our proposed regroupings
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+```
+
+```{r}
+econ_act_groupings_years <- 
+  long_dta_combined %>% 
+    left_join(
+      econ_act_groups,
+      by  = c('value' = 'original')
+    )
+```
+
+## Analysis
+
+What we want to do:
+
+-   Partition the dataset into two smaller datasets
+    -   waves a-c (i.e. predicting whether econ inact in c based on a and b)
+    -   waves h-j (i.e. predicting whether econ inact in j based on h and i)
+-   Link to age
+    -   partition into age groups ?
+    -   filter by age group?
+-   link to sex
+
+First things first (a tautology), let's do the model for predicting whether econ inact at wave c
+
+```{r}
+data_for_2009to2011 <- econ_act_groupings_years %>% 
+  select(pidp, wave, econ_act_status = level_2_meso) %>% 
+  filter(wave %in% c("a", "b", "c")) %>% 
+  left_join(
+    long_dta_combined_sex %>% select(pidp, wave, sex = value),
+    by = c("pidp" = "pidp", "wave" = "wave")
+  ) %>% 
+  left_join(
+    long_dta_combined_age %>% 
+      filter(wave == 'a') %>% 
+      select(pidp, age_at_start = value),
+    by = c('pidp' = 'pidp')
+  ) %>% 
+  filter(between(age_at_start, 16, 60)) %>% 
+  pivot_wider(
+    names_from = "wave", values_from = 'econ_act_status'
+  )
+
+data_for_2009to2011_completeCases <- data_for_2009to2011 %>% filter(complete.cases(.))
+```
+
+Some prior expectations:
+
+-   economic inactivity will be U-shaped with age (will need squared term for this)
+-   econ inact will be higher in females than males
+-   two previous spells of econ inact strongest positive predictor of econ_inact in wave c
+-   two previous spells of employment strongest negative predictor of econ_inact in wave c
+-   status in wave b will be more influential on status in c than in a
+
+```{r}
+mod_null_T1 <- glm(
+  c == 'Inactive' ~ 1, data = data_for_2009to2011_completeCases, family = 'binomial'
+)
+
+mod_t1_T1 <- glm(
+  c == 'Inactive' ~ b, data = data_for_2009to2011_completeCases, family = 'binomial'
+)
+
+mod_t1a1_T1 <- glm(
+  c == 'Inactive' ~ b + poly(age_at_start, 1), data = data_for_2009to2011_completeCases, family = 'binomial'
+)
+
+mod_t1a2_T1 <- glm(
+  c == 'Inactive' ~ b + poly(age_at_start, 2), data = data_for_2009to2011_completeCases, family = 'binomial'
+)
+# I think I'll use this rather than 3rd order as marginal improvement 
+#given BIC for 3rd order is small whereas issues with extrapoloation 
+# are greater
+
+mod_t1a3_T1 <- glm(
+  c == 'Inactive' ~ b + poly(age_at_start, 3), data = data_for_2009to2011_completeCases, family = 'binomial'
+)
+
+mod_t1a2s_T1 <- glm(
+  c == 'Inactive' ~ b + poly(age_at_start, 2) + sex, data = data_for_2009to2011_completeCases, family = 'binomial'
+)
+
+
+mod_t2a2s_T1 <- glm(
+  c == 'Inactive' ~ b + a + poly(age_at_start, 2) + sex, data = data_for_2009to2011_completeCases, family = 'binomial'
+)
+
+mod_t2a2_T1 <- glm(
+  c == 'Inactive' ~ b + a + poly(age_at_start, 2), data = data_for_2009to2011_completeCases, family = 'binomial'
+)
+
+mod_interactions_T1 <- glm(
+  c == 'Inactive' ~ sex * (b + a) * poly(age_at_start, 2), data = data_for_2009to2011_completeCases, family = 'binomial'
+)
+# This mega-model is slightly preferred to the others but not a huge amount over 
+# mod_t2a2s_T1
+
+# So our final suggested model is mod_t2a2_T1
+
+```
+
+Having specified the series of models, we can compare penalised model fit for all of them using BIC
+
+```{r}
+BIC(mod_null_T1, mod_t1_T1, mod_t1a1_T1, mod_t1a2_T1, mod_t1a3_T1, mod_t1a2s_T1, mod_t2a2s_T1, mod_t2a2_T1, mod_interactions_T1)
+```
+
+We have generally gone for models with lower BIC, except we have not gone for a 3rd order polynomial, or for the model with many interaction terms. In both cases this is because, although BIC is slightly lower, models with many interaction terms, or using many polynomial terms, quickly become harder to explain and may be less accurate at out-of-sample forecasting.
+
+So our final model specification is `mod_t2a2s_T1`.
+
+i.e. - two previous time periods - linear and quadratic terms of age - and sex
+
+For reasons of consistency, we will now fit the same model specification to T2, i.e. 2016-2019 (i.e. the last pre-pandemic period)
+
+```{r}
+data_for_2016to2019 <- econ_act_groupings_years %>% 
+  select(pidp, wave, econ_act_status = level_2_meso) %>% 
+  filter(wave %in% c("h", "i", "j")) %>% 
+  left_join(
+    long_dta_combined_sex %>% select(pidp, wave, sex = value),
+    by = c("pidp" = "pidp", "wave" = "wave")
+  ) %>% 
+  left_join(
+    long_dta_combined_age %>% 
+      filter(wave == 'h') %>% 
+      select(pidp, age_at_start = value),
+    by = c('pidp' = 'pidp')
+  ) %>% 
+  filter(between(age_at_start, 16, 60)) %>% 
+  pivot_wider(
+    names_from = "wave", values_from = 'econ_act_status'
+  )
+
+data_for_2016to2019_completeCases <- data_for_2016to2019 %>% filter(complete.cases(.))
+
+```
+
+```{r}
+mod_t2a2s_T2 <- glm(
+  j == 'Inactive' ~ h + i + poly(age_at_start, 2) + sex, data = data_for_2016to2019_completeCases, family = 'binomial'
+)
+```
+
+## Predictions based on model specs
+
+Predictions about differences between T1 and T2
+
+-   econ inactivity rates between sexes will have become more similar (continuing long-term trends)
+
+-   there will be differences (?!) but we are not sure in which direction
+
+-   reasons for assuming lower inactivity in T2:
+
+    -   Long-term sickness rates falling but rate at which they fell slowing
+
+    -   inactivity in lone parents fell
+
+    -   increase in female state pension age (though only looking at up to age 60)
+
+-   reasons for assuming higher inactivity in T2:
+
+    -   Generally ageing working age population?
+
+    -   Poorer health
+
+    -   Longer-term implications of suppressed labour market from GFC (i.e. in short term may predict more transition from working to unemployed; but in longer term some will go to inactivity)
+
+    -   Continuing increases in rates of full time education.
+
+    -   unintended consequences of welfare reform could push more people into long-term sickness
+
+```{r}
+
+vignettes_T2 <- tribble(
+  ~sex, ~age_at_start, ~h, ~i,
+  'male',50, 'Employed', 'Employed',
+  'female',50, 'Employed', 'Employed',
+  'male',50, 'Inactive', 'Inactive',
+  'female',50, 'Inactive', 'Inactive',
+
+  'male',20, 'Employed', 'Employed',
+  'female',20, 'Employed', 'Employed',
+  'male',20, 'Inactive', 'Inactive',
+  'female',20, 'Inactive', 'Inactive'
+  
+)
+
+vignettes_T1 <- tribble(
+  ~sex, ~age_at_start, ~a, ~b,
+  'male',50, 'Employed', 'Employed',
+  'female',50, 'Employed', 'Employed',
+  'male',50, 'Inactive', 'Inactive',
+  'female',50, 'Inactive', 'Inactive',
+
+  'male',20, 'Employed', 'Employed',
+  'female',20, 'Employed', 'Employed',
+  'male',20, 'Inactive', 'Inactive',
+  'female',20, 'Inactive', 'Inactive'
+  
+)
+
+vignettes_T1 <- vignettes_T1 %>% 
+  mutate(
+    prediction = predict(
+      mod_t2a2s_T1, newdata = vignettes_T1, type = 'response'
+    )
+  )
+
+vignettes_T2 <- vignettes_T2 %>% 
+  mutate(
+    prediction = predict(
+      mod_t2a2s_T2, newdata = vignettes_T2, type = 'response'
+    )
+  )
+
+
+
+```
+
+Let's use expand_grid to produce all possible combinations
+
+```{r}
+all_vignettes_T1 <- 
+  expand_grid(
+    sex = c("male", "female"),
+    age_at_start = 16:60,
+    a = c("Employed", "Unemployed", "Inactive"),
+    b = c("Employed", "Unemployed", "Inactive")
+  )
+
+all_vignettes_T1 <- all_vignettes_T1 %>% 
+  mutate(
+    prediction = predict(
+      mod_t2a2s_T1, newdata = all_vignettes_T1, type = 'response'
+    )    
+  )
+
+all_vignettes_T2 <- 
+  expand_grid(
+    sex = c("male", "female"),
+    age_at_start = 16:60,
+    h = c("Employed", "Unemployed", "Inactive"),
+    i = c("Employed", "Unemployed", "Inactive")
+  )
+
+all_vignettes_T2 <- all_vignettes_T2 %>% 
+  mutate(
+    prediction = predict(
+      mod_t2a2s_T2, newdata = all_vignettes_T2, type = 'response'
+    )    
+  )
+
+
+all_vignettes <- 
+  bind_rows(
+    all_vignettes_T1 %>% 
+      rename(last = b, previous = a) %>% 
+      mutate(period = "T1"),
+    all_vignettes_T2 %>% 
+      rename(last = i, previous = h) %>% 
+      mutate(period = "T2")
+  )
+
+
+```
+
+In `all_vignettes`, the variable last refers to t-1, and previous to t-2, i.e. one and two periods before the period whose economic inactivity status we want to predict.
+
+T1 refers to the period 2009-2011, and T2 to 2016-2019.
+
+First let's save this so it can be looked at in excel or other inappropriate statistical software.
+
+```{r}
+write_csv(all_vignettes, file = here("data/predictions_of_inactivity_T1T2_using_ukhls.csv"))
+```
+
+## Visualise the above predictions 
+
+```{r}
+all_vignettes %>% 
+  mutate(
+    p = str_extract(previous, "^[A-Z]{1}"),
+    l = str_extract(last, "^[A-Z]{1}")
+  ) %>% 
+  mutate(
+    econ_hist = glue::glue("{p}{l}")
+  ) %>% 
+  ggplot(aes(
+    x = age_at_start, y = prediction, 
+    group = paste(sex, period), colour = sex,
+    linetype = period
+  )) +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  facet_wrap(~ econ_hist, ncol = 3) + 
+  geom_line() +
+  expand_limits(y = c(0, 1)) + 
+  labs (
+    x = "Age at start of period in years",
+    y = "Predicted probability of economic inactivity",
+    title = "Predicted probabilities of economic inactivity",
+    caption = "E: Employed; I: Inactive; U: Unemployed",
+    subtitle = "Facet labels indicate economic status in previous two periods"
+  )
+```
+
+Let's save this figure
+
+```{r}
+ggsave(here("figures/pred_prob_inact_ukhls.png"), height = 20, width = 20, units = "cm", dpi = 300)
+```

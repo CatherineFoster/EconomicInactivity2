@@ -7,16 +7,17 @@ editor: visual
 
 ## Aim
 
-The aim of this document is to extract the PID, year, and economic activity status from the UKHLS. \
+The aim of this document is to extract the PID, year, and economic activity status from the UKHLS.\
 Later iterations will also incorporate predictor variables.
 
-## Preparation 
+## Preparation
 
 First we load some packages, including the economic_inactivity package created as part of this project.
 
 ```{r}
 library(tidyverse)
 library(haven)
+library(here)
 #library(economic_inactivity)
 ```
 
@@ -120,61 +121,122 @@ econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_cate
 ```{r}
 econ_act_groupings_years <- 
   long_dta_combined %>% 
-    mutate(
-      approximate_year = map_dbl(wave, function(x) match(x, letters) + 2008)
-    ) %>% 
+    # mutate(
+    #   approximate_year = map_dbl(wave, function(x) match(x, letters) + 2008)
+    # ) %>% 
     left_join(
       econ_act_groups,
       by  = c('value' = 'original')
     )
 ```
 
-Let's start with the simplest case:
+## Show above in wide format 
 
--   wave 1 (2009ish) to wave 2 (2010ish)
-
--   broadest econ groups (level 1)
-
--   compare same person in t1 to t2
+I think we first want to confirm we can see the econ activity in wide format, with the pidp on the row and each column the econ act status in a different wave
 
 ```{r}
-econ_transitions_09_10 <- 
+econ_act_groupings_years %>% select(pidp, wave, level_2_meso) %>% pivot_wider(names_from = 'wave', values_from = 'level_2_meso')
+```
+
+We are thinking about modelling approaches given we have panel data.
+
+One way of starting would just be to predict whether inactive at time T given activity status at time T-1, and also given activity status at time T-2 (i.e. we can compared whether there's added value of 'remembering' the status of an individual's activity status two waves ago rather than just in the last wave.
+
+Let's start to trial this approach by building two logistic regression models and comparing them.
+
+We will initially just try to predict status in wave c.
+
+```{r}
+inact_in_wave_c_data <- econ_act_groupings_years %>% 
+  select(pidp, wave, level_2_meso) %>%  
+  pivot_wider(names_from = 'wave', values_from = 'level_2_meso') %>% 
+  select(pidp, a:c) 
+
+inact_in_wave_c_data <- inact_in_wave_c_data %>% 
+  filter(complete.cases(.))
+
+
+```
+
+The above is an extract of the data for waves a, b and c. Only complete cases were retained so there are issues with representativeness/bias etc.
+
+The three models below attempt to predict the probability of being economically inactive at wave c based on increasing amounts of information:
+
+-   `mod_0`: No predictors (i.e. the general probability for all included in the sample frame of being inactive in wave c)
+
+-   `mod_1`: Predicted on economic activity status in wave b only. (employed as reference category.
+
+-   `mod_2`: Predicted on economic activity status in wave a and wave b. (i.e. two waves ago rather than just last wave)
+
+```{r}
+mod_0 <- glm(c == 'Inactive' ~ 1, data = inact_in_wave_c_data, family = "binomial") 
+mod_1 <- glm(c == 'Inactive' ~ b, data = inact_in_wave_c_data, family = "binomial")
+mod_2 <- glm(c == 'Inactive' ~ b + a, data = inact_in_wave_c_data, family = "binomial")
+
+
+```
+
+We can produce summaries of the models as follows:
+
+```{r}
+summary(mod_0)
+```
+
+```{r}
+summary(mod_1)
+```
+
+```{r}
+summary(mod_2)
+```
+
+Interpreting how the coefficients relate to predicted probabilities unfortunately involves some thinking. In the case of `mod_2`, for example, we need to note that the intercept value only relates to one particular condition/state, namely that in which the respondent was employed for the previous two waves. This is because Employed is used by the logistic regression as the reference category. We know Employed is the reference category is it is *not* listed as a coefficient for a or b. \
+In order to convert from coefficients to predicted probabilities given previous respondent economic activity history we need to sum up those coefficients which are relevant to the condition we are trying to predict for, and pass this sum of coefficients into the x slot of logit (?) function which looks as follows:
+
+$$
+ \exp(x) / (1 + exp(x))
+$$
+
+For example, passing just the intercept into the above produces a value of around 0.04. This is the prediction for the case where a and b are both 'Employed' (the reference category.
+
+And if we want to predict the case where the respondent was Employed at wave a and Unemployed at wave b, we should add the coefficient on bUnemployed to x. (i.e., approximately -3.14 + 1.49). This produces a predicted value of around 0.16.
+
+Note the above calculations are approximate as the coefficients are truncated to 2dp.
+
+We can get more exact estimates of the predicted probabilities either by using more decimal places, or by using the predict function, passing the background states we want to predict for as parameters in a dataframe passed in the newdata parameter in this function. For example:
+
+```{r}
+predict(mod_2, newdata = data.frame(a = 'Employed', b = 'Employed'), type = 'response')
+
+predict(mod_2, newdata = data.frame(a = 'Employed', b = 'Unemployed'), type = 'response')
+```
+
+Note that type = 'response' is added as an argument to predict in order that the predict function returns the predicted probability rather than the log odds.
+
+## Estimation of predicted transitions to inactivity based on above approach
+
+The notebook \`predicted_transitions_to_inactivity_in_2011 and 2019.qmd\` formalises the logistic regression analysis above for both the start of the UKHLS and the last pre-pandemic year.
+
+........
+
+## Generalise to all years
+
+Let's write a function that takes the following arguments:
+
+-   `econ_group_col`: column of economic activity groupings
+
+-   `pid_col`: name of column with pid
+
+-   `t0`: letter or number indicating initial year (to calculate transitions *from*)
+
+-   `time_col`: column indicating time variable (either a letter or a number)
+
+```{r}
 econ_act_groupings_years %>% 
-  select(pidp, approximate_year, econ_status= level_1_broadest) %>% 
-  filter(approximate_year %in% c(2009, 2010)) %>% 
-  group_by(pidp, approximate_year) %>% 
-  summarise(econ_status = econ_status[1]) %>% 
-  ungroup() %>% 
-  pivot_wider(names_from = approximate_year, values_from = econ_status) %>% 
-  filter(!is.na(`2009`) & !is.na(`2010`)) %>% 
-  mutate(transition = glue::glue("{`2009`} to {`2010`}" )) 
-```
-
-```{r}
-table(econ_transitions_09_10$transition)
-```
-
-Reasonable proof of principle. Much to be done on generalising this to all waves and presenting in a more usable format for conditional probabilities etc
-
-```{r}
-econ_act_groupings_years %>% 
-  select(pidp, approximate_year, econ_status= level_1_broadest) %>% 
-  filter(approximate_year %in% c(2009, 2010)) %>% 
-  group_by(pidp, approximate_year) %>% 
-  summarise(econ_status = econ_status[1]) %>% 
-  ungroup() %>% 
-  pivot_wider(names_from = approximate_year, values_from = econ_status) %>% 
-  filter(!is.na(`2009`) & !is.na(`2010`)) %>% 
-  group_by(`2009`, `2010`) %>% 
-  count() %>% 
-  group_by(`2009`) %>% 
-  mutate(prob = n / sum(n)) %>% 
-  ungroup() %>% 
-  mutate(pretty_prob = formatC(prob, digits = 3))
+  select(pidp, wave, level_2_meso) %>% 
+  pivot_wider(names_from = 'wave', values_from = 'level_2_meso')
 
 ```
-
-This seems reasonable proof of principle, but it's only for the first year.
 
 ## Next steps
 
