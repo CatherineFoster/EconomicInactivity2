@@ -31,20 +31,71 @@ variable_patterns <- c(
 Convenience function:
 
 ```{r}
-extract_vars_and_make_long <- function(dta, varname, extract_what = 'labels'){
-  out <- dta %>% 
-     # hard-coded for now
-     select(pidp, matches(paste0("^[a-z]{1}_", varname))) %>% 
-     pivot_longer(-pidp) %>% 
-    separate_wider_delim(
-      name, 
-      delim = "_", 
-      too_many = 'merge', 
-      names = c("wave", "variable")
-    ) %>%
-    mutate(value = as_factor(value, levels = extract_what) %>% 
-             as.character()
+extract_vars_and_make_long <- function(dta, varnames, extract_what = 'labels', verbose = TRUE){
+  
+  #dta should be a dataframe
+  stopifnot("dta is not a dataframe" = "data.frame" %in% class(dta))
+  
+  #varnames should be a vector of strings of length 1 or above 
+  stopifnot("varnames does not have contents" = length(varnames) > 0)
+  stopifnot("varnames is not of mode character" = mode(varnames) == "character")
+  
+  # extract_what should be either of length 1 or the length of varnames
+  stopifnot("extract_what is not length 1 or length of varnames" = 
+              length(extract_what) == 1 | 
+              length(extract_what) == length(varnames)
+  )
+  
+  # each element of extract_what should be one of 'labels', 'values' or 'both
+  stopifnot("elements of extract_what are not each one of 'labels', 'values' or 'both'" = 
+              sapply(extract_what, 
+                     FUN = function(x) x %in% c("values", "labels", "both")
+              ) %>% 
+              all()
+  )
+  
+  start_time = Sys.time()
+  # Want to adapt this to work with multiple varnames
+  var_list <- list()
+  
+  
+  extract_var_and_make_long <- function(dta, varname, extract_what){
+    out <- dta %>% 
+       # hard-coded for now
+       select(pidp, matches(paste0("^[a-z]{1}_", varname, "$"))) %>% 
+       pivot_longer(-pidp) %>% 
+      separate_wider_delim(
+        name, 
+        delim = "_", 
+        too_many = 'merge', 
+        names = c("wave", "variable")
+      ) %>%
+      mutate(value = as_factor(value, levels = extract_what) %>% 
+               as.character()
+      )
+    out
+  }
+  
+  for (i  in seq_along(varnames)){
+    what_to_extract = if (length(extract_what) == 1) {
+      extract_what
+    } else {
+        extract_what[i]
+    }
+    var_list[[i]] <- extract_var_and_make_long(dta, varnames[i], extract_what = what_to_extract)
+  }
+  
+  out <- bind_rows(var_list)
+  end_time = Sys.time()
+  if (verbose){
+    print(
+      paste(
+        "extracted", length(varnames), "variables in", 
+        difftime(end_time, start_time, units = "secs"),
+        "seconds"
+      )
     )
+  }
   out
 }
 
@@ -52,66 +103,47 @@ extract_vars_and_make_long <- function(dta, varname, extract_what = 'labels'){
 ```
 
 ```{r}
-long_dta <- tibble(
-  file_loc = indresp_files
-) %>% 
-  mutate(
-    all_data = map(file_loc, haven::read_dta)
-  ) %>% 
-  mutate(
-    slimmed_data = map(all_data, extract_vars_and_make_long, varname = "jbstat")
-  ) %>% 
-  select(-all_data)
 
-long_dta_combined <- bind_rows(long_dta$slimmed_data)
+read_and_slim_data <- function(file_location, varnames, extract_what, verbose = TRUE){
+  if (verbose) {
+    print(paste("extracting file:",file_location))
+    start_time = Sys.time()
+    }
+  full_data <- haven::read_dta(file_location)
+  if (verbose) {
+    end_time = Sys.time()
+    print(paste("read file in", difftime(end_time, start_time, units = "secs"), "seconds"))
+    print(paste("slimming file..."))
+    
+    }
+  slim_long_data <- extract_vars_and_make_long(full_data, varnames = varnames, extract_what = extract_what, verbose = verbose)
+  slim_long_data
+}
 
-```
+overall_start_time = Sys.time()
 
-Now the same for age (n.b. this is a painfully inefficient way of extracting the data but we can generalise the extraction function in due course)
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = c("jbstat", "dvage", "sex", "hiqual_dv", "hhtype_dv"), 
+       extract_what = c("labels", "values", "labels", "labels", "labels"), 
+       verbose = TRUE
+)
 
-```{r}
-tmp <- haven::read_dta(indresp_files[1])
-```
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
 
-```{r}
-long_dta_age <- tibble(
-  file_loc = indresp_files
-) %>% 
-  mutate(
-    all_data = map(file_loc, haven::read_dta)
-  ) %>% 
-  mutate(
-    slimmed_data = map(all_data, extract_vars_and_make_long, varname = "dvage", extract_what = 'values')
-  ) %>% 
-  select(-all_data)
+overall_end_time = Sys.time()
 
-long_dta_combined_age <- bind_rows(long_dta_age$slimmed_data) %>% 
-  mutate(value = as.double(value))
-
-
-```
-
-Now to do the same with sex
-
-```{r}
-long_dta_sex <- tibble(
-  file_loc = indresp_files
-) %>% 
-  mutate(
-    all_data = map(file_loc, haven::read_dta)
-  ) %>% 
-  mutate(
-    slimmed_data = map(all_data, extract_vars_and_make_long, varname = "sex")
-  ) %>% 
-  select(-all_data)
-
-long_dta_combined_sex <- bind_rows(long_dta_sex$slimmed_data) %>% 
-  filter(variable == 'sex')
-
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
 
 ```
 
-We now need to standardise the economic activity categories across all waves
+We now need to standardise the economic activity categories across all waves.
 
 We've created a spreadsheet with our proposed regroupings
 
@@ -121,13 +153,72 @@ econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_cate
 
 ```
 
+I also want to do something similar with highest qualification
+
 ```{r}
-econ_act_groupings_years <- 
-  long_dta_combined %>% 
-    left_join(
-      econ_act_groups,
-      by  = c('value' = 'original')
+long_dta_combined_hiqual %>% 
+  mutate(
+    highqual = case_when(
+      value %in% c("A level etc", "A-level etc") ~ "A-level etc",
+      value %in% c("No qual", "No qualification") ~ "No qualification",
+      value %in% c("Other higher", "Other higher degree") ~ "Other higher degree",
+      value %in% c("Other qual", "Other qualification") ~ "Other qualification",
+      value == "Degree" ~ "Degree",
+      value == "GCSE etc" ~ "GCSE etc",
+      value %in% c("inapplicable", "missing") ~ "Inapplicable or missing",
+      TRUE ~ NA_character_
     )
+  ) %>% 
+  mutate(
+    simplified_highest_qualification = case_when(
+      highqual == "No qualification" ~ "No qualification",
+      highqual %in% c("GCSE etc", "Other qualification") ~ "GCSE or similar",
+      highqual == "A-level etc" ~ "A-level etc",
+      highqual %in% c("Degree", "Other higher degree") ~ "Degree or above"
+    )
+  )
+```
+
+Now to regroup the economic inactivity variables...
+
+```{r}
+long_slimmed_data <- 
+long_slimmed_data %>% 
+  left_join(
+    econ_act_groups %>% select(original, recoded = level_2_meso), 
+    by = c('value' = 'original')
+  ) %>% 
+  mutate(
+    value = ifelse(!is.na(recoded), recoded, value)
+  ) %>% 
+  select(-recoded) %>% 
+    mutate(
+    highqual = case_when(
+      value %in% c("A level etc", "A-level etc") ~ "A-level etc",
+      value %in% c("No qual", "No qualification") ~ "No qualification",
+      value %in% c("Other higher", "Other higher degree") ~ "Other higher degree",
+      value %in% c("Other qual", "Other qualification") ~ "Other qualification",
+      value == "Degree" ~ "Degree",
+      value == "GCSE etc" ~ "GCSE etc",
+      value %in% c("inapplicable", "missing") ~ "Inapplicable or missing",
+      TRUE ~ NA_character_
+    )
+  ) %>% 
+  mutate(
+    simplified_highest_qualification = case_when(
+      highqual == "No qualification" ~ "No qualification",
+      highqual %in% c("GCSE etc", "Other qualification") ~ "GCSE or similar",
+      highqual == "A-level etc" ~ "A-level etc",
+      highqual %in% c("Degree", "Other higher degree") ~ "Degree or above",
+      TRUE ~ NA_character_
+    )
+  ) %>% 
+  mutate(
+    value = ifelse(!is.na(simplified_highest_qualification), simplified_highest_qualification, value)
+  ) %>% 
+  select(-highqual, -simplified_highest_qualification)
+
+long_slimmed_data
 ```
 
 ## Analysis
@@ -141,29 +232,69 @@ What we want to do:
     -   partition into age groups ?
     -   filter by age group?
 -   link to sex
+-   link to highest qualification
 
 First things first (a tautology), let's do the model for predicting whether econ inact at wave c
 
 ```{r}
-data_for_2009to2011 <- econ_act_groupings_years %>% 
-  select(pidp, wave, econ_act_status = level_2_meso) %>% 
-  filter(wave %in% c("a", "b", "c")) %>% 
-  left_join(
-    long_dta_combined_sex %>% select(pidp, wave, sex = value),
-    by = c("pidp" = "pidp", "wave" = "wave")
-  ) %>% 
-  left_join(
-    long_dta_combined_age %>% 
-      filter(wave == 'a') %>% 
-      select(pidp, age_at_start = value),
-    by = c('pidp' = 'pidp')
-  ) %>% 
-  filter(between(age_at_start, 16, 60)) %>% 
-  pivot_wider(
-    names_from = "wave", values_from = 'econ_act_status'
-  )
+extract_three_periods <- function(data, waves){
+  data %>% 
+    filter(wave %in% waves) %>% 
+    filter(!(variable %in% c('dvage', 'sex', 'hiqual_dv', 'hhtype_dv', 'fihhmnnet3_dv'))) %>% 
+    left_join(
+      data %>% 
+        filter(variable == "dvage") %>% 
+        filter(wave == waves[1]) %>% 
+        mutate(age_at_start = as.double(value)) %>% 
+        select(pidp, age_at_start)    
+    ) %>% 
+    left_join(
+      data %>% 
+        filter(variable == 'sex') %>% 
+        filter(wave == waves[1]) %>% 
+        mutate(sex = value) %>% 
+        select(pidp, sex)
+    ) %>% 
+    left_join(
+      data %>% 
+        filter(variable == 'hiqual_dv') %>% 
+        filter(wave == waves[1]) %>% 
+        mutate(highest_qualification = value) %>% 
+        select(pidp, highest_qualification)
+    ) %>% 
+    left_join(
+      data %>% 
+        filter(variable == "hhtype_dv") %>% 
+        filter(wave == waves[1]) %>% 
+        mutate(hh_type = value) %>% 
+        select(pidp, hh_type)
+    ) %>% 
+    left_join(
+      data %>% 
+          filter(variable == "fihhmnnet3_dv") %>% 
+          filter(wave == waves[1]) %>% 
+          mutate(income = as.double(value)) %>% 
+          select(pidp, income)  
+    ) %>% 
+    filter(variable == 'jbstat') %>% 
+    select(-variable) %>% 
+    mutate(
+      period = case_when(
+        wave == waves[1] ~ 'previous',
+        wave == waves[2] ~ 'last',
+        wave == waves[3] ~ 'current'
+      )
+    ) %>% 
+    select(-wave) %>% 
+    pivot_wider(names_from = period, values_from = value)
+  
+}
 
-data_for_2009to2011_completeCases <- data_for_2009to2011 %>% filter(complete.cases(.))
+data_2009to2011 <- extract_three_periods(long_slimmed_data, c("a", "b", "c")) %>% 
+  filter(between(age_at_start, 16, 60))
+
+data_2016to2019 <- extract_three_periods(long_slimmed_data, c("h", "i", "j"))
+
 ```
 
 Some prior expectations:
@@ -176,43 +307,61 @@ Some prior expectations:
 
 ```{r}
 mod_null_T1 <- glm(
-  c == 'Inactive' ~ 1, data = data_for_2009to2011_completeCases, family = 'binomial'
+  current == 'Inactive' ~ 1, 
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
 )
 
 mod_t1_T1 <- glm(
-  c == 'Inactive' ~ b, data = data_for_2009to2011_completeCases, family = 'binomial'
+  current == 'Inactive' ~ last, 
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
 )
 
 mod_t1a1_T1 <- glm(
-  c == 'Inactive' ~ b + poly(age_at_start, 1), data = data_for_2009to2011_completeCases, family = 'binomial'
+  current == 'Inactive' ~ last + poly(age_at_start, 1), 
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
 )
 
 mod_t1a2_T1 <- glm(
-  c == 'Inactive' ~ b + poly(age_at_start, 2), data = data_for_2009to2011_completeCases, family = 'binomial'
+  current == 'Inactive' ~ last + poly(age_at_start, 2), 
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
 )
 # I think I'll use this rather than 3rd order as marginal improvement 
 #given BIC for 3rd order is small whereas issues with extrapoloation 
 # are greater
 
 mod_t1a3_T1 <- glm(
-  c == 'Inactive' ~ b + poly(age_at_start, 3), data = data_for_2009to2011_completeCases, family = 'binomial'
+  current == 'Inactive' ~ last + poly(age_at_start, 3), 
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
 )
 
 mod_t1a2s_T1 <- glm(
-  c == 'Inactive' ~ b + poly(age_at_start, 2) + sex, data = data_for_2009to2011_completeCases, family = 'binomial'
+  current == 'Inactive' ~ last + poly(age_at_start, 2) + sex, 
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
 )
 
 
 mod_t2a2s_T1 <- glm(
-  c == 'Inactive' ~ b + a + poly(age_at_start, 2) + sex, data = data_for_2009to2011_completeCases, family = 'binomial'
+  current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex,
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
 )
 
 mod_t2a2_T1 <- glm(
-  c == 'Inactive' ~ b + a + poly(age_at_start, 2), data = data_for_2009to2011_completeCases, family = 'binomial'
+  current == 'Inactive' ~ last + previous + poly(age_at_start, 2), 
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
 )
 
 mod_interactions_T1 <- glm(
-  c == 'Inactive' ~ sex * (b + a) * poly(age_at_start, 2), data = data_for_2009to2011_completeCases, family = 'binomial'
+  current == 'Inactive' ~ sex * (last + previous) * poly(age_at_start, 2),
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
 )
 # This mega-model is slightly preferred to the others but not a huge amount over 
 # mod_t2a2s_T1
@@ -225,6 +374,8 @@ Having specified the series of models, we can compare penalised model fit for al
 
 ```{r}
 BIC(mod_null_T1, mod_t1_T1, mod_t1a1_T1, mod_t1a2_T1, mod_t1a3_T1, mod_t1a2s_T1, mod_t2a2s_T1, mod_t2a2_T1, mod_interactions_T1)
+AIC(mod_null_T1, mod_t1_T1, mod_t1a1_T1, mod_t1a2_T1, mod_t1a3_T1, mod_t1a2s_T1, mod_t2a2s_T1, mod_t2a2_T1, mod_interactions_T1)
+
 ```
 
 We have generally gone for models with lower BIC, except we have not gone for a 3rd order polynomial, or for the model with many interaction terms. In both cases this is because, although BIC is slightly lower, models with many interaction terms, or using many polynomial terms, quickly become harder to explain and may be less accurate at out-of-sample forecasting.
@@ -236,31 +387,10 @@ i.e. - two previous time periods - linear and quadratic terms of age - and sex
 For reasons of consistency, we will now fit the same model specification to T2, i.e. 2016-2019 (i.e. the last pre-pandemic period)
 
 ```{r}
-data_for_2016to2019 <- econ_act_groupings_years %>% 
-  select(pidp, wave, econ_act_status = level_2_meso) %>% 
-  filter(wave %in% c("h", "i", "j")) %>% 
-  left_join(
-    long_dta_combined_sex %>% select(pidp, wave, sex = value),
-    by = c("pidp" = "pidp", "wave" = "wave")
-  ) %>% 
-  left_join(
-    long_dta_combined_age %>% 
-      filter(wave == 'h') %>% 
-      select(pidp, age_at_start = value),
-    by = c('pidp' = 'pidp')
-  ) %>% 
-  filter(between(age_at_start, 16, 60)) %>% 
-  pivot_wider(
-    names_from = "wave", values_from = 'econ_act_status'
-  )
-
-data_for_2016to2019_completeCases <- data_for_2016to2019 %>% filter(complete.cases(.))
-
-```
-
-```{r}
 mod_t2a2s_T2 <- glm(
-  j == 'Inactive' ~ h + i + poly(age_at_start, 2) + sex, data = data_for_2016to2019_completeCases, family = 'binomial'
+  current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex,
+  data = data_2016to2019 %>% filter(complete.cases(.)),
+  family = 'binomial'
 )
 ```
 
@@ -294,8 +424,8 @@ Predictions about differences between T1 and T2
 
 ```{r}
 
-vignettes_T2 <- tribble(
-  ~sex, ~age_at_start, ~h, ~i,
+vignettes <- tribble(
+  ~sex, ~age_at_start, ~previous, ~last,
   'male',50, 'Employed', 'Employed',
   'female',50, 'Employed', 'Employed',
   'male',50, 'Inactive', 'Inactive',
@@ -308,31 +438,17 @@ vignettes_T2 <- tribble(
   
 )
 
-vignettes_T1 <- tribble(
-  ~sex, ~age_at_start, ~a, ~b,
-  'male',50, 'Employed', 'Employed',
-  'female',50, 'Employed', 'Employed',
-  'male',50, 'Inactive', 'Inactive',
-  'female',50, 'Inactive', 'Inactive',
-
-  'male',20, 'Employed', 'Employed',
-  'female',20, 'Employed', 'Employed',
-  'male',20, 'Inactive', 'Inactive',
-  'female',20, 'Inactive', 'Inactive'
-  
-)
-
-vignettes_T1 <- vignettes_T1 %>% 
+vignettes_T1 <- vignettes %>% 
   mutate(
     prediction = predict(
-      mod_t2a2s_T1, newdata = vignettes_T1, type = 'response'
+      mod_t2a2s_T1, newdata = vignettes, type = 'response'
     )
   )
 
-vignettes_T2 <- vignettes_T2 %>% 
+vignettes_T2 <- vignettes %>% 
   mutate(
     prediction = predict(
-      mod_t2a2s_T2, newdata = vignettes_T2, type = 'response'
+      mod_t2a2s_T2, newdata = vignettes, type = 'response'
     )
   )
 
@@ -343,33 +459,26 @@ vignettes_T2 <- vignettes_T2 %>%
 Let's use expand_grid to produce all possible combinations
 
 ```{r}
-all_vignettes_T1 <- 
+all_vignettes <- 
   expand_grid(
     sex = c("male", "female"),
     age_at_start = 16:60,
-    a = c("Employed", "Unemployed", "Inactive"),
-    b = c("Employed", "Unemployed", "Inactive")
+    last = c("Employed", "Unemployed", "Inactive"),
+    previous = c("Employed", "Unemployed", "Inactive")
   )
 
-all_vignettes_T1 <- all_vignettes_T1 %>% 
+all_vignettes_T1 <- all_vignettes %>% 
   mutate(
     prediction = predict(
-      mod_t2a2s_T1, newdata = all_vignettes_T1, type = 'response'
+      mod_t2a2s_T1, newdata = all_vignettes, type = 'response'
     )    
   )
 
-all_vignettes_T2 <- 
-  expand_grid(
-    sex = c("male", "female"),
-    age_at_start = 16:60,
-    h = c("Employed", "Unemployed", "Inactive"),
-    i = c("Employed", "Unemployed", "Inactive")
-  )
 
-all_vignettes_T2 <- all_vignettes_T2 %>% 
+all_vignettes_T2 <- all_vignettes %>% 
   mutate(
     prediction = predict(
-      mod_t2a2s_T2, newdata = all_vignettes_T2, type = 'response'
+      mod_t2a2s_T2, newdata = all_vignettes, type = 'response'
     )    
   )
 
@@ -377,10 +486,8 @@ all_vignettes_T2 <- all_vignettes_T2 %>%
 all_vignettes <- 
   bind_rows(
     all_vignettes_T1 %>% 
-      rename(last = b, previous = a) %>% 
       mutate(period = "T1"),
     all_vignettes_T2 %>% 
-      rename(last = i, previous = h) %>% 
       mutate(period = "T2")
   )
 
@@ -397,7 +504,7 @@ First let's save this so it can be looked at in excel or other inappropriate sta
 write_csv(all_vignettes, file = here("data/predictions_of_inactivity_T1T2_using_ukhls.csv"))
 ```
 
-## Visualise the above predictions 
+## Visualise the above predictions
 
 ```{r}
 all_vignettes %>% 
@@ -431,3 +538,73 @@ Let's save this figure
 ```{r}
 ggsave(here("figures/pred_prob_inact_ukhls.png"), height = 20, width = 20, units = "cm", dpi = 300)
 ```
+
+## Adding more variables
+
+We next want to add more predictor variables:
+
+-   **Highest qualification (a_hiqual_dv, j_hiqual_dv);**
+
+-   **Income (a_fihhmnnet3_dv, j_fihhmnnet3_dv);**
+
+-   **Household type (hhtype_dv)**
+
+first highest qualification
+
+```{r}
+mod_t2a2sq_T1 <- glm(
+  current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex + highest_qualification,
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
+)
+
+BIC(mod_t2a2sq_T1, mod_t2a2s_T1)
+
+```
+
+This BIC comparison suggests the inclusion of all highest qualifications does not improve the pentalised model fit. Let's now look at the summary stats.
+
+```{r}
+summary(mod_t2a2sq_T1)
+```
+
+The summary stats suggest only the category of having no qualifications is significantly predictive of economic inactivity. Let's consider a model just with this binary variable:
+
+```{r}
+mod_t2a2sq2_T1 <- glm(
+  current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex + no_quals,
+  data = data_2009to2011 %>% filter(complete.cases(.)) %>% 
+    mutate(no_quals = highest_qualification == "No qualification"), 
+  family = 'binomial'
+)
+
+BIC(mod_t2a2sq2_T1, mod_t2a2s_T1)
+```
+
+So, including a simple binary indicator for whether someone has no qualifications does lead to a slight improvement in BIC. I'm not sure this improvement in fit is worth its inclusion, however.
+
+Recommendation from Martin is to include three part qualification grouping:
+
+-   no qualifications
+
+-   At least one degree
+
+-   Other (reference)
+
+```{r}
+mod_t2a2sh_T1 <- glm(
+  current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex + hh_type,
+  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  family = 'binomial'
+)
+```
+
+```{r}
+summary(mod_t2a2sh_T1)
+```
+
+```{r}
+BIC(mod_t2a2sh_T1, mod_t2a2s_T1)
+```
+
+As expected, adding many household categories worsens the penalised model fit.
