@@ -1,6 +1,6 @@
 ---
 title: "01_extract_pid_and_econ"
-author: "Jon Minton; Martin"
+author: "Jon Minton; Martin Taulbut"
 format: html
 editor: visual
 ---
@@ -18,14 +18,6 @@ base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
 
 ```{r}
 indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
-```
-
-```{r}
-variable_patterns <- c(
-  "pidp",
-  "^[a-z]{1}_jbstat"
-)
-
 ```
 
 Convenience function:
@@ -156,32 +148,6 @@ econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_cate
 I also want to do something similar with highest qualification
 
 ```{r}
-long_dta_combined_hiqual %>% 
-  mutate(
-    highqual = case_when(
-      value %in% c("A level etc", "A-level etc") ~ "A-level etc",
-      value %in% c("No qual", "No qualification") ~ "No qualification",
-      value %in% c("Other higher", "Other higher degree") ~ "Other higher degree",
-      value %in% c("Other qual", "Other qualification") ~ "Other qualification",
-      value == "Degree" ~ "Degree",
-      value == "GCSE etc" ~ "GCSE etc",
-      value %in% c("inapplicable", "missing") ~ "Inapplicable or missing",
-      TRUE ~ NA_character_
-    )
-  ) %>% 
-  mutate(
-    simplified_highest_qualification = case_when(
-      highqual == "No qualification" ~ "No qualification",
-      highqual %in% c("GCSE etc", "Other qualification") ~ "GCSE or similar",
-      highqual == "A-level etc" ~ "A-level etc",
-      highqual %in% c("Degree", "Other higher degree") ~ "Degree or above"
-    )
-  )
-```
-
-Now to regroup the economic inactivity variables...
-
-```{r}
 long_slimmed_data <- 
 long_slimmed_data %>% 
   left_join(
@@ -205,10 +171,10 @@ long_slimmed_data %>%
     )
   ) %>% 
   mutate(
+    # Now going to make this three levels only
     simplified_highest_qualification = case_when(
       highqual == "No qualification" ~ "No qualification",
-      highqual %in% c("GCSE etc", "Other qualification") ~ "GCSE or similar",
-      highqual == "A-level etc" ~ "A-level etc",
+      highqual %in% c("GCSE etc", "Other qualification", "A-level etc") ~ "Intermediate qualifications",
       highqual %in% c("Degree", "Other higher degree") ~ "Degree or above",
       TRUE ~ NA_character_
     )
@@ -220,6 +186,8 @@ long_slimmed_data %>%
 
 long_slimmed_data
 ```
+
+Now to regroup the economic inactivity variables...
 
 ## Analysis
 
@@ -269,13 +237,7 @@ extract_three_periods <- function(data, waves){
         mutate(hh_type = value) %>% 
         select(pidp, hh_type)
     ) %>% 
-    left_join(
-      data %>% 
-          filter(variable == "fihhmnnet3_dv") %>% 
-          filter(wave == waves[1]) %>% 
-          mutate(income = as.double(value)) %>% 
-          select(pidp, income)  
-    ) %>% 
+
     filter(variable == 'jbstat') %>% 
     select(-variable) %>% 
     mutate(
@@ -293,7 +255,8 @@ extract_three_periods <- function(data, waves){
 data_2009to2011 <- extract_three_periods(long_slimmed_data, c("a", "b", "c")) %>% 
   filter(between(age_at_start, 16, 60))
 
-data_2016to2019 <- extract_three_periods(long_slimmed_data, c("h", "i", "j"))
+data_2016to2019 <- extract_three_periods(long_slimmed_data, c("h", "i", "j")) %>% 
+  filter(between(age_at_start, 16, 60))
 
 ```
 
@@ -554,21 +517,29 @@ first highest qualification
 ```{r}
 mod_t2a2sq_T1 <- glm(
   current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex + highest_qualification,
-  data = data_2009to2011 %>% filter(complete.cases(.)), 
+  data = data_2009to2011 %>% 
+    mutate(highest_qualification = factor(highest_qualification, levels = c("Intermediate qualifications", "No qualification", "Degree or above"))) %>% 
+    filter(complete.cases(.)), 
   family = 'binomial'
 )
 
-BIC(mod_t2a2sq_T1, mod_t2a2s_T1)
+mod_t2a2s_T1_v2 <- glm(
+  current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex,
+  data = data_2009to2011 %>% 
+    mutate(highest_qualification = factor(highest_qualification, levels = c("Intermediate qualifications", "No qualification", "Degree or above"))) %>% 
+    filter(complete.cases(.)), 
+  family = 'binomial'
+)
+
+BIC(mod_t2a2sq_T1, mod_t2a2s_T1_v2)
 
 ```
-
-This BIC comparison suggests the inclusion of all highest qualifications does not improve the pentalised model fit. Let's now look at the summary stats.
+When highest qualification is reduced to three levels, and missing has been properly excluded as NA, the penalised model fits are much more similar. 
 
 ```{r}
 summary(mod_t2a2sq_T1)
 ```
-
-The summary stats suggest only the category of having no qualifications is significantly predictive of economic inactivity. Let's consider a model just with this binary variable:
+With Intermediate Qualifications as the reference level, both degree and above, and no qualification categories, are now statistically significant at p < 0.05
 
 ```{r}
 mod_t2a2sq2_T1 <- glm(
@@ -578,7 +549,7 @@ mod_t2a2sq2_T1 <- glm(
   family = 'binomial'
 )
 
-BIC(mod_t2a2sq2_T1, mod_t2a2s_T1)
+BIC(mod_t2a2sq2_T1, mod_t2a2s_T1_v2)
 ```
 
 So, including a simple binary indicator for whether someone has no qualifications does lead to a slight improvement in BIC. I'm not sure this improvement in fit is worth its inclusion, however.
@@ -591,6 +562,37 @@ Recommendation from Martin is to include three part qualification grouping:
 
 -   Other (reference)
 
+TO DO:
+
+-   [X] Compare three group version against baseline
+
+## Grouping household types 
+
+```{r}
+hh_regroupings <- tribble(
+  ~new, ~original,
+"Single pensioner",	"1 male, aged 65+, no children",
+"Single pensioner",	"1 female, age 60+, no children",
+"Single adult",	"1 adult under pensionable age, no children",
+"Single parent",	"1 adult, 1 child",
+"Single parent",	"1 adult, 2 or more children",
+"Working age couple no children",	"Couple both under pensionable age, no children",
+"Pensioner couple",	"Couple 1 or more over pensionable age,no children",
+"Family with 1-2 children",	"Couple with 1 child",
+"Family with 1-2 children",	"Couple with 2 children",
+"Family with 3 or more children",	"Couple with 3 or more children",
+"Other households",	"2 adults, not a couple, both under pensionable age, no children",
+"Other households",	"2 adults, not a couple, one or more over pensionable age, no children",
+"Other households",	"2 adults, not a couple, 1 or more children",
+"Large adult, no children",	"3 or more adults, no children, incl. at least one couple",
+"Family with 1-2 children",	"3 or more adults, 1-2 children, incl. at least one couple",
+"Family with 3 or more children",	"3 or more adults, >2 children, incl. at least one couple",
+"Large adult, no children",	"3 or more adults, no children, excl. any couples",
+"Family with 1-2 children",	"3 or more adults, 1 or more children, excl. any couples"
+)
+```
+
+
 ```{r}
 mod_t2a2sh_T1 <- glm(
   current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex + hh_type,
@@ -600,11 +602,47 @@ mod_t2a2sh_T1 <- glm(
 ```
 
 ```{r}
-summary(mod_t2a2sh_T1)
+BIC(mod_t2a2s_T1, mod_t2a2sh_T1)
 ```
+As expected the penalised fit is now much worse. 
+
+Now let's use simplified categories and see how the penalised fit changes 
+```{r}
+mod_t2a2sh2_T1 <- glm(
+  current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex + hh_type,
+  data = data_2009to2011 %>% 
+    left_join(hh_regroupings, by = c("hh_type" = "original")) %>% 
+    select(-hh_type) %>% 
+    rename(hh_type = new) %>% 
+    mutate(
+      hh_type = factor(hh_type, levels = c(
+        "Single adult",
+        "Single parent", 
+        "Single pensioner",
+        "Family with 1-2 children",
+        "Family with 3 or more children",
+        "Large adult, no children",
+        "Pensioner couple",
+        "Working age couple no children",
+        "Other households"
+      ))
+    ) %>% 
+    filter(complete.cases(.)), 
+  family = 'binomial'
+)
+```
+
+Now to compare the models
 
 ```{r}
-BIC(mod_t2a2sh_T1, mod_t2a2s_T1)
-```
+BIC(mod_t2a2s_T1, mod_t2a2sh_T1, mod_t2a2sh2_T1)
 
-As expected, adding many household categories worsens the penalised model fit.
+```
+Using a reduced number of model parameters does improve penalised fit, but it's still worse than if it hadn't been included. Now let's look at the coeffs
+
+
+```{r}
+summary(mod_t2a2sh2_T1)
+```
+I've changed the reference category to single adult household (given, for example, these were the first groups UC was introduced to).
+Compared with this reference category no groups appear statistically significantly different, at least once age and age squared are included. 
