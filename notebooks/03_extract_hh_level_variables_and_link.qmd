@@ -1,0 +1,155 @@
+---
+title: "extract_hhlevel_data_and_join"
+author: "Jon Minton; Martin Taulbut"
+format: html
+editor: visual
+---
+
+## Aim
+
+The aim of this document is to develop a good workflow for extracting data from the household level surveys in the UKHLS and link them to individuals.
+
+## Dependencies
+
+Here are some expected dependencies
+
+```{r}
+library(here)
+library(tidyverse)
+library(haven)
+```
+
+## Locations and files
+
+We start by specifying where the files of interest are kept, and producing a list of individual and household level files
+
+```{r}
+base_dir_location <- here("big_data/UKDA-6614-stata/stata/stata13_se/ukhls/")
+```
+
+```{r}
+hh_files_only <- dir(
+  base_dir_location, 
+  pattern = "^[a-z]{1}_hhresp.dta", 
+  full.names = TRUE
+)
+```
+
+We also need a list of all individual level files, as to get the pid and hid variables to link
+
+```{r}
+ind_files_only <- dir(
+  base_dir_location, 
+  pattern = "^[a-z]{1}_indresp.dta",
+  full.names = TRUE
+)
+```
+
+From the hh level data we want to extract the following
+
+-   {w}\_hidp
+
+-   {w}\_fihhmnet1_dv : monthly net income
+
+-   {w}\_ieqmoecd_dv : equivocation factor
+
+Where {w} indicates wave letter.
+
+Let's do this...
+
+```{r}
+
+extract_tidy_hh_vars <- function(file_location){
+  # First want to extract only those variables of interest, using a pattern that generalises across files
+  dta_hh <- haven::read_dta(
+    file_location, 
+    col_select = c(
+      ends_with('hidp'),
+      ends_with('fihhmnnet1_dv'),
+      ends_with('ieqmoecd_dv'),
+      ends_with('nkids_dv')
+    )
+  )
+  
+  # Next want to extract the wave letter, then remove it from the column names 
+  dta_hh_colnames <- names(dta_hh)
+  wave_letters <- str_extract(dta_hh_colnames, "^[a-z]{1}")
+  # Now to check all wave letters are identical 
+  stopifnot("not all implied waves are the same" = length(unique(wave_letters)) == 1)
+
+  wave_letter <- wave_letters[1]
+  
+  # Rename columns to exclude wave letter
+  names(dta_hh) <- dta_hh_colnames %>% str_remove("^[a-z]{1}_")
+  # add wave back as separate column 
+  dta_hh <- dta_hh %>% 
+    mutate(
+      wave = wave_letter
+    ) %>% 
+  # Also tidy and rename variables
+    mutate(
+      net_monthly_income = fihhmnnet1_dv,
+      equivalisation_factor = ieqmoecd_dv,
+      number_of_dependent_children = nkids_dv,
+      equivalised_monthly_income = net_monthly_income / equivalisation_factor
+    ) %>% 
+    select(wave, hidp, equivalised_monthly_income, number_of_dependent_children)  
+  
+  
+  
+  dta_hh  
+}
+
+all_hh_data <- 
+  lapply(hh_files_only, extract_tidy_hh_vars) %>% 
+  bind_rows()
+
+all_hh_data
+
+```
+
+We want to do something similar with the individual level data
+
+```{r}
+
+extract_pid_with_hid_and_wave <- function(file_location){
+  ind_data <- haven::read_dta(
+    file_location, 
+      col_select = c(
+        "pidp",
+        ends_with('hidp')
+      )  
+    )
+  
+  # now want to know the wave prefex for a_hidp
+  
+  jj <- names(ind_data)[str_detect(names(ind_data), "_hidp$")] 
+  wave_letter <- str_extract(jj, "^[a-z]{1}")
+  rm(jj)
+  # Now want to remove wave prefix from {w}_hidp
+  names_without_wave_prefix <- names(ind_data) %>% str_remove("^[a-z]{1}_")
+  names(ind_data) <- names_without_wave_prefix
+  ind_data <- ind_data %>% 
+    mutate(wave = wave_letter)
+  
+  ind_data 
+}
+
+
+all_pid_hid_lookups <- lapply(
+  ind_files_only, 
+  extract_pid_with_hid_and_wave
+) %>% 
+  bind_rows()
+
+all_pid_hid_lookups
+```
+
+Now to check I can link the pidp to the hh variables extracted
+
+```{r}
+all_hh_data %>% 
+  right_join(all_pid_hid_lookups) %>% 
+  select(pidp, hidp, wave, everything())
+
+```

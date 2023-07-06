@@ -20,6 +20,38 @@ base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
 indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
 ```
 
+variables and types of variable to extract
+
+From Martin
+
+> Create a new variable JOBSAT, which recodes jbsat into two categories, zero to 4=1 and 5 to 7=0, and excluding missing values (-1 to -8) (Main survey -- Variable:jbsat satisfaction with present job \| Understanding Society)
+>
+> Create a new variable AUTONOMY, which is derived from the mean of wkaut1, wkaut2, wkaut3, wkaut4 and wkaut5 (Variable search \| Understanding Society), excluding missing values (-1 to -8)
+>
+> Recode AUTONOMY into two categories, \<2=0, and 2 or more=1. Recodejbsec into a new variable, JOBSEC, where 1 or 2=1 and 3 or 4=0 (Exclude missing values . -1,-8)
+
+```{r}
+varnames <-  c(
+  "jbstat", "dvage", "sex", "hiqual_dv", "hhtype_dv",
+  "ethn_dv", # ethnicity
+  "jbsat", #job satisfaction
+  "wkaut1", # autonomy measures
+  "wkaut2", 
+  "wkaut3", 
+  "wkaut4", 
+  "wkaut5", 
+  "jbsec" # job security
+  )
+
+extract_what <- c(
+  "labels", "values", 
+  "labels", "labels", "labels",
+  "labels", "values",
+  "values", "values", "values", "values", "values",
+  "values"
+  )
+```
+
 Convenience function:
 
 ```{r}
@@ -534,12 +566,14 @@ mod_t2a2s_T1_v2 <- glm(
 BIC(mod_t2a2sq_T1, mod_t2a2s_T1_v2)
 
 ```
-When highest qualification is reduced to three levels, and missing has been properly excluded as NA, the penalised model fits are much more similar. 
+
+When highest qualification is reduced to three levels, and missing has been properly excluded as NA, the penalised model fits are much more similar.
 
 ```{r}
 summary(mod_t2a2sq_T1)
 ```
-With Intermediate Qualifications as the reference level, both degree and above, and no qualification categories, are now statistically significant at p < 0.05
+
+With Intermediate Qualifications as the reference level, both degree and above, and no qualification categories, are now statistically significant at p \< 0.05
 
 ```{r}
 mod_t2a2sq2_T1 <- glm(
@@ -564,9 +598,9 @@ Recommendation from Martin is to include three part qualification grouping:
 
 TO DO:
 
--   [X] Compare three group version against baseline
+-   [x] Compare three group version against baseline
 
-## Grouping household types 
+## Grouping household types
 
 ```{r}
 hh_regroupings <- tribble(
@@ -592,7 +626,6 @@ hh_regroupings <- tribble(
 )
 ```
 
-
 ```{r}
 mod_t2a2sh_T1 <- glm(
   current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex + hh_type,
@@ -604,9 +637,11 @@ mod_t2a2sh_T1 <- glm(
 ```{r}
 BIC(mod_t2a2s_T1, mod_t2a2sh_T1)
 ```
-As expected the penalised fit is now much worse. 
 
-Now let's use simplified categories and see how the penalised fit changes 
+As expected the penalised fit is now much worse.
+
+Now let's use simplified categories and see how the penalised fit changes
+
 ```{r}
 mod_t2a2sh2_T1 <- glm(
   current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex + hh_type,
@@ -638,11 +673,42 @@ Now to compare the models
 BIC(mod_t2a2s_T1, mod_t2a2sh_T1, mod_t2a2sh2_T1)
 
 ```
-Using a reduced number of model parameters does improve penalised fit, but it's still worse than if it hadn't been included. Now let's look at the coeffs
 
+Using a reduced number of model parameters does improve penalised fit, but it's still worse than if it hadn't been included. Now let's look at the coeffs
 
 ```{r}
 summary(mod_t2a2sh2_T1)
 ```
-I've changed the reference category to single adult household (given, for example, these were the first groups UC was introduced to).
-Compared with this reference category no groups appear statistically significantly different, at least once age and age squared are included. 
+
+I've changed the reference category to single adult household (given, for example, these were the first groups UC was introduced to). Compared with this reference category no groups appear statistically significantly different, at least once age and age squared are included.
+
+n.b. I've limited the data to age 16-60 so shouldn't expect many pensioners in the sample!
+
+```{r}
+mod_t2a2sh2_interaction_T1 <- glm(
+  current == 'Inactive' ~ last + previous + poly(age_at_start, 2) + sex * hh_type,
+  data = data_2009to2011 %>% 
+    left_join(hh_regroupings, by = c("hh_type" = "original")) %>% 
+    select(-hh_type) %>% 
+    rename(hh_type = new) %>% 
+    mutate(
+      hh_type = factor(hh_type, levels = c(
+        "Single adult",
+        "Single parent", 
+        "Single pensioner",
+        "Family with 1-2 children",
+        "Family with 3 or more children",
+        "Large adult, no children",
+        "Pensioner couple",
+        "Working age couple no children",
+        "Other households"
+      ))
+    ) %>% 
+    filter(complete.cases(.)), 
+  family = 'binomial'
+)
+```
+
+```{r}
+BIC(mod_t2a2s_T1, mod_t2a2sh_T1, mod_t2a2sh2_T1, mod_t2a2sh2_interaction_T1)
+```
