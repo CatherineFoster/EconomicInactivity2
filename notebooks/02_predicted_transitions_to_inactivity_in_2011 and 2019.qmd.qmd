@@ -10,6 +10,7 @@ library(tidyverse)
 library(haven)
 library(here)
 
+devtools::load_all(here('R'))
 ```
 
 ```{r}
@@ -30,6 +31,11 @@ From Martin
 >
 > Recode AUTONOMY into two categories, \<2=0, and 2 or more=1. Recodejbsec into a new variable, JOBSEC, where 1 or 2=1 and 3 or 4=0 (Exclude missing values . -1,-8)
 
+-   `scghq1_dv`: Subjective wellbeing (GHQ): Likert
+-   `scghq2_dv`: Subjective wellbeing (GHQ): Caseness
+-   `sf12mcs_dv`: SF-12 Mental Component Summary (PCS)
+-   `sf12pcs_dv`: SF-12 Physical Component Summary (PCS)
+
 ```{r}
 varnames <-  c(
   "jbstat", "dvage", "sex", "hiqual_dv", "hhtype_dv",
@@ -40,7 +46,11 @@ varnames <-  c(
   "wkaut3", 
   "wkaut4", 
   "wkaut5", 
-  "jbsec" # job security
+  "jbsec", # job security
+  "scghq1_dv", # ghq sum of Likert scale items (?) (0-36)frtg#    jm
+  "scghq2_dv", # ghq caseness (0-12)
+  "sf12mcs_dv", # SF-12 Mental Component Summary  - (0-100)
+  "sf12pcs_dv" #SF-12 physical component summary  - (0-100)
   )
 
 extract_what <- c(
@@ -48,108 +58,21 @@ extract_what <- c(
   "labels", "labels", "labels",
   "labels", "values",
   "values", "values", "values", "values", "values",
-  "values"
+  "values",
+  "values", "values", "values", "values"
   )
 ```
 
 Convenience function:
 
 ```{r}
-extract_vars_and_make_long <- function(dta, varnames, extract_what = 'labels', verbose = TRUE){
-  
-  #dta should be a dataframe
-  stopifnot("dta is not a dataframe" = "data.frame" %in% class(dta))
-  
-  #varnames should be a vector of strings of length 1 or above 
-  stopifnot("varnames does not have contents" = length(varnames) > 0)
-  stopifnot("varnames is not of mode character" = mode(varnames) == "character")
-  
-  # extract_what should be either of length 1 or the length of varnames
-  stopifnot("extract_what is not length 1 or length of varnames" = 
-              length(extract_what) == 1 | 
-              length(extract_what) == length(varnames)
-  )
-  
-  # each element of extract_what should be one of 'labels', 'values' or 'both
-  stopifnot("elements of extract_what are not each one of 'labels', 'values' or 'both'" = 
-              sapply(extract_what, 
-                     FUN = function(x) x %in% c("values", "labels", "both")
-              ) %>% 
-              all()
-  )
-  
-  start_time = Sys.time()
-  # Want to adapt this to work with multiple varnames
-  var_list <- list()
-  
-  
-  extract_var_and_make_long <- function(dta, varname, extract_what){
-    out <- dta %>% 
-       # hard-coded for now
-       select(pidp, matches(paste0("^[a-z]{1}_", varname, "$"))) %>% 
-       pivot_longer(-pidp) %>% 
-      separate_wider_delim(
-        name, 
-        delim = "_", 
-        too_many = 'merge', 
-        names = c("wave", "variable")
-      ) %>%
-      mutate(value = as_factor(value, levels = extract_what) %>% 
-               as.character()
-      )
-    out
-  }
-  
-  for (i  in seq_along(varnames)){
-    what_to_extract = if (length(extract_what) == 1) {
-      extract_what
-    } else {
-        extract_what[i]
-    }
-    var_list[[i]] <- extract_var_and_make_long(dta, varnames[i], extract_what = what_to_extract)
-  }
-  
-  out <- bind_rows(var_list)
-  end_time = Sys.time()
-  if (verbose){
-    print(
-      paste(
-        "extracted", length(varnames), "variables in", 
-        difftime(end_time, start_time, units = "secs"),
-        "seconds"
-      )
-    )
-  }
-  out
-}
-
-
-```
-
-```{r}
-
-read_and_slim_data <- function(file_location, varnames, extract_what, verbose = TRUE){
-  if (verbose) {
-    print(paste("extracting file:",file_location))
-    start_time = Sys.time()
-    }
-  full_data <- haven::read_dta(file_location)
-  if (verbose) {
-    end_time = Sys.time()
-    print(paste("read file in", difftime(end_time, start_time, units = "secs"), "seconds"))
-    print(paste("slimming file..."))
-    
-    }
-  slim_long_data <- extract_vars_and_make_long(full_data, varnames = varnames, extract_what = extract_what, verbose = verbose)
-  slim_long_data
-}
 
 overall_start_time = Sys.time()
 
 long_slimmed_datalist <- lapply(indresp_files, 
        read_and_slim_data, 
-       varnames = c("jbstat", "dvage", "sex", "hiqual_dv", "hhtype_dv"), 
-       extract_what = c("labels", "values", "labels", "labels", "labels"), 
+       varnames = varnames, 
+       extract_what = extract_what, 
        verbose = TRUE
 )
 
@@ -240,7 +163,7 @@ First things first (a tautology), let's do the model for predicting whether econ
 extract_three_periods <- function(data, waves){
   data %>% 
     filter(wave %in% waves) %>% 
-    filter(!(variable %in% c('dvage', 'sex', 'hiqual_dv', 'hhtype_dv', 'fihhmnnet3_dv'))) %>% 
+    filter(!(variable %in% c('dvage', 'sex', 'hiqual_dv', 'hhtype_dv', 'fihhmnnet3_dv', 'ethn_dv', 'jbsat', 'jbsec', 'wkaut1', 'wkaut2', 'wkaut3', 'wkaut4', 'wkaut5'))) %>% 
     left_join(
       data %>% 
         filter(variable == "dvage") %>% 

@@ -1,0 +1,160 @@
+---
+title: "04_visualise_sf12_relationships"
+author: "Jon Minton; Martin Taulbut"
+format: html
+editor: visual
+---
+
+## Introduction
+
+This notebook will be used to explore SF12 relationships, such as with age.
+
+## Packages and file locations
+
+```{r}
+
+library(tidyverse)
+library(haven)
+library(here)
+
+devtools::load_all(here('R'))
+```
+
+```{r}
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+```
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+```
+
+What to extract (and in which format)
+
+```{r}
+varnames <-  c(
+  "jbstat", "dvage", "sex", "hiqual_dv", "hhtype_dv",
+  "ethn_dv", # ethnicity
+  "jbsat", #job satisfaction
+  "wkaut1", # autonomy measures
+  "wkaut2", 
+  "wkaut3", 
+  "wkaut4", 
+  "wkaut5", 
+  "jbsec", # job security
+  "scghq1_dv", # ghq sum of Likert scale items (?) (0-36)frtg#    jm
+  "scghq2_dv", # ghq caseness (0-12)
+  "sf12mcs_dv", # SF-12 Mental Component Summary  - (0-100)
+  "sf12pcs_dv" #SF-12 physical component summary  - (0-100)
+  )
+
+extract_what <- c(
+  "labels", "values", 
+  "labels", "labels", "labels",
+  "labels", "values",
+  "values", "values", "values", "values", "values",
+  "values",
+  "values", "values", "values", "values"
+  )
+```
+
+## Data extraction
+
+```{r}
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+```
+
+Recode highest qualification and economic activity status
+
+```{r}
+long_slimmed_data <- 
+long_slimmed_data %>% 
+  left_join(
+    econ_act_groups %>% select(original, recoded = level_2_meso), 
+    by = c('value' = 'original')
+  ) %>% 
+  mutate(
+    value = ifelse(!is.na(recoded), recoded, value)
+  ) %>% 
+  select(-recoded) %>% 
+    mutate(
+    highqual = case_when(
+      value %in% c("A level etc", "A-level etc") ~ "A-level etc",
+      value %in% c("No qual", "No qualification") ~ "No qualification",
+      value %in% c("Other higher", "Other higher degree") ~ "Other higher degree",
+      value %in% c("Other qual", "Other qualification") ~ "Other qualification",
+      value == "Degree" ~ "Degree",
+      value == "GCSE etc" ~ "GCSE etc",
+      value %in% c("inapplicable", "missing") ~ "Inapplicable or missing",
+      TRUE ~ NA_character_
+    )
+  ) %>% 
+  mutate(
+    # Now going to make this three levels only
+    simplified_highest_qualification = case_when(
+      highqual == "No qualification" ~ "No qualification",
+      highqual %in% c("GCSE etc", "Other qualification", "A-level etc") ~ "Intermediate qualifications",
+      highqual %in% c("Degree", "Other higher degree") ~ "Degree or above",
+      TRUE ~ NA_character_
+    )
+  ) %>% 
+  mutate(
+    value = ifelse(!is.na(simplified_highest_qualification), simplified_highest_qualification, value)
+  ) %>% 
+  select(-highqual, -simplified_highest_qualification)
+
+long_slimmed_data
+```
+
+## Visualise
+
+```{r}
+long_slimmed_data %>% 
+  filter(wave == "b") %>% 
+  pivot_wider(names_from = variable, values_from  = value) %>% 
+  select(pidp, sex, dvage, jbstat, contains("sf12")) %>% 
+  mutate(sf12pcs_dv = as.numeric(sf12pcs_dv), sf12mcs_dv = as.numeric(sf12mcs_dv)) %>% 
+  mutate(jbstat = ifelse(jbstat == "Missing", NA, jbstat)) %>% 
+  filter(!is.na(jbstat)) %>% 
+  mutate(sf12pcs_dv = ifelse(sf12pcs_dv < 0, NA, sf12pcs_dv), sf12mcs_dv = ifelse(sf12mcs_dv < 0, NA, sf12mcs_dv))  %>% 
+  mutate(dvage = as.numeric(dvage)) %>% 
+  filter(between(dvage, 16, 60)) %>% 
+  pivot_longer(cols = contains("sf12"), names_to = "physical_or_mental", values_to = "value") %>% 
+  ggplot(aes(x = dvage, y = value, group = physical_or_mental, colour = physical_or_mental)) +
+  # geom_point(alpha = 0.1 )+
+  stat_smooth(se = FALSE) +
+  facet_grid(jbstat ~ sex) +
+  labs(
+    x = "age",
+    y = "Mean mental or physical health scores (0-100)",
+    title = "Relationship between self-assessed health by age, sex and economic activity status",
+    subtitle = "UKHLS wave a (2008-09)"
+  )
+```
+
+And save...
+
+```{r}
+ggsave(here('figures/sf_mean_scores_by_age_wave_a.png'), units = "cm", width = 20, height = 15, dpi = 300)
+```

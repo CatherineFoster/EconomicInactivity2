@@ -115,6 +115,7 @@ read_and_slim_data <- function(file_location, varnames, extract_what, verbose = 
 
   if (verbose) {
     print(paste("extracting file:",file_location))
+    print(paste("Attempting to find", length(varnames), "variables"))
     start_time = Sys.time()
   }
 
@@ -125,6 +126,20 @@ read_and_slim_data <- function(file_location, varnames, extract_what, verbose = 
     col_select = matches(varnames_regex_string)
   )
 
+  num_variables_found <- ncol(full_data) - 1
+
+  if (num_variables_found != length(varnames)) {
+    print(
+      paste("WARNING! Only", num_variables_found,
+            "of the", length(varnames), "requested have been found"
+      )
+    )
+  } else {
+    print("All variables requested found")
+  }
+
+
+
   if (verbose) {
     end_time = Sys.time()
     print(paste("read file in", difftime(end_time, start_time, units = "secs"), "seconds"))
@@ -132,16 +147,94 @@ read_and_slim_data <- function(file_location, varnames, extract_what, verbose = 
 
   }
 
+  found_varnames <- names(full_data)
+  found_varnames <- found_varnames[found_varnames != 'pidp'] %>%
+    stringr::str_remove("^[a-z]_")
+
+  # If not all variables are found, not not all extract_what positions are relevant
+  found_extract_what <- extract_what[varnames %in% found_varnames]
+
   slim_long_data <- extract_vars_and_make_long(
     full_data,
-    varnames = varnames,
-    extract_what = extract_what,
+    varnames = found_varnames,
+    extract_what = found_extract_what,
     verbose = verbose
   )
   slim_long_data
 }
 
 
+#' Extract equivalised monthly income and number of dependent children from hhresp file
+#'
+#' @param file_location The location of a household level datafile of type hhresp
+#'
+#' @return dta_hh. A dataframe with variables in long format and with columns named in a
+#' more informative way
+#' @export
+#'
+#' @examples
+extract_eq_income_and_num_dependents <- function(file_location){
+  # First want to extract only those variables of interest, using a pattern that generalises across files
+  dta_hh <- haven::read_dta(
+    file_location,
+    col_select = c(
+      ends_with('hidp'),
+      ends_with('fihhmnnet1_dv'),
+      ends_with('ieqmoecd_dv'),
+      ends_with('nkids_dv')
+    )
+  )
+
+  # Next want to extract the wave letter, then remove it from the column names
+  dta_hh_colnames <- names(dta_hh)
+  wave_letters <- stringr::str_extract(dta_hh_colnames, "^[a-z]{1}")
+  # Now to check all wave letters are identical
+  stopifnot("not all implied waves are the same" = length(unique(wave_letters)) == 1)
+
+  wave_letter <- wave_letters[1]
+
+  # Rename columns to exclude wave letter
+  names(dta_hh) <- dta_hh_colnames %>% stringr::str_remove("^[a-z]{1}_")
+  # add wave back as separate column
+  dta_hh <- dta_hh %>%
+    dplyr::mutate(
+      wave = wave_letter
+    ) %>%
+    # Also tidy and rename variables
+    dplyr::mutate(
+      net_monthly_income = fihhmnnet1_dv,
+      equivalisation_factor = ieqmoecd_dv,
+      number_of_dependent_children = nkids_dv,
+      equivalised_monthly_income = net_monthly_income / equivalisation_factor
+    ) %>%
+    dplyr::select(wave, hidp, equivalised_monthly_income, number_of_dependent_children)
 
 
 
+  dta_hh
+}
+
+
+extract_pid_with_hid_and_wave <- function(file_location){
+
+  ind_data <- haven::read_dta(
+    file_location,
+    col_select = c(
+      "pidp",
+      ends_with('hidp')
+    )
+  )
+
+  # now want to know the wave prefex for a_hidp
+
+  jj <- names(ind_data)[stringr::str_detect(names(ind_data), "_hidp$")]
+  wave_letter <- stringr::str_extract(jj, "^[a-z]{1}")
+  rm(jj)
+  # Now want to remove wave prefix from {w}_hidp
+  names_without_wave_prefix <- names(ind_data) %>% stringr::str_remove("^[a-z]{1}_")
+  names(ind_data) <- names_without_wave_prefix
+  ind_data <- ind_data %>%
+    dplyr::mutate(wave = wave_letter)
+
+  ind_data
+}
