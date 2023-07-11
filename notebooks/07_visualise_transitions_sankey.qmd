@@ -1,0 +1,307 @@
+---
+title: "07_calc_sankey_transitions"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+# Introduction
+
+The aim of this notebook is to use Sankey diagrams to show the flow between economic activity states in the UKHLS. We can maybe do this for just a couple of waves, or for all waves.
+
+## Setup
+
+First we want to install and load the ggsankey package from david s joberg (?)
+
+See [this guide](https://r-charts.com/flow/sankey-diagram-ggplot2/?utm_content=cmp-true).
+
+```{r}
+# install.packages("remotes")
+# remotes::install_github("davidsjoberg/ggsankey")
+library(ggsankey)
+library(tidyverse)
+```
+
+So the example given was a conversion of the mtcars dataset using the `make_long` function. Let's look at this before and after conversion.
+
+```{r}
+mtcars
+```
+
+And the variables passed to make_long are cyl, vs, am, gear, carb
+
+```{r}
+mtcars[,c('cyl','vs','am','gear','carb')]
+```
+
+These are all numeric, so I guess the 'node values'.
+
+```{r}
+df <- mtcars %>% 
+  make_long(cyl, vs, am, gear, carb)
+df
+```
+
+Now to visualise
+
+```{r}
+ggplot(df, aes(x = x, 
+               next_x = next_x, 
+               node = node, 
+               next_node = next_node,
+               fill = factor(node),
+               label = node)) +
+  geom_sankey() +
+  geom_sankey_label() +
+  theme_sankey(base_size = 16)
+```
+
+There are other examples in the guide but I think this is enough to be getting on with with the economic inactivity status data.
+
+```{r}
+library(tidyverse)
+library(haven)
+library(here)
+
+devtools::load_all(here('R'))
+
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+
+
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+extract_what <- c(
+  "labels", "values", 
+  "labels"
+  )
+
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+```
+
+Now we can filter on variable == jbstat and pivot to wide format (before pivoting back to the weird kind of long used by sankey diagrams...
+
+NOTE: We first want to simplify the categories...
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+
+```
+
+## Using ggsankey package
+
+```{r}
+
+waves_a_to_c_sankeyfied <- 
+  long_slimmed_data %>% 
+    filter(variable == "jbstat") %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_2_meso), 
+      by = c('value' = 'original')
+    ) %>% 
+    mutate(
+      value = ifelse(!is.na(recoded), recoded, value)
+    ) %>% 
+    select(-recoded, -variable) %>% 
+    pivot_wider(names_from = wave, values_from = value) %>% 
+    ggsankey::make_long(a, b, c)
+
+```
+
+Now to visualise (and hope...)
+
+```{r}
+waves_a_to_c_sankeyfied %>% 
+  ggplot(
+    aes(
+      x = x, next_x = next_x, 
+      node = node, next_node = next_node, 
+      fill = factor(node), label = node
+    )
+  ) + 
+  geom_sankey() + 
+  geom_sankey_label() +
+  theme_sankey(base_size = 16)
+```
+
+I've now looked at the readme of the original package and have some ideas how I might do a bit better.
+
+```{r}
+waves_a_to_l_sankeyfied <- 
+  long_slimmed_data %>% 
+    filter(variable == "jbstat") %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_2_meso), 
+      by = c('value' = 'original')
+    ) %>% 
+    mutate(
+      value = ifelse(!is.na(recoded), recoded, value)
+    ) %>% 
+    select(-recoded, -variable) %>% 
+    mutate(value = case_when(
+      value == "Employed" ~ 'E',
+      value == 'Unemployed' ~ 'U',
+      value == 'Inactive' ~ 'I'
+    )) %>% 
+    mutate(value = factor(value, levels = c("E", "U", "I"))) %>% 
+    pivot_wider(names_from = wave, values_from = value) %>% 
+    ggsankey::make_long(a, b, c, d, e, f, g, h, i , j, k, l)
+```
+
+Going to try the related alluvial flow diagram, and also to change the node states to single letters
+
+```{r}
+waves_a_to_l_sankeyfied %>% 
+  filter(!is.na(node)) %>% 
+  ggplot(
+    aes(x = x, next_x = next_x, node = node, next_node = next_node,
+        fill = factor(node), label = node
+    )
+  ) +
+  geom_alluvial(flow.alpha = 0.6) +
+  geom_alluvial_text(size = 3, color = 'white') + 
+  scale_fill_viridis_d() + 
+  theme_alluvial() + 
+  labs (x = 'wave') + 
+  theme(legend.position = 'none') 
+```
+
+```{r}
+waves_a_to_l_sankeyfied %>% 
+  filter(!is.na(node)) %>% 
+  ggplot(
+    aes(x = x, next_x = next_x, node = node, next_node = next_node,
+        fill = node, label = node
+    )
+  ) +
+  geom_sankey(flow.alpha = 0.6, na.rm = TRUE) +
+  geom_sankey_label(size = 3, color = 'white', fill = 'gray40') + 
+  scale_fill_viridis_d() + 
+  theme_alluvial(base_size = 18) + 
+  labs (x = 'wave') + 
+  theme(legend.position = 'none') 
+```
+
+I think I want to try out the ggalluvial package, which does similar things to the ggsankey package. But before that I want to change the order of the factors so that the order is Employment, Unemployment, then Inactivity, as unemployment is likely to be more of a transition state between the two.
+
+hmm. it doesn't look as straightforward as I was expecting to reorder the node levels...
+
+-   https://github.com/davidsjoberg/ggsankey/issues/7
+
+## Calculating proportions 
+
+```{r}
+long_waves_as_nums <- 
+  long_slimmed_data %>% 
+      filter(variable == "jbstat") %>% 
+      left_join(
+        econ_act_groups %>% select(original, recoded = level_2_meso), 
+        by = c('value' = 'original')
+      ) %>% 
+      mutate(
+        value = ifelse(!is.na(recoded), recoded, value)
+      ) %>% 
+      select(-recoded, -variable) %>% 
+      mutate(wavenum = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenum, status = value) %>% 
+      mutate(next_wavenum = wavenum + 1)
+
+transition_probabilities <- long_waves_as_nums %>%
+  rename(last_status = status) %>% 
+  left_join(
+    long_waves_as_nums, 
+    by = c('pidp' = 'pidp', 'next_wavenum' = 'wavenum')
+  ) %>% 
+  select(-wavenum) %>% 
+  select(wavenum = next_wavenum, last_status, status) %>% 
+  group_by(wavenum, last_status, status) %>% 
+  count() %>% 
+  filter(!is.na(status)) %>% 
+  filter(status != "Missing") %>% 
+  filter(last_status != "Missing") %>% 
+  group_by(wavenum, last_status) %>% 
+  mutate(N = sum(n)) %>% 
+  mutate(prop = n / N)
+
+transition_probabilities
+  
+```
+
+I think this is likely more informative. Let's look at the transition probabilities for wavenum 3 (wave c) and wavenum 10 (wave j)
+
+```{r}
+transition_probabilities %>% 
+  filter(wavenum %in% c(3, 10)) 
+```
+
+Can a [mosaic plot](https://cran.r-project.org/web/packages/ggmosaic/vignettes/ggmosaic.html) be used to represent this?
+
+```{r}
+# devtools::install_github('haleyjeppson/ggmosaic')
+# https://cran.r-project.org/web/packages/ggmosaic/readme/README.html
+
+library(ggmosaic)
+
+```
+
+I think actually the vcd::mosaic plot is closer to what I want, even though it's 'old school'...
+
+But before that, let's just show the results in a table :)
+
+```{r}
+transition_probabilities %>% 
+  filter(wavenum == 3) %>% 
+  select(last_status, status, prop) %>% 
+  pivot_wider(names_from = status, values_from = prop)
+```
+
+So, in wave c, someone who has Employed in wave b has a 93% probabiility of being employed in wave c, a 5% probability of being inactive, and a 2% probability of being unemployed.
+
+Someone who is unemployed in wave b has a 31% probability of being employed in wave c, a 26% probability of being inactive, and a 43% probability of remaining unemployed
+
+Someone who is inactive in wave b has a 7% probability of being employed in wave c, a 3% probability of being unemployed, and a 90% probability of remaining inactive.
+
+How does this change by wave 10?
+
+```{r}
+transition_probabilities %>% 
+  filter(wavenum == 10) %>% 
+  select(last_status, status, prop) %>% 
+  pivot_wider(names_from = status, values_from = prop)
+```
+
+Probability from employment to employment 94% (was 93%), to unemployment 1% (was 2%), and to inactive 5% (was 5%)
+
+Probability for unemployment to employment 29% (was 31%), remaining unemployed 40% ( was 43%), and to inactivity 31% (was 26%)
+
+Probability for inactive to employment 6% (was 7%), to unemployed 3% (was 4%) and to remaining inactive 91% (was 90%)
+
+Fundamentally it looks like there's been no real change in the transition probabilities over time, though if you squint it might look like the stickiness has increased marginally.
+
+I should also calculate conditional probabilities and just present these. These may be more important and interpretable statistics to present.
