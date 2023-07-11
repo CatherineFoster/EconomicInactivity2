@@ -1,0 +1,415 @@
+---
+title: "06_apply_cart_to_data"
+author: "Jon Minton; Martin Taulbut"
+format: docx
+editor: visual
+---
+
+# Introduction 
+
+The aim of this notebook is to understand how straightforward and informative applying standard CART approaches to the UKHLS data, with a focus on understanding and presenting which factors are associated with different economic (in)activity statuses in particular waves. 
+
+# Setup
+
+```{r}
+library(tidyverse)
+library(haven)
+library(here)
+
+devtools::load_all(here('R'))
+```
+
+```{r}
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+```
+
+Individual level responses
+
+```{r}
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+```
+
+household level responses
+
+```{r}
+hhresp_files <- dir(here(base_dir_location), pattern = "[a-z]_hhresp.dta", full.names = TRUE)
+
+```
+
+Now to define the varnames of interest in the `indresp` files, along with which their variable type.
+
+```{r}
+varnames <-  c(
+  "jbstat", "dvage", "sex", "hiqual_dv", "hhtype_dv",
+  "ethn_dv", # ethnicity
+  "jbsat", #job satisfaction
+  "wkaut1", # autonomy measures
+  "wkaut2", 
+  "wkaut3", 
+  "wkaut4", 
+  "wkaut5", 
+  "jbsec", # job security
+  "scghq1_dv", # ghq sum of Likert scale items (?) (0-36)
+  "scghq2_dv", # ghq caseness (0-12)
+  "sf12mcs_dv", # SF-12 Mental Component Summary  - (0-100)
+  "sf12pcs_dv" #SF-12 physical component summary  - (0-100)
+  )
+
+extract_what <- c(
+  "labels", "values", 
+  "labels", "labels", "labels",
+  "labels", "values",
+  "values", "values", "values", "values", "values",
+  "values",
+  "values", "values", "values", "values"
+  )
+  
+```
+
+```{r}
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+```
+Didn't I do something similar with household level variables (i.e. build an extractor?)
+
+Yes. It's in two parts...
+
+```{r}
+
+pid_hid_links <- 
+  lapply(indresp_files, extract_pid_with_hid_and_wave) %>% 
+  bind_rows()
+
+eq_incomes_nkids <- 
+  lapply(hhresp_files, extract_eq_income_and_num_dependents) %>% 
+  bind_rows()
+
+eq_incomes_nkids_linked <- 
+  pid_hid_links %>% 
+  left_join(
+    eq_incomes_nkids, by = c("hidp", 'wave')
+  )
+
+rm(pid_hid_links, eq_incomes_nkids)
+```
+
+
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+
+```
+
+
+```{r}
+long_slimmed_data <- 
+long_slimmed_data %>% 
+  left_join(
+    econ_act_groups %>% select(original, recoded = level_2_meso), 
+    by = c('value' = 'original')
+  ) %>% 
+  mutate(
+    value = ifelse(!is.na(recoded), recoded, value)
+  ) %>% 
+  select(-recoded) %>% 
+    mutate(
+    highqual = case_when(
+      value %in% c("A level etc", "A-level etc") ~ "A-level etc",
+      value %in% c("No qual", "No qualification") ~ "No qualification",
+      value %in% c("Other higher", "Other higher degree") ~ "Other higher degree",
+      value %in% c("Other qual", "Other qualification") ~ "Other qualification",
+      value == "Degree" ~ "Degree",
+      value == "GCSE etc" ~ "GCSE etc",
+      value %in% c("inapplicable", "missing") ~ "Inapplicable or missing",
+      TRUE ~ NA_character_
+    )
+  ) %>% 
+  mutate(
+    # Now going to make this three levels only
+    simplified_highest_qualification = case_when(
+      highqual == "No qualification" ~ "No qualification",
+      highqual %in% c("GCSE etc", "Other qualification", "A-level etc") ~ "Intermediate qualifications",
+      highqual %in% c("Degree", "Other higher degree") ~ "Degree or above",
+      TRUE ~ NA_character_
+    )
+  ) %>% 
+  mutate(
+    value = ifelse(!is.na(simplified_highest_qualification), simplified_highest_qualification, value)
+  ) %>% 
+  select(-highqual, -simplified_highest_qualification)
+
+long_slimmed_data
+```
+
+
+```{r}
+extract_three_periods <- function(data, waves){
+  data %>% 
+    filter(wave %in% waves) %>% 
+    filter(!(variable %in% c('dvage', 'sex', 'hiqual_dv', 'hhtype_dv', 'fihhmnnet3_dv', 'ethn_dv', 'jbsat', 'jbsec', 'wkaut1', 'wkaut2', 'wkaut3', 'wkaut4', 'wkaut5'))) %>% 
+    left_join(
+      data %>% 
+        filter(variable == "dvage") %>% 
+        filter(wave == waves[1]) %>% 
+        mutate(age_at_start = as.double(value)) %>% 
+        select(pidp, age_at_start)    
+    ) %>% 
+    left_join(
+      data %>% 
+        filter(variable == 'sex') %>% 
+        filter(wave == waves[1]) %>% 
+        mutate(sex = value) %>% 
+        select(pidp, sex)
+    ) %>% 
+    left_join(
+      data %>% 
+        filter(variable == 'hiqual_dv') %>% 
+        filter(wave == waves[1]) %>% 
+        mutate(highest_qualification = value) %>% 
+        select(pidp, highest_qualification)
+    ) %>% 
+    left_join(
+      data %>% 
+        filter(variable == "hhtype_dv") %>% 
+        filter(wave == waves[1]) %>% 
+        mutate(hh_type = value) %>% 
+        select(pidp, hh_type)
+    ) %>% 
+
+    filter(variable == 'jbstat') %>% 
+    select(-variable) %>% 
+    mutate(
+      period = case_when(
+        wave == waves[1] ~ 'previous',
+        wave == waves[2] ~ 'last',
+        wave == waves[3] ~ 'current'
+      )
+    ) %>% 
+    select(-wave) %>% 
+    pivot_wider(names_from = period, values_from = value)
+  
+}
+
+data_2009to2011 <- extract_three_periods(long_slimmed_data, c("a", "b", "c")) %>% 
+  filter(between(age_at_start, 16, 60))
+
+data_2016to2019 <- extract_three_periods(long_slimmed_data, c("h", "i", "j")) %>% 
+  filter(between(age_at_start, 16, 60))
+
+
+```
+
+To start with, let's try to predict probability of being inactive in current wave given age and sex.
+I'm going to use [this webpage](https://www.r-bloggers.com/2021/04/decision-trees-in-r/) as a reference to borrow from. 
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+dta_01 <- data_2009to2011 %>% 
+  filter(!is.na(current)) %>% 
+  mutate(
+    is_inactive = current == "Inactive",
+    is_male = sex == 'male'       
+  ) %>% 
+  select(
+    is_inactive, is_male, age_at_start
+  )
+
+tree_01 <- rpart(is_inactive ~ ., data = dta_01)
+rpart.plot(tree_01)
+
+```
+Let's try to interpret this:
+
+- If a person is under 20 years old, there is a 51% probability of being inactive. This group comprises 8% of the sample.
+- If the person is 20 or older then:
+    - If the person is 58 or older (at two waves before), there is a 51% change of being inactive. This group comprises 6% of the sample. (cumulative: 14%)
+    - If the person is under 58 years of age (at two waves before):
+        - If the person is male, there is a 9.5% probability of being inactive; this group comprises 37% of the sample. (cumulative 51%)
+        - If the person is not male (i.e. female), there is a 24% probability of being inactive. This group comprises 49% of the sample (cumulative 100%)
+        
+        
+## Next steps
+
+I promised to consider the following additional variables
+
+- ethnicity
+- number of dependent children
+- equivalised household income
+- previous wave's economic status
+
+
+We can do equivalised household income and number of dependent children now:
+
+```{r}
+data_2009to2011_linkedToHh <- data_2009to2011 %>% 
+  left_join(
+    eq_incomes_nkids_linked %>% 
+      filter(wave == 'c') %>% # Going for same wave...
+      select(-wave) 
+  )
+
+```
+
+Now to do the CART...
+
+```{r}
+tree_02 <- data_2009to2011_linkedToHh %>% 
+  filter(!is.na(current)) %>% 
+  mutate(
+    is_inactive = current == "Inactive",
+    is_male = sex == 'male'       
+  ) %>% 
+  select(
+    is_inactive, is_male, age_at_start, last, equivalised_monthly_income, number_of_dependent_children
+  ) %>% 
+  rpart(is_inactive ~ ., data = .)
+  
+
+rpart.plot(tree_02)
+  
+
+```
+
+This model produces a warning, but a model still runs. 
+
+It illustrates how the model makes binary decisions when a variable has more than two states. 
+
+- The top level split is asking if the last status was either Employed or Unemployed.
+    - If it was, then it goes to the second split
+        - in the second split, it asks if the person was employed in the last wave:
+        - if the person was employed, it predicts a probability of current wave inactivity of just 0.05, covering 71% of the population
+        - if the person was not employed (so unemployed) it predicts a probability of 0.25 of being inactive in the current wave, covering 6% of the population.
+    - it if was not, then it predicts inactivity in the current wave (a 0.78 probability, covering 22% of the data)
+        - a no at the top level to employed or unemployed implies inactive in last wave
+        - so inactivity in the last wave is the strongest predictor of inactivity in the current wave
+
+Note 71%, 6%, and 22% do not add up to 100%. (Instead it adds up to 99%) This may be either due to missing data or to rounding error in showing %s to no decimal places. (I suspect it's rounding error)
+
+
+Note: even though this model was given more variables from which to recursively partition the data, it made use of just a single variable, the previous wave's state. This highlights the 'stickiness' of economic inactivity states. 
+
+
+How about if I don't give last wave's status?
+
+```{r}
+tree_03 <- data_2009to2011_linkedToHh %>% 
+  filter(!is.na(current)) %>% 
+  mutate(
+    is_inactive = current == "Inactive",
+    is_male = sex == 'male'       
+  ) %>% 
+  select(
+    is_inactive, is_male, age_at_start, equivalised_monthly_income, number_of_dependent_children
+  ) %>% 
+  rpart(is_inactive ~ ., data = .)
+  
+
+rpart.plot(tree_03)
+```
+
+
+Let's now focus on probabilities of transition to economic inactivity given not economically inactive in last wave. This is a matter of just filtering the data then running the model again....
+
+
+```{r}
+tree_04 <- data_2009to2011_linkedToHh %>% 
+  filter(!is.na(current)) %>% 
+  mutate(
+    is_inactive = current == "Inactive",
+    is_male = sex == 'male'       
+  ) %>% 
+  filter(last != "Inactive") %>% 
+  select(
+    is_inactive, is_male, age_at_start, equivalised_monthly_income, number_of_dependent_children
+  ) %>% 
+  rpart(is_inactive ~ ., data = .)
+  
+
+rpart.plot(tree_04)
+
+
+```
+
+Of course monthly income is in part (largely?) a consequence of economic activity status, so this might be a facetious predictor in this case. How about if we look at average equivalised monthly income in the previous wave? 
+(The problem with this may be similar... equivalised monthly income in last wave may be determined quite a lot by economic activity status in last wave)
+
+```{r}
+data_2009to2011_linkedToHhFromLastWave <- data_2009to2011 %>% 
+  left_join(
+    eq_incomes_nkids_linked %>% 
+      filter(wave == 'b') %>% # Going for last wave...
+      select(-wave) 
+  )
+
+tree_05 <- data_2009to2011_linkedToHhFromLastWave %>% 
+  filter(!is.na(current)) %>% 
+  mutate(
+    is_inactive = current == "Inactive",
+    is_male = sex == 'male'       
+  ) %>% 
+  filter(last != "Inactive") %>% 
+  select(
+    is_inactive, is_male, age_at_start, equivalised_monthly_income, number_of_dependent_children
+  ) %>% 
+  rpart(is_inactive ~ ., data = .)
+  
+
+rpart.plot(tree_05)
+
+```
+
+Here only income in the previous wave matters as a predictor. An 11% probability of being inactive is predicted for those individuals with an equivalised income of less than £1020 pcm. Whereas a 3.8% probability is predicted for those with an income at or above this threshold.
+
+Again, what happens if last period's equivalised monthly income and last period were included in the model?
+
+```{r}
+
+data_2009to2011_linkedToHhFromLastWave <- data_2009to2011 %>% 
+  left_join(
+    eq_incomes_nkids_linked %>% 
+      filter(wave == 'b') %>% # Going for last wave...
+      select(-wave) 
+  )
+
+tree_06 <- data_2009to2011_linkedToHhFromLastWave %>% 
+  filter(!is.na(current)) %>% 
+  mutate(
+    is_inactive = current == "Inactive",
+    is_male = sex == 'male'       
+  ) %>% 
+  filter(last != "Inactive") %>% 
+  select(
+    is_inactive, is_male, age_at_start, equivalised_monthly_income, number_of_dependent_children, last
+  ) %>% 
+  rpart(is_inactive ~ ., data = .)
+  
+
+rpart.plot(tree_06)
+```
+
+Once the previous wave's state is included, a combination of previous state and gender are preferred to equivalised income.
+If someone was employed in the previous wave, they are predicted to only have a 3.5% probability of being inactive in the current wave. 
+Otherwise, if they are male they are predicted to have a 15% probability of being inactive, and if they are female they are predicted to have a 37% probability of being inactive. 
