@@ -1,0 +1,820 @@
+---
+title: "08_look_at_multinomial_models"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+## Aim
+
+The aim of this notebook is to use multinomial logistic regression for estimating transition probabilities between different economic activity and inactivity states using the UKHLS.
+
+The previous notebook suggests that transition probabilities appear broadly invariant at three level groupings, so perhaps we can start by assuming that all data on transitions can be used. We can then refine the approach further by including both additional predictors and additional economic inactivity categories.
+
+## Getting started with multinomial logistic regression
+
+Let's start by seeing if I can follow a tutorial or two on the approach.
+
+-   [This guide](https://stats.oarc.ucla.edu/r/dae/multinomial-logistic-regression/) looks fairly good though makes use of older pre-tidyverse packages.
+
+-   [This guide](https://www.r-bloggers.com/2020/05/multinomial-logistic-regression-with-r/) appears quite similar though uses the `caret` package for performing a training/test data split.
+
+-   [This guide](https://www.analyticsvidhya.com/blog/2016/02/multinomial-ordinal-logistic-regression/) appears very similar to the first two, using `nnet::multinom` and proceeding in roughly the same order.
+
+-   [This guide](https://bookdown.org/chua/ber642_advanced_regression/multinomial-logistic-regression.html) is from an online book on advanced regression techniques and goes into more detail about the theory/derivations etc.
+
+For *all* guides the package and function used appears to be `nnet::multinom`
+
+Let's pick the guide with the simplest dataset and make sure I can get the same results by following the same process.
+
+I think I'll just pick the first one...
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+ml <- haven::read_dta("https://stats.idre.ucla.edu/stat/data/hsbdemo.dta")
+```
+
+I've used `haven::read_dta` rather than the `foreign::read.dta` function. This means I probably need to use the `haven::as_factor` variable with `levels = 'labels'` too to convert the variables of interest into easily readable formats.
+
+The particular variables of interest in the above guide are `ses` and `prog`
+
+```{r}
+
+ml_sesProg <- 
+  ml %>% 
+  select(ses, prog, write) %>% 
+  mutate(
+    ses = haven::as_factor(ses), 
+    prog = haven::as_factor(prog)
+  )
+
+```
+
+Tidyverse way of getting frequency table:
+
+```{r}
+
+ml_sesProg %>% 
+  group_by(ses, prog) %>% 
+  count()
+```
+
+using `xtabs`
+
+```{r}
+xtabs( ~ ses + prog, ml_sesProg) 
+```
+
+Now the regression
+
+```{r}
+# install.packages('nnet')
+library(nnet)
+
+```
+
+relevelling
+
+```{r}
+ml_sesProg <- ml_sesProg %>% 
+  mutate(prog = relevel(prog, ref = 'academic'))
+```
+
+reg itself
+
+```{r}
+mod_01 <- multinom(prog ~ ses + write, data = ml_sesProg)
+```
+
+summarise
+
+```{r}
+summary(mod_01)
+```
+
+And to get z scores:
+
+```{r}
+mod_01_z <- summary(mod_01)$coefficients/summary(mod_01)$standard.errors
+mod_01_z
+```
+
+Absolute z scores above around 2 should be considered statistically significant.
+
+The rest of the guide is about getting meaningful predicted probabilities using the predict function. It looks like 'write' scores are between 30 and 70.
+
+Let's try to understand the data structure returned by predict first.
+
+```{r}
+head(fitted(mod_01))
+```
+
+So, as expected, three probabilities are returned for each observation, one for each of the discrete outcomes.
+
+```{r}
+predDf <- expand_grid(
+  ses = c('low', 'middle', 'high'),
+  write = 30:70
+)
+
+
+```
+
+```{r}
+pred_prob_outcomes <- predict(mod_01, type = "probs", newdata = predDf)
+
+predictions_predictors <- bind_cols(pred_prob_outcomes, predDf)
+```
+
+Now to visualise
+
+```{r}
+predictions_predictors %>% 
+  pivot_longer(cols = c("academic", "general", "vocation"), names_to = "outcome_category", values_to = "outcome_probability") %>% 
+  ggplot(aes(x = write, y = outcome_probability, group = ses, colour = ses)) + 
+  geom_line() + 
+  facet_grid(outcome_category ~ .)
+```
+
+This all seems fairly straightforward, so let's now do the same with our real data.
+
+## Using UKHLS data
+
+Let's start with age, sex, wave. We can see whether the wave effects disappear if the age and sex effect are included in the model.
+
+Let's define the following models:
+
+-   mod_01: state given last state
+
+-   mod_02: state given last state + sex
+
+-   mod_03: state given last state + sex + age
+
+-   mod_04: state given last state + sex + poly(age, 2)
+
+-   mod_05: state given last state + sex + poly(age, 2) + wave (to account for trends)
+
+Further variables with modifiable factors will then build on the best performing of the above.
+
+-   equivalised household income and number of dependent children are highest priority for inclusion
+
+```{r}
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels"
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+
+
+```
+
+Now to load the code for recategorising economic (in)activity groups
+
+```{r}
+
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+```
+
+```{r}
+econ_act_statuses_threelevels <- 
+  long_slimmed_data %>% 
+    filter(variable == 'jbstat') %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_2_meso),
+      by = c('value' = 'original')
+    ) %>% 
+    select(pidp, wave, econ_act_status = recoded)
+
+econ_act_statuses_threelevels
+```
+
+We can start with this, after a little bit of recoding to turn waves into letters
+
+```{r}
+jj <- 
+  econ_act_statuses_threelevels %>% 
+    mutate(wavenumber = match(wave, letters[1:26])) %>% 
+    select(pidp, wavenumber, econ_act_status)
+
+econ_act_current_gvn_last <- 
+  jj %>% 
+    filter(wavenumber > 1) %>%
+    rename(this_status = econ_act_status) %>% 
+    left_join(
+      jj %>% mutate(wavenumber = wavenumber - 1) %>% 
+        rename(last_status = econ_act_status)
+    ) %>% 
+  filter(
+    this_status != 'Missing',
+    last_status != 'Missing'
+  )
+    
+econ_act_current_gvn_last
+```
+
+Now let's try to model this
+
+```{r}
+mod_01 <- multinom(this_status ~ last_status, data = econ_act_current_gvn_last)
+```
+
+```{r}
+summary(mod_01)
+```
+
+Eyeballing, all coefficients look very statistically significant
+
+Now what are the predicted probabilities?
+
+```{r}
+predict(mod_01, newdata = tibble(last_status = c("Employed", "Inactive", "Unemployed")), type = "probs") %>% as_tibble() %>% 
+  mutate(last_status = c("Employed", "Inactive", "Unemployed")) %>% 
+  pivot_longer(cols = c("Employed", "Inactive", "Unemployed"), names_to = "current_status", values_to = "predicted_probability")
+```
+
+According to this:
+
+-   Of those previous employed:
+
+    -   93.0% remain employed
+
+    -   4.7% become inactive
+
+    -   2.4% become unemployed
+
+-   Of those previously unemployed:
+
+    -   25.4% become employed
+
+    -   31.1% become inactive
+
+    -   43.5% remain unemployed
+
+-   Of those previously inactive
+
+    -   6.6% become employed
+
+    -   90.4% remain inactive
+
+    -   3.0% become unemployed
+
+Note this is for all waves, so assumes no change in these transition probabilities over time. (This can be tested by including wavenum as a covariate)
+
+For the next model I want to include sex in the model both independently and as an interaction term with previous status.
+
+```{r}
+
+econ_act_current_gvn_last_with_sex <- 
+  econ_act_current_gvn_last %>%
+    left_join(
+      long_slimmed_data %>% 
+        filter(variable == 'sex')  %>% 
+        mutate(wavenumber = match(wave, letters[1:26])) %>% 
+        select(pidp, wavenumber, sex = value) 
+  ) %>% 
+    filter(sex %in% c('male', 'female'))
+  
+# Just to be consistent I'll redo model 1 with this dataset
+
+mod_01 <- multinom(
+  this_status ~ last_status, # No sex
+  data = econ_act_current_gvn_last_with_sex
+)
+
+
+mod_02 <- multinom(
+  this_status ~ last_status + sex, # No interaction
+  data = econ_act_current_gvn_last_with_sex
+)
+
+mod_03 <- multinom(
+  this_status ~ last_status * sex, # WITH interaction
+  data = econ_act_current_gvn_last_with_sex
+)
+
+```
+
+Let's now compare the models with AIC and BIC
+
+```{r}
+AIC(mod_01, mod_02, mod_03)
+BIC(mod_01, mod_02, mod_03)
+```
+
+In both cases the model with interaction terms is preferred, so let's include them (i.e. use `mod_03`
+
+What does this predict?
+
+```{r}
+predictor_matrix <- expand_grid(
+  last_status = c('Unemployed', 'Employed', 'Inactive'),
+  sex = c("female", 'male')
+)
+
+predictions <- predict(mod_03, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_03 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = c('Employed', 'Inactive', 'Unemployed'), names_to = 'current_status', values_to = 'predicted_probability')
+
+predictions_predictor_mod_03 %>% 
+  arrange(sex) %>% 
+  pivot_wider(names_from = current_status, values_from = predicted_probability)
+
+```
+
+The main difference here seems to be that a female unemployed in the previous wave has a much higher probability of being inactive the next wave than a male unemployed at the last wave.
+
+Females unemployed:
+
+-   Employed: 24.3%
+
+-   Inactive: 39.1%
+
+-   Unemployed: 36.5%
+
+Males unemployed:
+
+-   Employed 26.3%
+
+-   Inactive: 23.7%
+
+-   Unemployed: 50.0%
+
+All other entries look very similar.
+
+Next we can incorporate age, and possibly age\^2 as well?
+
+We could also look at the broad age groups as categorical variables used previously
+
+When considering age we should also restrict the age range to 16 to 60 as before.
+
+As before we should redo the previous models so comparisons are made on the basis of exactly the same dataset.
+
+```{r}
+econ_act_current_gvn_last_with_sex_and_age <- 
+  econ_act_current_gvn_last %>%
+    left_join(
+      long_slimmed_data %>% 
+        filter(variable == 'sex')  %>% 
+        mutate(wavenumber = match(wave, letters[1:26])) %>% 
+        select(pidp, wavenumber, sex = value) 
+  ) %>% 
+    filter(sex %in% c('male', 'female')) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'dvage') %>% 
+      mutate(age = as.numeric(value)) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, age)  
+  ) %>% 
+  filter(age >= 0) %>% #negative values indicate missing 
+  filter(between(age, 16, 65)) %>% 
+  mutate(age_group = case_when(
+    between(age, 16, 24) ~ "16-24",
+    between(age, 25, 49) ~ "25-49",
+    between(age, 50, 65) ~ "50-65"
+  )) 
+  
+```
+
+Now to specify a number of models:
+
+```{r}
+mod_01 <- multinom(
+  this_status ~ last_status, # No sex
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+
+mod_02 <- multinom(
+  this_status ~ last_status + sex, # No interaction
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_03 <- multinom(
+  this_status ~ last_status * sex, # WITH interaction
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_04 <- multinom(
+  this_status ~ last_status * sex + age, #Linear age, no interaction
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_05 <- multinom(
+  this_status ~ last_status * sex + poly(age, 2), #quadratic age, no interaction
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_06 <- multinom(
+  this_status ~ last_status * sex + age_group, #age group, no interaction
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+```
+
+Compare model fit
+
+```{r}
+AIC(
+  mod_01, mod_02, mod_03, mod_04, mod_05, mod_06
+)
+BIC(
+  mod_01, mod_02, mod_03, mod_04, mod_05, mod_06
+)
+
+```
+
+This seems to suggest age squared has the best penalised model fit.
+
+Let's see what mod_05 predicts...
+
+```{r}
+predictor_matrix <- expand_grid(
+  sex = c('male', 'female'), 
+  age = 16:65, 
+  last_status = c('Unemployed', 'Employed', 'Inactive')
+)
+
+
+predictions <- predict(mod_05, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_05 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = c('Employed', 'Inactive', 'Unemployed'), names_to = 'current_status', values_to = 'predicted_probability')
+
+
+```
+
+We now have to think about how to visualise this.
+
+-   Predicted probability on y axis
+
+-   group/colour on last status
+
+-   age on x axis
+
+-   facet grid by sex and current_status?
+
+(Unsure about current/last)
+
+```{r}
+predictions_predictor_mod_05 %>% 
+  ggplot(aes(x = age, y = predicted_probability, group = current_status, colour = current_status)) + 
+  geom_line() + 
+  facet_grid(last_status ~ sex)
+```
+
+I'm slightly concerned that in using a quadratic polynomial the tail is wagging the dog too much in terms of the shapes of the curve.
+
+Alternatives are higher order polynomials, using splines, or possibly logging age, which I think would allow slightly more of a j-shaped pattern.
+
+```{r}
+mod_07 <- multinom(
+  this_status ~ last_status * sex + poly(age, 3), #cubic age, no interaction
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_08 <- multinom(
+  this_status ~ last_status * sex + poly(log(age), 2), #quadratic on log of age, no interaction
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+```
+
+Let's compared these with model 5
+
+```{r}
+AIC(mod_05, mod_07, mod_08)
+BIC(mod_05, mod_07, mod_08)
+```
+
+Both indicate a reason for preferring quadratic on log age not age. Let's see what the predictions for this model look like...
+
+```{r}
+predictions <- predict(mod_08, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_08 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = c('Employed', 'Inactive', 'Unemployed'), names_to = 'current_status', values_to = 'predicted_probability')
+
+```
+
+```{r}
+predictions_predictor_mod_08 %>% 
+  ggplot(aes(x = age, y = predicted_probability, group = current_status, colour = current_status)) + 
+  geom_line() + 
+  facet_grid(last_status ~ sex)
+```
+
+I'm still not sure about this.
+
+I think splines is an appropriate approach. Here are some links:
+
+-   [Spline regression in R](https://www.statology.org/spline-regression-in-r/)
+
+    -   There's the `splines::bs` function (for b-splines)
+
+        -   b-splines stand for basis splines
+
+        -   [Wikipedia article (involved)](https://en.wikipedia.org/wiki/B-spline)
+
+        -   [Function documentation](https://www.rdocumentation.org/packages/splines/versions/3.6.2/topics/bs)
+
+            -   Can specify either degrees of freedom `df` or `knots`.
+
+        -   This allows the position of knots to be specified
+
+        -   For age I think this would be a useful feature.
+
+        -   It also shows it in the context of a `lm` model, so as a component to other models.
+
+-   [Smoothing spline regression in R](http://users.stat.umn.edu/~helwig/notes/smooth-spline-notes.html)
+
+    -   Goes into more algebraic detail
+
+    -   There's the `stats::smooth.spline` function
+
+    -   There's the `npreg::ss` function
+
+I think I'd like to try the `splines::bs` function because it clearly works inside other regression functions and knot positions can be specified.
+
+I think the knots should be at the following ages:
+
+-   21, 60
+
+Let's try to do this
+
+```{r}
+# install.packages("splines")
+```
+
+Warnings that splines is part of base. (So no need to explicitly install?)
+
+```{r}
+mod_09 <- multinom(
+  this_status ~ last_status * sex + splines::bs(age, knots = c(21, 60)), #b-splines with two knots
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+```
+
+And how does this compare with the last model?
+
+```{r}
+BIC(mod_08, mod_09)
+```
+
+So a sizeable improvement in fit.
+
+Let's see what the modelled predictions look like...
+
+```{r}
+predictions <- predict(mod_09, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_09 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = c('Employed', 'Inactive', 'Unemployed'), names_to = 'current_status', values_to = 'predicted_probability')
+```
+
+```{r}
+predictions_predictor_mod_09 %>% 
+  ggplot(aes(x = age, y = predicted_probability, group = current_status, colour = current_status)) + 
+  geom_line() + 
+  facet_grid(last_status ~ sex)
+```
+
+I think this looks okay, but the choice of knots looks like it's bringing some artefacts into the schedules.
+
+Is there a way of letting the data 'decide' on the knots?
+
+I'm going to try a number of different numbers of degrees of freedom, say 3, 6, and 9
+
+```{r}
+
+mod_10 <- multinom(
+  this_status ~ last_status * sex + splines::bs(age, df = 3), #b-splines with two knots
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_11 <- multinom(
+  this_status ~ last_status * sex + splines::bs(age, df = 6), #b-splines with two knots
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_12 <- multinom(
+  this_status ~ last_status * sex + splines::bs(age, df = 9), #b-splines with two knots
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+```
+
+```{r}
+BIC(mod_09, mod_10, mod_11, mod_12)
+```
+
+It seems to have found a trade-off, with mod_11 outperforming mod_12 on penalised model fit. Let's see if this can be further tweaked by looking at variants with df around those of mod_11 (i.e. 5 and 7 df)
+
+```{r}
+
+mod_13 <- multinom(
+  this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_14 <- multinom(
+  this_status ~ last_status * sex + splines::bs(age, df = 7), #b-splines with 7 df
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_15 <- multinom(
+  this_status ~ last_status * sex + splines::bs(age, df = 4), #b-splines with 4 df
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+```
+
+```{r}
+BIC(mod_15, mod_13, mod_11, mod_14)
+```
+
+So model 13, with 5df, seems to be preferred. What does this look like?
+
+```{r}
+predictions <- predict(mod_13, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_13 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = c('Employed', 'Inactive', 'Unemployed'), names_to = 'current_status', values_to = 'predicted_probability')
+```
+
+```{r}
+predictions_predictor_mod_13 %>% 
+  ggplot(aes(x = age, y = predicted_probability, group = current_status, colour = current_status)) + 
+  geom_line() + 
+  facet_grid(last_status ~ sex)
+```
+
+I think this now looks reasonable. There's a risk it's overfit and so on, but I think this looks like a good base model to work from.
+
+I think the next step, and final step in terms of producing a decent base model, would be to see if there's benefit in adding a time term.
+
+```{r}
+mod_16 <- multinom(
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + wavenumber, #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+```
+
+Does this improve fit?
+
+```{r}
+BIC(mod_13, mod_16)
+```
+
+Somewhat... What are the coefficients?
+
+```{r}
+summary(mod_16)
+```
+
+This is difficult to make intuitive sense of. Instead what if we predict but using two time periods: 3 (c) and 10 (j)?
+
+```{r}
+predictor_matrix <- expand_grid(
+  sex = c('male', 'female'), 
+  age = 16:65, 
+  last_status = c('Unemployed', 'Employed', 'Inactive'),
+  wavenumber = c(3, 10)
+)
+```
+
+```{r}
+predictions <- predict(mod_16, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_16 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = c('Employed', 'Inactive', 'Unemployed'), names_to = 'current_status', values_to = 'predicted_probability')
+```
+
+```{r}
+predictions_predictor_mod_16 %>% 
+  ggplot(aes(x = age, y = predicted_probability, group = paste(current_status, wavenumber), colour = current_status, linetype = factor(wavenumber))) + 
+  geom_line() + 
+  facet_grid(last_status ~ sex)
+```
+
+It looks like the predicted probabilities of employment are increasing over time, the predicted probabilities of unemployment are decreasing over time, and the predicted probabilities of being inactive are decreasing. These trends seem to be largest for employment and unemployment, with inactivity appearing to change less.
+
+Let's finish for now with a couple of mega-models, to see if interactions between included factors ought to be included
+
+```{r}
+mod_17 <- multinom(
+  this_status ~ last_status * sex * wavenumber + splines::bs(age, df = 5) , #wavenumber now interacting
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_18 <- multinom(
+  this_status ~ last_status * sex * splines::bs(age, df = 5) + wavenumber, # agesplines now interacting
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+mod_19 <- multinom(
+  this_status ~ last_status * sex * splines::bs(age, df = 5) * wavenumber, # everything now interacting
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+
+```
+
+```{r}
+BIC(mod_16, mod_17, mod_18, mod_19)
+```
+
+This suggests including age-spline interactions should be done, but other proposed interactions make the penalised model fit worse.
+
+Importantly, it suggests no reason to assume interactions with wavenumber
+
+So, what do the predictions look like with mod_18?
+
+```{r}
+predictions <- predict(mod_18, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_18 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = c('Employed', 'Inactive', 'Unemployed'), names_to = 'current_status', values_to = 'predicted_probability')
+```
+
+```{r}
+predictions_predictor_mod_18 %>% 
+  ggplot(aes(x = age, y = predicted_probability, group = paste(current_status, wavenumber), colour = current_status, linetype = factor(wavenumber))) + 
+  geom_line() + 
+  facet_grid(last_status ~ sex)
+```
+
+I think this is a decent baseline model.
+
+Things to consider adding which have at least some kind of modifiable component:
+
+-   Skills/highest education?
+
+-   Income (caveat is this may be a proxy for previous and current economic activity state)
+
+    -   could look at benefits-based income only?
+
+    -   
+
+-   Physical health
+
+-   Mental health
+
+-   household types
+
+    -   Single parent households
+
+        -   eligibility for ...
+
+    -   larger families (three or more dependent children)
+
+        -   lower income larger families
+
+        -   two child limit affects \~ 20k families in Scotland
+
+    -   Older women affected by pension changes
+
+    -   Young unemployed men claiming out-of-work benefits (JSA/Universal Credit)
+
+-   job quality!
+
+    -   could look, for those groups who were employed in last wave, whether their measures of job-quality affect probability of remaining in employment, or moving to either unemployment or inactivity
+
+    -   

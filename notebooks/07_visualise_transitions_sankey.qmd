@@ -214,7 +214,7 @@ hmm. it doesn't look as straightforward as I was expecting to reorder the node l
 
 -   https://github.com/davidsjoberg/ggsankey/issues/7
 
-## Calculating proportions 
+## Calculating proportions
 
 ```{r}
 long_waves_as_nums <- 

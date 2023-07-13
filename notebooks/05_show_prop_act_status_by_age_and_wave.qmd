@@ -307,3 +307,7 @@ Some observations
     -   Rates of inactivity due to retirement fell for both sexes, especially women. For women they fell from around 25% at the start to around 16% at the end. More modest falls were seen for men, from around 17.% at the start of the period to around 14% at the end
     -   Rates of inactive due to being a student appear too low to make reasonable inferences about
     -   Rates of unemployment are higher for men than women, but the gap reduced markedly over time. This is because they tended to fall, from around 7% at the start to around 4.5% at the end, reaching a nadir of around 4% in wave i-j. Whereas for women they were stable at around 3.5% for most of the period, though possibly increasing slowly throughout the period, before rising much more quickly, to around 4.5%, in the last wave\
+
+Quick question:
+
+What's happened to the mean/median age within each of the broad age categories?
