@@ -1,0 +1,355 @@
+---
+title: "09_mh_ph_by_econ_act_status"
+author: "Jon Minton; Martin Taulbut"
+format: html
+editor: visual
+---
+
+## 
+
+## Aim 
+
+The aim of this document is to understand the mental and physical health of those in different economic activity categories
+
+What we want:
+
+-   Mean scores by econ act status
+
+-   Median scores by econ act status
+
+-   Range of scores by econ act status
+
+First we load the packages ...
+
+```{r}
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex",   "scghq2_dv", # ghq caseness (0-12)
+  "sf12mcs_dv", # SF-12 Mental Component Summary  - (0-100)
+  "sf12pcs_dv" #SF-12 physical component summary  - (0-100)
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "values", "values", "values"
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+
+```
+
+First let's just look at summary statistics for physical and mental health
+
+```{r}
+mh_ph_scores <- 
+  long_slimmed_data %>% 
+    filter(variable %in% c("sf12pcs_dv", "sf12mcs_dv")) %>% 
+    mutate(value = as.numeric(value)) %>% 
+    mutate(value = ifelse(value < 0, NA, value)) %>% 
+    pivot_wider(names_from = variable, values_from = value) 
+```
+
+Now we want age and sex
+
+```{r}
+sex <- 
+  long_slimmed_data %>% 
+  filter(variable == "sex") %>% 
+  filter(wave == "a") %>% 
+  pivot_wider(names_from = variable , values_from = value) %>% 
+  select(pidp, sex)
+```
+
+```{r}
+ages <- long_slimmed_data %>% 
+  filter(variable == "dvage") %>% 
+  pivot_wider(names_from = variable, values_from = value) %>% 
+  select(pidp, wave, age = dvage) %>% 
+  mutate(age = as.numeric(age)) 
+
+```
+
+Now to join again
+
+```{r}
+
+
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+econ_act_statuses <- 
+  long_slimmed_data %>% 
+    filter(variable == "jbstat") %>% 
+    pivot_wider(names_from = variable, values_from = value) %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_2_meso),
+      by = c('jbstat' = 'original')
+    ) %>% 
+    select(pidp, wave, econ_act_stat = recoded) %>% 
+    filter(econ_act_stat != "Missing") %>% 
+    filter(!is.na(econ_act_stat))
+```
+
+Now we can join the above
+
+```{r}
+joined_mh_ph_scores <- 
+  mh_ph_scores %>% 
+    left_join(sex) %>% 
+    left_join(ages) %>% 
+    left_join(econ_act_statuses)
+```
+
+Now we can analyse...
+
+```{r}
+joined_mh_ph_scores %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  group_by(econ_act_stat) %>% 
+  summarise(
+    mean_phys = mean(sf12pcs_dv, na.rm = TRUE),
+    mean_ment = mean(sf12mcs_dv, na.rm = TRUE)
+  )
+```
+
+Now to look at working age only
+
+```{r}
+joined_mh_ph_scores %>% 
+  filter(between(age, 16, 60)) %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  group_by(econ_act_stat) %>% 
+  summarise(
+    mean_phys = mean(sf12pcs_dv, na.rm = TRUE),
+    mean_ment = mean(sf12mcs_dv, na.rm = TRUE)
+  )
+```
+
+Now also by sex
+
+```{r}
+joined_mh_ph_scores %>% 
+  filter(between(age, 16, 60)) %>% 
+  filter(!is.na(sex)) %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  group_by(econ_act_stat, sex) %>% 
+  summarise(
+    mean_phys = mean(sf12pcs_dv, na.rm = TRUE),
+    mean_ment = mean(sf12mcs_dv, na.rm = TRUE)
+  )
+```
+
+```{r}
+joined_mh_ph_scores %>% 
+  filter(between(age, 16, 60)) %>% 
+  filter(!is.na(sex)) %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  group_by(econ_act_stat, sex) %>% 
+  summarise(
+    mean_phys = mean(sf12pcs_dv, na.rm = TRUE),
+    mean_ment = mean(sf12mcs_dv, na.rm = TRUE),
+    sd_phys = sd(sf12pcs_dv, na.rm = TRUE),
+    sd_ment = sd(sf12mcs_dv, na.rm = TRUE)
+  )
+```
+
+How about just visualising by age and sex?
+
+```{r}
+joined_mh_ph_scores %>%
+  filter(wave %in% c("c", "j")) %>% 
+  filter(!is.na(sex)) %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  ggplot(aes(x = age, y = sf12pcs_dv, shape = sex, group = paste(sex, econ_act_stat), colour = econ_act_stat)) +
+  geom_point(alpha = 0.05) +
+  stat_smooth(aes(linetype = sex), se = FALSE) + 
+  guides(colour = guide_legend(override.aes = list(alpha = 1)), 
+         shape = guide_legend(override.aes = list(alpha = 1))) + 
+  labs(
+    x = "age", y = "SF-12 physical health score", 
+    title = "relationship between age and physical health",
+    subtitle = "by economic activity status and sex"
+  ) + 
+  facet_wrap(~ wave)
+  
+  
+```
+
+This indicates the following:
+
+-   physical health for those who are employed tends to be higher than for those who are inactive or unemployed
+
+-   For those in employment physical health tends to be similar by sex
+
+-   For those who are inactive physical health tends to be higher for females than for males in prime age aduults
+
+-   In prime age to older prime age adults the physical health of the inactive tend to be at their lowest in the working age range.
+
+-   General physical health scores amongst those employed and unemployed tends to decrease with age.
+
+-   The relationships look quite similar in both waves profiled
+
+Let's do the same sort of thing, but for mental health:
+
+```{r}
+joined_mh_ph_scores %>%
+  filter(wave %in% c("c", "j")) %>% 
+  filter(!is.na(sex)) %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  ggplot(aes(x = age, y = sf12mcs_dv, shape = sex, group = paste(sex, econ_act_stat), colour = econ_act_stat)) +
+  geom_point(alpha = 0.05) +
+  stat_smooth(aes(linetype = sex), se = FALSE) + 
+  guides(colour = guide_legend(override.aes = list(alpha = 1)), 
+         shape = guide_legend(override.aes = list(alpha = 1))) + 
+  labs(
+    x = "age", y = "SF-12 mental health score", 
+    title = "relationship between age and mental health",
+    subtitle = "by economic activity status and sex"
+  ) + 
+  facet_wrap(~ wave)
+  
+```
+
+In many ways MH goes in the opposite direction with age as PH, in that it tends to increase with age.
+
+Generally MH is higher in the employed than other categories. Unemployment appears to have an age-invariant effect for females, whereas it tend to improve with age for males.
+
+The relationship between economic inactivity and MH appears 'kinked', being broadly equivalent to that of unemployment up to older working and early retirement ages, after which its ages tend to be only slightly worse than employment.
+
+MH may be getting slightly worse for non-employed groups, though this is just speculation.
+
+## Next steps
+
+I think I should look at more economic activity categories.
+
+```{r}
+econ_act_statuses_finegrained <- 
+  long_slimmed_data %>% 
+    filter(variable == "jbstat") %>% 
+    pivot_wider(names_from = variable, values_from = value) %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_3),
+      by = c('jbstat' = 'original')
+    ) %>% 
+    select(pidp, wave, econ_act_stat = recoded) %>% 
+    filter(econ_act_stat != "Missing") %>% 
+    filter(!is.na(econ_act_stat))
+```
+
+```{r}
+joined_mh_ph_scores_finegrained <- 
+  mh_ph_scores %>% 
+    left_join(sex) %>% 
+    left_join(ages) %>% 
+    left_join(econ_act_statuses_finegrained)
+```
+
+```{r}
+joined_mh_ph_scores_finegrained %>% 
+  filter(between(age, 16, 60)) %>% 
+  filter(!is.na(sex)) %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  group_by(econ_act_stat, sex) %>% 
+  summarise(
+    mean_phys = mean(sf12pcs_dv, na.rm = TRUE),
+    mean_ment = mean(sf12mcs_dv, na.rm = TRUE),
+    sd_phys = sd(sf12pcs_dv, na.rm = TRUE),
+    sd_ment = sd(sf12mcs_dv, na.rm = TRUE)
+  ) 
+```
+
+This is enough numbers I think I should try to visualise them...
+
+```{r}
+
+joined_mh_ph_scores_finegrained %>% 
+  filter(between(age, 16, 60)) %>% 
+  filter(!is.na(sex)) %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  group_by(econ_act_stat, sex) %>% 
+  summarise(
+    mean_phys = mean(sf12pcs_dv, na.rm = TRUE),
+    mean_ment = mean(sf12mcs_dv, na.rm = TRUE),
+    sd_phys = sd(sf12pcs_dv, na.rm = TRUE),
+    sd_ment = sd(sf12mcs_dv, na.rm = TRUE)
+  )  %>% 
+  ungroup() %>% 
+  ggplot(aes(mean_phys, mean_ment, colour = econ_act_stat)) + 
+  facet_wrap(~sex) + 
+  geom_point() +
+  coord_equal() + 
+  geom_abline(intercept = 0, slope = 1)
+
+```
+
+The retired have the highest mean mental health, then students, then the employed.
+
+Inactive long term sick have the lowest physical and mental health by some margin.
+
+For females, being inactive for reasons of full time care has higher positive and mental health (especially) then being unemployed.
+
+This suggests being inactivity due to long-term sickness needs to be thought of differently to all other cagegories.
+
+What does this look like by age?
+
+```{r}
+joined_mh_ph_scores_finegrained %>%
+  filter(wave %in% c("c", "j")) %>% 
+  filter(!is.na(sex)) %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  ggplot(aes(x = age, y = sf12mcs_dv, shape = sex, group = paste(sex, econ_act_stat), colour = econ_act_stat)) +
+#  geom_point(alpha = 0.05) +
+  stat_smooth(se = FALSE) + 
+  guides(colour = guide_legend(override.aes = list(alpha = 1)), 
+         shape = guide_legend(override.aes = list(alpha = 1))) + 
+  labs(
+    x = "age", y = "SF-12 mental health score", 
+    title = "relationship between age and mental health",
+    subtitle = "by economic activity status and sex"
+  ) + 
+  facet_grid(sex~ wave)
+```
+
+```{r}
+joined_mh_ph_scores_finegrained %>%
+  filter(wave %in% c("c", "j")) %>% 
+  filter(!is.na(sex)) %>% 
+  filter(!is.na(econ_act_stat)) %>% 
+  ggplot(aes(x = age, y = sf12pcs_dv, shape = sex, group = paste(sex, econ_act_stat), colour = econ_act_stat)) +
+#  geom_point(alpha = 0.05) +
+  stat_smooth(se = FALSE) + 
+  guides(colour = guide_legend(override.aes = list(alpha = 1)), 
+         shape = guide_legend(override.aes = list(alpha = 1))) + 
+  labs(
+    x = "age", y = "SF-12 physical health score", 
+    title = "relationship between age and physical health",
+    subtitle = "by economic activity status and sex"
+  ) + 
+  facet_grid(sex~ wave)
+```

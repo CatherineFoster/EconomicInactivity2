@@ -791,8 +791,6 @@ Things to consider adding which have at least some kind of modifiable component:
 
     -   could look at benefits-based income only?
 
-    -   
-
 -   Physical health
 
 -   Mental health
@@ -816,5 +814,3 @@ Things to consider adding which have at least some kind of modifiable component:
 -   job quality!
 
     -   could look, for those groups who were employed in last wave, whether their measures of job-quality affect probability of remaining in employment, or moving to either unemployment or inactivity
-
-    -   
