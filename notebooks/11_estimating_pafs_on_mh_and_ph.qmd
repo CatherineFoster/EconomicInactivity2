@@ -1,0 +1,822 @@
+---
+title: "11_estimating_pafs_on_mh_and_ph"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+# Aim
+
+The aim of this notebook is to estimate the PAF associated with a 1 SD fall in MH and PH scores using the SF12 scales.
+
+We can do this by starting with the model from notebook 10, adding physical and mental health scores, included these as standardised scores to the model, testing to see if they improve model fit (possibly optional), then comparing two scenarios:
+
+-   Baseline: standard scores at 0
+-   Counterfactual: standard scores at -1
+
+The baseline might be questionable for some econ act and inact categories, but the alternative (using real scores for the baseline) would be difficult to interpret and possibly justify too...
+
+The additional variables to include are:
+
+-   **sf12mcs_dv**: SF-12 Mental Component Summary - (0-100)
+-   **sf12pcs_dv**: SF-12 physical component summary - (0-100)
+
+As before let's start by loading the requisite packages and data.
+
+# Preparation
+
+```{r}
+
+
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+
+```
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+
+econ_act_statuses_sevenlevels <- 
+  long_slimmed_data %>% 
+    filter(variable == 'jbstat') %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_3),
+      by = c('value' = 'original')
+    ) %>% 
+    select(pidp, wave, econ_act_status = recoded)
+
+econ_act_statuses_sevenlevels
+```
+
+```{r}
+jj <- 
+  econ_act_statuses_sevenlevels %>% 
+    mutate(wavenumber = match(wave, letters[1:26])) %>% 
+    select(pidp, wavenumber, econ_act_status)
+
+econ_act_current_gvn_last <- 
+  jj %>% 
+    filter(wavenumber > 1) %>%
+    rename(this_status = econ_act_status) %>% 
+    left_join(
+      jj %>% mutate(wavenumber = wavenumber - 1) %>% 
+        rename(last_status = econ_act_status)
+    ) %>% 
+  filter(
+    this_status != 'Missing',
+    last_status != 'Missing'
+  )
+    
+econ_act_current_gvn_last
+```
+
+```{r}
+
+# "sf12mcs_dv", "sf12pcs_dv"
+econ_act_current_gvn_last_with_sex_age_and_sf12 <- 
+  econ_act_current_gvn_last %>%
+    left_join(
+      long_slimmed_data %>% 
+        filter(variable == 'sex')  %>% 
+        mutate(wavenumber = match(wave, letters[1:26])) %>% 
+        select(pidp, wavenumber, sex = value) 
+  ) %>% 
+    filter(sex %in% c('male', 'female')) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'dvage') %>% 
+      mutate(age = as.numeric(value)) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, age)  
+  ) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'sf12mcs_dv') %>% 
+      mutate(mh_score = as.numeric(value)) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, mh_score)  
+  ) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'sf12pcs_dv') %>% 
+      mutate(ph_score = as.numeric(value)) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, ph_score)  
+  ) %>% 
+  filter(age >= 0) %>% #negative values indicate missing 
+  filter(between(age, 16, 65)) %>% 
+  mutate(age_group = case_when(
+    between(age, 16, 24) ~ "16-24",
+    between(age, 25, 49) ~ "25-49",
+    between(age, 50, 65) ~ "50-65"
+  )) %>% 
+  mutate(
+    ph_score = ifelse(ph_score < 0, NA, ph_score), # negative indicates missingness 
+    mh_score = ifelse(mh_score < 0, NA, mh_score)  # negative indicates missingness
+  )
+```
+
+## Modelling
+
+First the (new) baseline model
+
+```{r}
+# Was model 02 in 10 (seven state) modelling
+mod_01 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12
+)
+```
+
+Now the alternative models
+
+First build a standardisation convenience function
+
+```{r}
+standardise_scores <- function(x){
+  mean_x <- mean(x, na.rm = TRUE)
+  sd_x <- sd(x, na.rm = TRUE)
+  z <- (x - mean_x) / sd_x
+  z
+}
+```
+
+```{r, eval = FALSE}
+x_mh <- econ_act_current_gvn_last_with_sex_age_and_sf12$mh_score
+
+z_mh <- standardise_scores(x_mh)
+
+mean(x_mh, na.rm = TRUE)
+sd(x_mh, na.rm = TRUE)
+
+mean(z_mh, na.rm = TRUE)
+sd(z_mh, na.rm = TRUE)
+
+
+```
+
+Good. This works as expected
+
+```{r}
+
+#mh only
+mod_02 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + z_mh, 
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12 %>% mutate(z_mh = standardise_scores(mh_score))
+)
+
+#ph only
+mod_03 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + z_ph, 
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12 %>% mutate(z_ph = standardise_scores(ph_score))
+)
+
+#mh and ph 
+mod_04 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + z_ph + z_mh, 
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    mutate(
+      z_ph = standardise_scores(ph_score),
+      z_mh = standardise_scores(mh_score)
+      )
+)
+
+
+```
+
+Now do any of these make a difference?
+
+```{r}
+BIC(mod_01, mod_02, mod_03, mod_04)
+```
+
+All appear to improve the model fit over the base model, though the mh only model (mod_02) is preferred to the other two additional models.
+
+Let's focus on the MH only model, and comparing z scores of 0 with +1,
+
+```{r}
+
+statuses <- c("Employed", "Inactive student", "Unemployed", "Inactive retired", "Inactive care", "Inactive other", "Inactive long term sick")
+predictor_matrix <- expand_grid(
+  sex = c('male', 'female'), 
+  age = 16:65, 
+  last_status = statuses,
+  z_mh = c(0, 1)
+)
+```
+
+```{r}
+
+predictions <- predict(mod_02, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_02 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = all_of(statuses), names_to = 'current_status', values_to = 'predicted_probability')
+
+
+```
+
+## Estimated treatment effects on transition probabilities
+
+### Mental health treatment
+
+Let's use this to predict the difference in probabilities of moving from Unemployment to each of the Inactive categories
+
+```{r}
+predictions_predictor_mod_02 %>% 
+  filter(last_status == "Unemployed") %>% 
+  filter(
+    current_status %in% c(
+      "Inactive student", "Inactive retired", "Inactive care", "Inactive long term sick", "Inactive other"
+      )
+  ) %>% 
+  ggplot(aes(x = age, y = predicted_probability, linetype = factor(z_mh), colour = current_status)) + 
+  facet_wrap(~sex) + 
+  geom_line() + 
+  labs(
+    x = 'Age',
+    y = 'Predicted probability',
+    title = 'Estimated effect of transition to economic inactivites from unemployment of a 1 SD improvement in mental health',
+    subtitle = "Dashed lines indicate higher mental health scores"
+  )
+  
+```
+
+The interesting thing about this graph is that the estimated effects of increasing mental health are to *increase* the probabilities of transitioning from unemployment to many of the economic inactivity categories. This is likely because unemployment has a lower average mental health score than many of the other states, such as being retired or a student.
+
+However, the proposed treatment has an a larger effect in the expected direction on the probability of transitioning to inactive long term sick. i.e. it reduces the probability of this form of transition, and the effect of this reduction tends to increase with age.
+
+Let's now produce a graph of these differences in estimates alone
+
+```{r}
+predictions_predictor_mod_02 %>% 
+  filter(last_status == "Unemployed") %>% 
+  filter(
+    current_status %in% c(
+      "Inactive student", "Inactive retired", "Inactive care", "Inactive long term sick", "Inactive other"
+      )
+  ) %>% 
+  mutate(
+    mh_state = ifelse(z_mh, "Treatment", "Control")
+  ) %>% 
+  select(-z_mh) %>% 
+  pivot_wider(names_from = "mh_state", values_from = "predicted_probability") %>% 
+  mutate(
+    treatment_effect = Treatment - Control 
+  ) %>% 
+  ggplot(aes(x = age, y= treatment_effect, colour = current_status)) +
+  facet_wrap(~sex) + 
+  geom_line() +
+  labs(
+    x = "Age",
+    y = "Estimated Treatment effect (difference in proportions)",
+    title = "Estimated treatment effects of a treatment which increases mental health by 1 SD"
+  )
+
+
+```
+
+This implies that higher mental health would lead to increased transition from unemployment to being an inactive student for younger adults, and an increased transition to retirement for older adults. For women from around 25 to 50 years it would lead to about a 1% increase in the rate of transition from unemployment to Inactive care as well.
+
+For both sexes it would 'lead' to falls in the percentage risk of transitioning from unemployment to long-term sickness, with the effects greater for males than females, and reaching more than 4% points for males in their late 50s and beyond.
+
+What about transitions from employment to other categories (including unemployment)?
+
+```{r}
+predictions_predictor_mod_02 %>% 
+  filter(last_status == "Employed") %>% 
+  ggplot(aes(x = age, y = predicted_probability, linetype = factor(z_mh), colour = current_status)) + 
+  facet_wrap(~sex) + 
+  geom_line() + 
+  labs(
+    x = 'Age',
+    y = 'Predicted probability',
+    title = 'Estimated effect of transition to other states from employment of a 1 SD improvement in mental health',
+    subtitle = "Dashed lines indicate higher mental health scores"
+  )
+```
+
+This looks to 'lead' to small but consistent increases in the probability of remaining in employment, and decreases in the probability of transitioning to unemployment. Intriguingly/concerningly it looks like it may be associated with a very slight decrease in the probability of transitioning to being an inactive student.
+
+Let's look at the estimated treatment effects
+
+```{r}
+predictions_predictor_mod_02 %>% 
+  filter(last_status == "Employed") %>% 
+  mutate(
+    mh_state = ifelse(z_mh, "Treatment", "Control")
+  ) %>% 
+  select(-z_mh) %>% 
+  pivot_wider(names_from = "mh_state", values_from = "predicted_probability") %>% 
+  mutate(
+    treatment_effect = Treatment - Control 
+  ) %>% 
+  ggplot(aes(x = age, y= treatment_effect, colour = current_status)) +
+  facet_wrap(~sex) + 
+  geom_line() +
+  labs(
+    x = "Age",
+    y = "Estimated Treatment effect (difference in proportions)",
+    title = "Estimated treatment effects of a treatment which increases mental health by 1 SD"
+  )
+
+```
+
+So, it looks like the effect of increasing employment rates are highest in young adult ages, as are the negative effects on the probability of transitioning to being a student. The more durable effect of increased mental health over the working age age range is around 0.8%-1.0%.
+
+And what about the probability of transitioning *from* Inactive long-term sick?
+
+```{r}
+predictions_predictor_mod_02 %>% 
+  filter(last_status == "Inactive long term sick") %>% 
+  ggplot(aes(x = age, y = predicted_probability, linetype = factor(z_mh), colour = current_status)) + 
+  facet_wrap(~sex) + 
+  geom_line() + 
+  labs(
+    x = 'Age',
+    y = 'Predicted probability',
+    title = 'Estimated effect of transitions from long-term sickness of a 1 SD improvement in mental health',
+    subtitle = "Dashed lines indicate higher mental health scores"
+  )
+```
+
+Here it seems apparent the greatest estimated treatment effects would be on the probability of remaining long-term sick, with the greatest increased probabilities being towards increased employment in prime age adults and possibly towards retirement at older working ages. Once again let's plot the treatment effects alone
+
+```{r}
+predictions_predictor_mod_02 %>% 
+  filter(last_status == "Inactive long term sick") %>% 
+  mutate(
+    mh_state = ifelse(z_mh, "Treatment", "Control")
+  ) %>% 
+  select(-z_mh) %>% 
+  pivot_wider(names_from = "mh_state", values_from = "predicted_probability") %>% 
+  mutate(
+    treatment_effect = Treatment - Control 
+  ) %>% 
+  ggplot(aes(x = age, y= treatment_effect, colour = current_status)) +
+  facet_wrap(~sex) + 
+  geom_line() +
+  labs(
+    x = "Age",
+    y = "Estimated Treatment effect (difference in proportions)",
+    title = "Estimated treatment effects of a treatment which increases mental health by 1 SD"
+  )
+```
+
+These effects are on a larger scale to those for other transition-from states.
+
+The effects of remaining long-term sick are more than 10% for most of the age range.
+
+The effects of transitioning to employment are over 5% points in prime age.
+
+The effects of moving to retirement begin slightly before age 50 and increase (exponentially?) with age, reaching over 10% by around age 63-64.
+
+Now let's do the same but for physical health.
+
+### Physical health treatments
+
+```{r}
+statuses <- c("Employed", "Inactive student", "Unemployed", "Inactive retired", "Inactive care", "Inactive other", "Inactive long term sick")
+predictor_matrix <- expand_grid(
+  sex = c('male', 'female'), 
+  age = 16:65, 
+  last_status = statuses,
+  z_ph = c(0, 1)
+)
+
+
+predictions <- predict(mod_03, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_03 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = all_of(statuses), names_to = 'current_status', values_to = 'predicted_probability')
+
+
+```
+
+From unemployment
+
+```{r}
+predictions_predictor_mod_03 %>% 
+  filter(last_status == "Unemployed") %>% 
+  ggplot(aes(x = age, y = predicted_probability, linetype = factor(z_ph), colour = current_status)) + 
+  facet_wrap(~sex) + 
+  geom_line() + 
+  labs(
+    x = 'Age',
+    y = 'Predicted probability',
+    title = 'Estimated effect of transition to economic inactivites from unemployment of a 1 SD improvement in physical health',
+    subtitle = "Dashed lines indicate higher mental health scores"
+  )
+  
+```
+
+```{r}
+predictions_predictor_mod_03 %>% 
+  filter(last_status == "Unemployed") %>% 
+  mutate(
+    ph_state = ifelse(z_ph, "Treatment", "Control")
+  ) %>% 
+  select(-z_ph) %>% 
+  pivot_wider(names_from = "ph_state", values_from = "predicted_probability") %>% 
+  mutate(
+    treatment_effect = Treatment - Control 
+  ) %>% 
+  ggplot(aes(x = age, y= treatment_effect, colour = current_status)) +
+  facet_wrap(~sex) + 
+  geom_line() +
+  labs(
+    x = "Age",
+    y = "Estimated Treatment effect (difference in proportions)",
+    title = "Estimated treatment effects of a treatment which increases physical health by 1 SD"
+  )
+
+```
+
+So, an increase in physical health by 1 SD is predicted to increase the probability of moving from unemployment to employment of around 6% points for much of working age, and of slightly more than 4% for the probability of transitioning to being a student in young adulthood. It is also associated with around a 4% point reduction in being unemployed for much of working age, and a fall in probability of transitioning to economically inactive if around 2% for much of working age.
+
+What about from economic inactivity due to ill health ?
+
+```{r}
+predictions_predictor_mod_03 %>% 
+  filter(last_status == "Inactive long term sick") %>% 
+  ggplot(aes(x = age, y = predicted_probability, linetype = factor(z_ph), colour = current_status)) + 
+  facet_wrap(~sex) + 
+  geom_line() + 
+  labs(
+    x = 'Age',
+    y = 'Predicted probability',
+    title = 'Estimated effect of transition to economic inactivites from inactive long term sick of a 1 SD improvement in physical health',
+    subtitle = "Dashed lines indicate higher physical health scores"
+  )
+
+```
+
+So it looks to lead to large falls in remaining long term sick in prime age, especially for males. The transition probabilities look much more modest for any categories for women than men.
+
+```{r}
+predictions_predictor_mod_03 %>% 
+  filter(last_status == "Inactive long term sick") %>% 
+  mutate(
+    ph_state = ifelse(z_ph, "Treatment", "Control")
+  ) %>% 
+  select(-z_ph) %>% 
+  pivot_wider(names_from = "ph_state", values_from = "predicted_probability") %>% 
+  mutate(
+    treatment_effect = Treatment - Control 
+  ) %>% 
+  ggplot(aes(x = age, y= treatment_effect, colour = current_status)) +
+  facet_wrap(~sex) + 
+  geom_line() +
+  labs(
+    x = "Age",
+    y = "Estimated Treatment effect (difference in proportions)",
+    title = "Estimated treatment effects of a treatment which increases physical health by 1 SD"
+  )
+```
+
+So, the estimated treatment effect of increased physical health on someone Inactive long-term sick remaining in that category seems to be around 15% points for most of the age range. It also leads to increased estimated probabilities of being Employed through prime age, and Unemployed in young adulthood, especially in younger adulthood and for males.
+
+## Summary thoughts
+
+-   Need to work out how to convert these results into PAFs.
+
+-   This can be done by having a reference population containing the initial state along with age and sex.
+
+-   We can use the UKHLS data itself for this, for various waves. But if we have a more up-to-date/Scottish representative population we can use that instead.
+
+-   Perhaps this should be the next step? (The alternatives would either being adding more variables, or looking at PCA.)
+
+-   I think this probably *should* be the next step, as the data are already available and prepared.
+
+## Estimating PAF of MH and PH interventions
+
+I think the prediction dataframe would be fairly straightforward to develop. We just pick a wave - I think these should be waves 3 and 10 - and remove `this_status`, `mh_score`, and `ph_score`. Then we repeat the matrix with `z_ph` and `z_mh` set to 0 and 1.
+
+```{r}
+wave_c_predictor_matrix_mh <- 
+  bind_rows(
+    econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    filter(wavenumber == 3) %>% 
+    select(pidp, last_status, sex, age) %>% 
+    mutate(z_mh = 0),
+    
+    econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    filter(wavenumber == 3) %>% 
+    select(pidp, last_status, sex, age) %>% 
+    mutate(z_mh = 1)
+    
+  )
+
+
+
+predictions_wave_c_mh <- predict(mod_02, newdata = wave_c_predictor_matrix_mh, type = "probs")
+
+predictions_predictor_wave_c_mh <- bind_cols(predictions_wave_c_mh, wave_c_predictor_matrix_mh) %>% 
+  pivot_longer(cols = all_of(statuses), names_to = 'current_status', values_to = 'predicted_probability')
+```
+
+How can this be summarised? Perhaps we can look at the sum of predicted probabilities for each current_status and z_mh value?
+
+```{r}
+predictions_predictor_wave_c_mh %>% 
+  group_by(z_mh, current_status) %>% 
+  summarise(total_predicted_persons = sum(predicted_probability)) %>% 
+  ungroup() %>% 
+  mutate(
+    arm = ifelse(z_mh, "control", 'treatment')
+  ) %>% 
+  select(-z_mh) %>% 
+  pivot_wider(names_from = arm, values_from = total_predicted_persons) %>% 
+  mutate(absolute_effect = treatment - control, relative_effect = absolute_effect / control)
+```
+
+I think looks okay as a proof of principle, but the implied effects seem counterintuitive. \
+I wonder if this is because there are marked differences in MH scores by status groups?
+
+What would happen if I were to take the observed mh scores (standardised) and use these instead?
+
+```{r}
+
+predictor_control_mh_wave_c <- 
+  econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    filter(wavenumber == 3) %>% 
+    filter(!is.na(mh_score)) %>% 
+    mutate(z_mh = standardise_scores(mh_score)) %>% 
+    select(pidp, last_status, sex, age, z_mh)
+
+predictor_treatment_mh_wave_c <- 
+  predictor_control_mh_wave_c %>% 
+  mutate(z_mh = z_mh + 1)
+
+```
+
+```{r}
+
+predictions_control_mh_wave_c <- 
+  predict(mod_02, newdata = predictor_control_mh_wave_c, type = 'probs')
+
+predictions_treatment_mh_wave_c <- 
+  predict(mod_02, newdata = predictor_treatment_mh_wave_c, type = 'probs')
+
+```
+
+```{r}
+predictions_predictors_control_mh_wave_c <- 
+  bind_cols(
+    predictor_control_mh_wave_c, predictions_control_mh_wave_c
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "control")
+
+predictions_predictors_treatment_mh_wave_c <- 
+  bind_cols(
+    predictor_treatment_mh_wave_c, predictions_treatment_mh_wave_c
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "treatment")
+
+predictions_predictors_both_mh_wave_c <- 
+  bind_rows(
+    predictions_predictors_control_mh_wave_c,
+    predictions_predictors_treatment_mh_wave_c
+  )
+
+
+rm(
+  predictions_predictors_control_mh_wave_c,
+  predictions_predictors_treatment_mh_wave_c
+)
+```
+
+Now let's see what difference controlling for baseline mh makes
+
+```{r}
+predictions_predictors_both_mh_wave_c %>% 
+  select(-z_mh) %>% 
+  pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
+  mutate(diff_probability = treatment - control) %>% 
+  group_by(last_status, current_status) %>% 
+  summarise(
+    control = sum(control),
+    treatment = sum(treatment),
+    diff = sum(diff_probability)
+  )
+```
+
+Can this be clearly summarised?
+
+```{r}
+predictions_predictors_both_mh_wave_c %>% 
+  select(-z_mh) %>% 
+  pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
+  mutate(diff_probability = treatment - control) %>% 
+  group_by(last_status, current_status) %>% 
+  summarise(
+    control = sum(control),
+    treatment = sum(treatment)
+  ) %>% 
+  mutate(abs_diff = treatment - control, 
+         rel_diff = abs_diff / control
+  ) %>% 
+  select(last_status, current_status, rel_diff) %>% 
+  pivot_wider(names_from = "current_status", values_from = 'rel_diff')
+```
+
+So, this is now predicting various things that seem to be in the right ballpark:
+
+-   For those employed:
+
+    -   1% increase in probability of remaining employed
+
+    -   10% decrease in moving to inactivity for caring responsibilities
+
+    -   47% decrease in probability of moving to long-term sickness
+
+    -   8% fall in probability of becoming a student
+
+    -   3% increase in probability of moving to retirement
+
+-   For those currently long-term sick:
+
+    -   57% increase in probability of moving to employment
+
+    -   40% increase in probability of moving to caring
+
+    -   13% decrease in probability of remaining long-term sick
+
+    -   59% increase in probability of moving to retirement
+
+    -   26% increase in probability of moving to full time study
+
+    -   19% increase in probability of becoming a jobseeker (i.e. economically active)
+
+-   For those currently unemployed:
+
+    -   10% decrease in probability of remaining unemployed
+
+    -   20% increase in probability of moving into employment
+
+    -   6% increase in probability of moving to full time caring
+
+    -   37% decrease in probability of moving to long term sickness
+
+-   For full-time students:
+
+    -   9% increase in probability of moving to employment
+
+    -   43% decrease in probability of moving to long-term sickness
+
+    -   17% decrease in probability of moving to unemployment
+
+And what does this mean for change in composition overall?
+
+```{r}
+predictions_predictors_both_mh_wave_c %>% 
+  select(-z_mh) %>% 
+  pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
+  mutate(diff_probability = treatment - control) %>% 
+  group_by(current_status) %>% 
+  summarise(
+    control = sum(control),
+    treatment = sum(treatment)
+  ) %>% 
+  mutate(abs_diff = treatment - control, 
+         rel_diff = abs_diff / control
+  ) %>% 
+  select(current_status, rel_diff) 
+```
+
+So, overall the intervention is estimated to:
+
+-   Cut the proportion of inactive long-term sick by 20%
+
+-   Cut the proportion unemployed by 14%
+
+-   Increase the proportion employed by 2%
+
+If the main interest is Inactive long term sick then this 20% figure could be interpreted as something like a PAF attributable to poor mental health.
+
+Let's now do something similar for physical health
+
+```{r}
+predictor_control_ph_wave_c <- 
+  econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    filter(wavenumber == 3) %>% 
+    filter(!is.na(ph_score)) %>% 
+    mutate(z_ph = standardise_scores(ph_score)) %>% 
+    select(pidp, last_status, sex, age, z_ph)
+
+predictor_treatment_ph_wave_c <- 
+  predictor_control_ph_wave_c %>% 
+  mutate(z_ph = z_ph + 1)
+```
+
+```{r}
+
+predictions_control_ph_wave_c <- 
+  predict(mod_03, newdata = predictor_control_ph_wave_c, type = 'probs')
+
+predictions_treatment_ph_wave_c <- 
+  predict(mod_03, newdata = predictor_treatment_ph_wave_c, type = 'probs')
+
+```
+
+```{r}
+predictions_predictors_control_ph_wave_c <- 
+  bind_cols(
+    predictor_control_ph_wave_c, predictions_control_ph_wave_c
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "control")
+
+predictions_predictors_treatment_ph_wave_c <- 
+  bind_cols(
+    predictor_treatment_ph_wave_c, predictions_treatment_ph_wave_c
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "treatment")
+
+predictions_predictors_both_ph_wave_c <- 
+  bind_rows(
+    predictions_predictors_control_ph_wave_c,
+    predictions_predictors_treatment_ph_wave_c
+  )
+
+
+rm(
+  predictions_predictors_control_ph_wave_c,
+  predictions_predictors_treatment_ph_wave_c
+)
+```
+
+And here's the high level summary for PH
+
+```{r}
+predictions_predictors_both_ph_wave_c %>% 
+  select(-z_ph) %>% 
+  pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
+  mutate(diff_probability = treatment - control) %>% 
+  group_by(current_status) %>% 
+  summarise(
+    control = sum(control),
+    treatment = sum(treatment)
+  ) %>% 
+  mutate(abs_diff = treatment - control, 
+         rel_diff = abs_diff / control
+  ) %>% 
+  select(current_status, rel_diff) 
+```
+
+So, a highly effective intervention to improve physical health scores is predicted to:
+
+-   Decrease the proportion of long-term sick by 24%
+
+-   Decrease the population of unemployed by 9%
+
+-   Increase employment by 2%
+
+-   Reduce the proportion who are full time carers by 2%
+
+-   Increase the proportion of students by 1.5%
+
+-   Have no substantial effect on retirement
+
+If treating the two types of cause and intervention and separable (which we can't) and so additive (which we shouldn't) we can say something like:
+
+> Poor mental health contributes to around a fifth of long-term sickness; and poor physical health contributes around a quarter to long-term sickness.

@@ -1,0 +1,313 @@
+---
+title: "10_multinomial_with_more_categories"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+# Aim
+
+The aim of this notebook is to run the same kind of modelling as in [08](08_multinomial_logistic_regression.qmd) but with additional economic activity and inactivity categories. This is because both the paths to the different categories of economic inactivity are likely to vary more by age, sex etc, (see [07](07_visualise_transitions_sankey.qmd)) and because (based on the results in [09](09_mh_and_ph_by_econ_act_status.qmd)) the health states and potential consequences differ greatly depending on what kind of economic inactivity is being transitioned to or from, with economic inactivity due to long term ill health the category associated with the poorest health outcomes.
+
+As a preferred model specification has already been found when considering three mutually exclusive categories, I'll start with this model then consider possible simplifications of this as a second stage
+
+# Preparation
+
+First we load the requisite packages and data
+
+```{r}
+
+
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels"
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+
+```
+
+Now to load the category lookup and this time use level 3 rather than level 2
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+
+econ_act_statuses_sevenlevels <- 
+  long_slimmed_data %>% 
+    filter(variable == 'jbstat') %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_3),
+      by = c('value' = 'original')
+    ) %>% 
+    select(pidp, wave, econ_act_status = recoded)
+
+econ_act_statuses_sevenlevels
+
+```
+
+And now to bring this back into a kind of wide tidy format
+
+```{r}
+jj <- 
+  econ_act_statuses_sevenlevels %>% 
+    mutate(wavenumber = match(wave, letters[1:26])) %>% 
+    select(pidp, wavenumber, econ_act_status)
+
+econ_act_current_gvn_last <- 
+  jj %>% 
+    filter(wavenumber > 1) %>%
+    rename(this_status = econ_act_status) %>% 
+    left_join(
+      jj %>% mutate(wavenumber = wavenumber - 1) %>% 
+        rename(last_status = econ_act_status)
+    ) %>% 
+  filter(
+    this_status != 'Missing',
+    last_status != 'Missing'
+  )
+    
+econ_act_current_gvn_last
+```
+
+# #Modelling
+
+## Simple model
+
+As before we can start by simply producing the simplest transition matrices. But I think after that I think we should move onto the more complex version discovered before.
+
+```{r}
+mod_01 <- multinom(this_status ~ last_status, data = econ_act_current_gvn_last)
+```
+
+Predicted probabilities
+
+```{r}
+
+statuses <- c("Employed", "Inactive student", "Unemployed", "Inactive retired", "Inactive care", "Inactive other", "Inactive long term sick")
+
+predicted_transitions_mod_01 <- 
+  predict(mod_01, newdata = tibble(last_status = statuses), type = "probs") %>% as_tibble() %>% 
+    mutate(last_status = statuses) %>% 
+    pivot_longer(cols = all_of(statuses), names_to = "current_status", values_to = "predicted_probability")
+
+predicted_transitions_mod_01
+```
+
+### Transition Matrix heatmap
+
+With this many transitions it's probably best to visualise somehow. Let's look for how to use ggplot2 to produce a heatmap.
+
+```{r}
+predicted_transitions_mod_01 %>% 
+  ggplot(aes(y = last_status, x = current_status, fill = predicted_probability)) + 
+  geom_tile() + 
+  shadowtext::geom_shadowtext(aes(label = round(predicted_probability, 3))) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_fill_distiller(limits = c(0, 1)) + 
+  labs(
+    x = "Current status",
+    y = "Previous status",
+    title = "Overall transition probabilities between economic activity statuses",
+    caption = "Source: UK Household Longitudinal Survey, all waves",
+    fill = "Transition probability"
+  )
+```
+
+There's a lot going on here. But I think this presentation is interpretable.
+
+### Simple model summary
+
+Some findings:
+
+-   Someone who's employed is very likely to remain employed (0.93), and only has about a 2.4% probability of becoming unemployed the next wave. They are equally likely to become an Inactive student (also 2.4%).
+
+-   Someone who is inactive long-term sick in one wave has a 72.4% probability of remaining in this state the following wave. They have about a 6% probability of becoming inactive retired, about a 10% probability of becoming unemployed, about 6% probability of becoming employed, and about a 4% probability of becoming an inactive full time carer.
+
+-   Unemployment seems to be the state with the highest probability of not remaining in that state over multiple waves (other than inactive other, which is likely to be very heterogeneous), with their probability of remaining unemployed being at 43.5%. They have a 25.4% chance of becoming employed, a 10.6% probability of becoming an inactive student, a 10.1% probability of becoming an Inactive carer, and a 7.1% probability of becoming inactive long-term sick.
+
+-   A student in one year has about an 85% probability of remaining a student the next year. By contrast, they have about 9.9% probability of becoming employed, and about a 3.4% probability of becoming unemployed. They have about a 1% probability of becoming either an inactive carer or inactive other.
+
+-   An inactive full-time carer has about a 73% probability of remaining in this state. They have about a 10% probability of moving into employment, and about a 9% probability of moving into unemployment.
+
+-   Someone who is retired has about a 92% probability of remaining in this state. They have about a 5% probability of moving into employment, as compared with about a tenth that probability of moving into Unemployment (0.6%). They have about a 1% probability of moving either into inactive full time care, or inactive long-term sick.
+
+## More complex model
+
+Next we can attempt to use the more sophisticated model specification which worked for the three state transition matrix. We can then see if some of the terms in this mode are not necessary, as the reduced heterogeneity within the inactive category may mean fewer predictor variables are required?
+
+```{r}
+econ_act_current_gvn_last_with_sex_and_age <- 
+  econ_act_current_gvn_last %>%
+    left_join(
+      long_slimmed_data %>% 
+        filter(variable == 'sex')  %>% 
+        mutate(wavenumber = match(wave, letters[1:26])) %>% 
+        select(pidp, wavenumber, sex = value) 
+  ) %>% 
+    filter(sex %in% c('male', 'female')) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'dvage') %>% 
+      mutate(age = as.numeric(value)) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, age)  
+  ) %>% 
+  filter(age >= 0) %>% #negative values indicate missing 
+  filter(between(age, 16, 65)) %>% 
+  mutate(age_group = case_when(
+    between(age, 16, 24) ~ "16-24",
+    between(age, 25, 49) ~ "25-49",
+    between(age, 50, 65) ~ "50-65"
+  )) 
+```
+
+```{r}
+
+mod_01 <- multinom(
+  this_status ~ last_status, # For comparability with mod_13 below
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+# Was model 13 in 08 (three state) modelling
+mod_02 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+
+
+```
+
+```{r}
+BIC(mod_01, mod_02)
+```
+
+So a clear improvement. But think how difficult this will be to present....
+
+```{r}
+predictor_matrix <- expand_grid(
+  sex = c('male', 'female'), 
+  age = 16:65, 
+  last_status = statuses
+)
+
+```
+
+```{r}
+
+predictions <- predict(mod_02, newdata = predictor_matrix, type = "probs")
+
+predictions_predictor_mod_02 <- bind_cols(predictions, predictor_matrix) %>% 
+  pivot_longer(cols = statuses, names_to = 'current_status', values_to = 'predicted_probability')
+
+
+```
+
+And to visualise
+
+```{r}
+predictions_predictor_mod_02 %>% 
+  ggplot(aes(x = age, y = predicted_probability, group = current_status, colour = current_status)) + 
+  geom_line() + 
+  facet_grid(last_status ~ sex)
+```
+
+I think these results all look fairly plausible, but I'm not sure whether age more clearly interacts with sex when considering different economic inactivity types. To test this we can look at a fully saturated model.
+
+```{r}
+# With sex:age interaction terms
+mod_03 <- multinom( 
+  this_status ~ last_status * sex * splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+```
+
+```{r}
+BIC(mod_01, mod_02, mod_03)
+```
+
+No. Thankfully the fully saturated model does not have a superior fit. We can look at an intermediate complexity too
+
+```{r}
+# With sex:age and sex:last_status terms but without three way interactions
+mod_04 <- multinom( 
+  this_status ~ sex * (last_status + splines::bs(age, df = 5)), #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_and_age
+)
+```
+
+```{r}
+BIC(mod_01, mod_02, mod_03, mod_04)
+```
+
+Again the intermediate complexity model does not outperform model 2, so for now this is the baseline.
+
+Let's now produce some transition matrix heatmaps for particular sex and age groups:
+
+Let's say we're interested in the following ages:
+
+-   20
+-   35
+-   50
+
+These have the benefit of being each within the three main age categories considered before, and being an equal number of years apart.
+
+This will produce quite a busy image but should just about be doable:
+
+```{r}
+predictions_predictor_mod_02 %>% 
+  filter(age %in% c(20, 35, 50)) %>% 
+  ggplot(aes(y = last_status, x = current_status, fill = predicted_probability)) + 
+  geom_tile() + 
+  shadowtext::geom_shadowtext(aes(label = round(predicted_probability, 3))) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  scale_fill_distiller(limits = c(0, 1)) + 
+  labs(
+    x = "Current status",
+    y = "Previous status",
+    title = "Overall transition probabilities between economic activity statuses",
+    caption = "Source: UK Household Longitudinal Survey, all waves",
+    fill = "Transition probability"
+  ) + 
+  facet_grid(age ~ sex)
+```
+
+## Next steps
+
+There seems to be a focus/preoccupation with getting PAFs (Population Attributable Fractions) out of model estimates.
+
+This means prioritising modelling some kind of amenable variable, where we can compare the baseline modelled transition probabilities with those which would have occurred if a modifiable variable were instead set to an alternative ideal exposure scenario. (To use the term from the WHO [here](https://www.who.int/data/gho/indicator-metadata-registry/imr-details/1287#:~:text=The%20population%20attributable%20fraction%20is,an%20alternative%20ideal%20exposure%20scenario.))
+
+Perhaps we can start by doing this with SF12 mental and physical health scores, with the alternative being one Z score lower on either one or both dimensions.

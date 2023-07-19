@@ -7,7 +7,7 @@ editor: visual
 
 ## 
 
-## Aim 
+## Aim
 
 The aim of this document is to understand the mental and physical health of those in different economic activity categories
 
