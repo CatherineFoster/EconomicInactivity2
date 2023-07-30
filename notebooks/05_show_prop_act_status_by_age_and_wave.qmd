@@ -276,7 +276,9 @@ long_slimmed_data %>%
     labs(
       x = "wave",
       y = "Proportion",
-      colour = "Economic activity status"
+      colour = "Economic activity status",
+      title = "Proportion in different activity statuses by age group and sex over time",
+      caption = "Source: UKHLS"
     )
 ```
 

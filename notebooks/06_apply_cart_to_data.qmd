@@ -5,9 +5,9 @@ format: docx
 editor: visual
 ---
 
-# Introduction 
+# Introduction
 
-The aim of this notebook is to understand how straightforward and informative applying standard CART approaches to the UKHLS data, with a focus on understanding and presenting which factors are associated with different economic (in)activity statuses in particular waves. 
+The aim of this notebook is to understand how straightforward and informative applying standard CART approaches to the UKHLS data, with a focus on understanding and presenting which factors are associated with different economic (in)activity statuses in particular waves.
 
 # Setup
 
@@ -89,6 +89,7 @@ print(paste(
 rm(long_slimmed_datalist)
 long_slimmed_data
 ```
+
 Didn't I do something similar with household level variables (i.e. build an extractor?)
 
 Yes. It's in two parts...
@@ -112,15 +113,12 @@ eq_incomes_nkids_linked <-
 rm(pid_hid_links, eq_incomes_nkids)
 ```
 
-
-
 ```{r}
 econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
   janitor::clean_names()
 
 
 ```
-
 
 ```{r}
 long_slimmed_data <- 
@@ -161,7 +159,6 @@ long_slimmed_data %>%
 
 long_slimmed_data
 ```
-
 
 ```{r}
 extract_three_periods <- function(data, waves){
@@ -220,8 +217,7 @@ data_2016to2019 <- extract_three_periods(long_slimmed_data, c("h", "i", "j")) %>
 
 ```
 
-To start with, let's try to predict probability of being inactive in current wave given age and sex.
-I'm going to use [this webpage](https://www.r-bloggers.com/2021/04/decision-trees-in-r/) as a reference to borrow from. 
+To start with, let's try to predict probability of being inactive in current wave given age and sex. I'm going to use [this webpage](https://www.r-bloggers.com/2021/04/decision-trees-in-r/) as a reference to borrow from.
 
 ```{r}
 library(rpart)
@@ -241,25 +237,24 @@ tree_01 <- rpart(is_inactive ~ ., data = dta_01)
 rpart.plot(tree_01)
 
 ```
+
 Let's try to interpret this:
 
-- If a person is under 20 years old, there is a 51% probability of being inactive. This group comprises 8% of the sample.
-- If the person is 20 or older then:
-    - If the person is 58 or older (at two waves before), there is a 51% change of being inactive. This group comprises 6% of the sample. (cumulative: 14%)
-    - If the person is under 58 years of age (at two waves before):
-        - If the person is male, there is a 9.5% probability of being inactive; this group comprises 37% of the sample. (cumulative 51%)
-        - If the person is not male (i.e. female), there is a 24% probability of being inactive. This group comprises 49% of the sample (cumulative 100%)
-        
-        
+-   If a person is under 20 years old, there is a 51% probability of being inactive. This group comprises 8% of the sample.
+-   If the person is 20 or older then:
+    -   If the person is 58 or older (at two waves before), there is a 51% change of being inactive. This group comprises 6% of the sample. (cumulative: 14%)
+    -   If the person is under 58 years of age (at two waves before):
+        -   If the person is male, there is a 9.5% probability of being inactive; this group comprises 37% of the sample. (cumulative 51%)
+        -   If the person is not male (i.e. female), there is a 24% probability of being inactive. This group comprises 49% of the sample (cumulative 100%)
+
 ## Next steps
 
 I promised to consider the following additional variables
 
-- ethnicity
-- number of dependent children
-- equivalised household income
-- previous wave's economic status
-
+-   ethnicity
+-   number of dependent children
+-   equivalised household income
+-   previous wave's economic status
 
 We can do equivalised household income and number of dependent children now:
 
@@ -293,24 +288,22 @@ rpart.plot(tree_02)
 
 ```
 
-This model produces a warning, but a model still runs. 
+This model produces a warning, but a model still runs.
 
-It illustrates how the model makes binary decisions when a variable has more than two states. 
+It illustrates how the model makes binary decisions when a variable has more than two states.
 
-- The top level split is asking if the last status was either Employed or Unemployed.
-    - If it was, then it goes to the second split
-        - in the second split, it asks if the person was employed in the last wave:
-        - if the person was employed, it predicts a probability of current wave inactivity of just 0.05, covering 71% of the population
-        - if the person was not employed (so unemployed) it predicts a probability of 0.25 of being inactive in the current wave, covering 6% of the population.
-    - it if was not, then it predicts inactivity in the current wave (a 0.78 probability, covering 22% of the data)
-        - a no at the top level to employed or unemployed implies inactive in last wave
-        - so inactivity in the last wave is the strongest predictor of inactivity in the current wave
+-   The top level split is asking if the last status was either Employed or Unemployed.
+    -   If it was, then it goes to the second split
+        -   in the second split, it asks if the person was employed in the last wave:
+        -   if the person was employed, it predicts a probability of current wave inactivity of just 0.05, covering 71% of the population
+        -   if the person was not employed (so unemployed) it predicts a probability of 0.25 of being inactive in the current wave, covering 6% of the population.
+    -   it if was not, then it predicts inactivity in the current wave (a 0.78 probability, covering 22% of the data)
+        -   a no at the top level to employed or unemployed implies inactive in last wave
+        -   so inactivity in the last wave is the strongest predictor of inactivity in the current wave
 
 Note 71%, 6%, and 22% do not add up to 100%. (Instead it adds up to 99%) This may be either due to missing data or to rounding error in showing %s to no decimal places. (I suspect it's rounding error)
 
-
-Note: even though this model was given more variables from which to recursively partition the data, it made use of just a single variable, the previous wave's state. This highlights the 'stickiness' of economic inactivity states. 
-
+Note: even though this model was given more variables from which to recursively partition the data, it made use of just a single variable, the previous wave's state. This highlights the 'stickiness' of economic inactivity states.
 
 How about if I don't give last wave's status?
 
@@ -330,9 +323,7 @@ tree_03 <- data_2009to2011_linkedToHh %>%
 rpart.plot(tree_03)
 ```
 
-
 Let's now focus on probabilities of transition to economic inactivity given not economically inactive in last wave. This is a matter of just filtering the data then running the model again....
-
 
 ```{r}
 tree_04 <- data_2009to2011_linkedToHh %>% 
@@ -353,8 +344,7 @@ rpart.plot(tree_04)
 
 ```
 
-Of course monthly income is in part (largely?) a consequence of economic activity status, so this might be a facetious predictor in this case. How about if we look at average equivalised monthly income in the previous wave? 
-(The problem with this may be similar... equivalised monthly income in last wave may be determined quite a lot by economic activity status in last wave)
+Of course monthly income is in part (largely?) a consequence of economic activity status, so this might be a facetious predictor in this case. How about if we look at average equivalised monthly income in the previous wave? (The problem with this may be similar... equivalised monthly income in last wave may be determined quite a lot by economic activity status in last wave)
 
 ```{r}
 data_2009to2011_linkedToHhFromLastWave <- data_2009to2011 %>% 
@@ -410,6 +400,4 @@ tree_06 <- data_2009to2011_linkedToHhFromLastWave %>%
 rpart.plot(tree_06)
 ```
 
-Once the previous wave's state is included, a combination of previous state and gender are preferred to equivalised income.
-If someone was employed in the previous wave, they are predicted to only have a 3.5% probability of being inactive in the current wave. 
-Otherwise, if they are male they are predicted to have a 15% probability of being inactive, and if they are female they are predicted to have a 37% probability of being inactive. 
+Once the previous wave's state is included, a combination of previous state and gender are preferred to equivalised income. If someone was employed in the previous wave, they are predicted to only have a 3.5% probability of being inactive in the current wave. Otherwise, if they are male they are predicted to have a 15% probability of being inactive, and if they are female they are predicted to have a 37% probability of being inactive.

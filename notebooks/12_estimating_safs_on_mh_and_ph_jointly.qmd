@@ -1,0 +1,427 @@
+---
+title: "12_estimating_safs_on_mh_and_ph_jointly"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+# Aim
+
+One issue with intrpreting and presenting the results of PAFs is that, when multiple models are used for different interventions/scenarios, each will give an estimated PAF, but the sum of these PAFs can add up to more than 100%.
+
+[This paper](https://pubmed.ncbi.nlm.nih.gov/15026106/) describes why this is so.
+
+It also describes SAFs, sequential attributable fractions, as the term for when factors are added in sequence.
+
+For the MH/PH PAF analysis, two separate models were developed for MH and PH, because the BIC of the joint model was higher (worse) than for either of the individual models. When the aim is to consider the sequential effects, however, only the joint (MH+PH) model is appropriate.
+
+So, that's what we'll build and analyse here:
+
+## Scenarios
+
+We now need to consider the following four scenarios:
+
+-   Baseline: Standard scores unmodified
+-   Counterfactual 1: MH Only; MH scores increased by 1; PH scores unmodified
+-   Counterfactual 2: PH only: PH scores increased by 1; MH scores unmodified
+-   Counterfactual 3: Joint intervention: MH and PH scores boht increased by 1.
+
+# Data management
+
+## Preparation
+
+```{r}
+
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+
+
+```
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+
+econ_act_statuses_sevenlevels <- 
+  long_slimmed_data %>% 
+    filter(variable == 'jbstat') %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_3),
+      by = c('value' = 'original')
+    ) %>% 
+    select(pidp, wave, econ_act_status = recoded)
+
+econ_act_statuses_sevenlevels
+```
+
+```{r}
+jj <- 
+  econ_act_statuses_sevenlevels %>% 
+    mutate(wavenumber = match(wave, letters[1:26])) %>% 
+    select(pidp, wavenumber, econ_act_status)
+
+econ_act_current_gvn_last <- 
+  jj %>% 
+    filter(wavenumber > 1) %>%
+    rename(this_status = econ_act_status) %>% 
+    left_join(
+      jj %>% mutate(wavenumber = wavenumber - 1) %>% 
+        rename(last_status = econ_act_status)
+    ) %>% 
+  filter(
+    this_status != 'Missing',
+    last_status != 'Missing'
+  )
+    
+econ_act_current_gvn_last
+```
+
+```{r}
+# "sf12mcs_dv", "sf12pcs_dv"
+econ_act_current_gvn_last_with_sex_age_and_sf12 <- 
+  econ_act_current_gvn_last %>%
+    left_join(
+      long_slimmed_data %>% 
+        filter(variable == 'sex')  %>% 
+        mutate(wavenumber = match(wave, letters[1:26])) %>% 
+        select(pidp, wavenumber, sex = value) 
+  ) %>% 
+    filter(sex %in% c('male', 'female')) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'dvage') %>% 
+      mutate(age = as.numeric(value)) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, age)  
+  ) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'sf12mcs_dv') %>% 
+      mutate(mh_score = as.numeric(value)) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, mh_score)  
+  ) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'sf12pcs_dv') %>% 
+      mutate(ph_score = as.numeric(value)) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, ph_score)  
+  ) %>% 
+  filter(age >= 0) %>% #negative values indicate missing 
+  filter(between(age, 16, 65)) %>% 
+  mutate(age_group = case_when(
+    between(age, 16, 24) ~ "16-24",
+    between(age, 25, 49) ~ "25-49",
+    between(age, 50, 65) ~ "50-65"
+  )) %>% 
+  mutate(
+    ph_score = ifelse(ph_score < 0, NA, ph_score), # negative indicates missingness 
+    mh_score = ifelse(mh_score < 0, NA, mh_score)  # negative indicates missingness
+  )
+```
+
+Now to model
+
+```{r}
+mod_joint <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + z_ph + z_mh, 
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    mutate(
+      z_ph = standardise_scores(ph_score),
+      z_mh = standardise_scores(mh_score)
+      )
+)
+```
+
+# Predictions
+
+We now have four comparators
+
+```{r}
+statuses <- c("Employed", "Inactive student", "Unemployed", "Inactive retired", "Inactive care", "Inactive other", "Inactive long term sick")
+```
+
+```{r}
+predictor_control_wave_c <- 
+  econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    filter(wavenumber == 3) %>% 
+    filter(!is.na(mh_score)) %>% 
+    mutate(z_mh = standardise_scores(mh_score),
+           z_ph = standardise_scores(ph_score)
+    ) %>% 
+    select(pidp, last_status, sex, age, z_mh, z_ph)
+
+predictor_treatment_mh_wave_c <- 
+  predictor_control_wave_c %>% 
+  mutate(z_mh = z_mh + 1)
+
+predictor_treatment_ph_wave_c <- 
+  predictor_control_wave_c %>% 
+  mutate(z_ph = z_ph + 1)
+
+predictor_treatment_both_wave_c <- 
+  predictor_control_wave_c %>% 
+  mutate(z_ph = z_ph + 1,
+         z_mh = z_mh + 1)
+
+
+
+
+```
+
+Now to produce the predictions
+
+```{r}
+
+predictions_control_wave_c <- 
+  predict(mod_joint, newdata = predictor_control_wave_c, type = 'probs')
+
+predictions_treatment_mh_wave_c <- 
+  predict(mod_joint, newdata = predictor_treatment_mh_wave_c, type = 'probs')
+
+predictions_treatment_ph_wave_c <- 
+  predict(mod_joint, newdata = predictor_treatment_ph_wave_c, type = 'probs')
+
+predictions_treatment_both_wave_c <- 
+  predict(mod_joint, newdata = predictor_treatment_both_wave_c, type = 'probs')
+
+
+```
+
+```{r}
+predictions_predictors_control_wave_c <- 
+  bind_cols(
+    predictor_control_wave_c, predictions_control_wave_c
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "control")
+
+predictions_predictors_treatment_mh_wave_c <- 
+  bind_cols(
+    predictor_treatment_mh_wave_c, predictions_treatment_mh_wave_c
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "treat_mh")
+
+predictions_predictors_treatment_ph_wave_c <- 
+  bind_cols(
+    predictor_treatment_ph_wave_c, predictions_treatment_ph_wave_c
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "treat_ph")
+
+predictions_predictors_treatment_both_wave_c <- 
+  bind_cols(
+    predictor_treatment_both_wave_c, predictions_treatment_both_wave_c
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "treat_both")
+
+
+predictions_predictors_both_wave_c <- 
+  bind_rows(
+    predictions_predictors_control_wave_c,
+    predictions_predictors_treatment_mh_wave_c,
+    predictions_predictors_treatment_ph_wave_c,
+    predictions_predictors_treatment_both_wave_c
+
+  )
+
+
+rm(
+  predictions_predictors_control_wave_c,
+  predictions_predictors_treatment_mh_wave_c,
+  predictions_predictors_treatment_ph_wave_c,
+  predictions_predictors_treatment_both_wave_c
+
+)
+```
+
+Now let's look at the pairwise and joint comparisons
+
+```{r}
+joint_summary_predictions <- 
+  predictions_predictors_both_wave_c %>% 
+    select(-z_mh, -z_ph) %>% 
+    pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
+    group_by(current_status) %>% 
+    summarise(
+      across(control:treat_both, sum)
+    ) 
+
+
+joint_summary_predictions
+```
+
+And what does this imply for relative falls?
+
+```{r}
+joint_summary_predictions %>% 
+  mutate(
+    across(control:treat_both, ~ (. - control) / control)
+  ) %>% 
+  mutate(
+    treat_sum = treat_mh + treat_ph
+  )
+
+
+```
+
+These estimates aren't quite the same as for the individual models. In particular it looks like they're closer to additive in their effects, because for each type of health the effect of the other variable is partialled out somewhat. However, the effect of the joint treatment isn't quite the same as the sume of the two individual effects, as shown by comparing treat_both with treat_sum
+
+Let's now do the same but with wave 10
+
+```{r}
+predictor_control_wave_j <- 
+  econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    filter(wavenumber == 10) %>% 
+    filter(!is.na(mh_score)) %>% 
+    mutate(z_mh = standardise_scores(mh_score),
+           z_ph = standardise_scores(ph_score)
+    ) %>% 
+    select(pidp, last_status, sex, age, z_mh, z_ph)
+
+predictor_treatment_mh_wave_j <- 
+  predictor_control_wave_j %>% 
+  mutate(z_mh = z_mh + 1)
+
+predictor_treatment_ph_wave_j <- 
+  predictor_control_wave_j %>% 
+  mutate(z_ph = z_ph + 1)
+
+predictor_treatment_both_wave_j <- 
+  predictor_control_wave_j %>% 
+  mutate(z_ph = z_ph + 1,
+         z_mh = z_mh + 1)
+
+
+
+
+
+
+predictions_control_wave_j <- 
+  predict(mod_joint, newdata = predictor_control_wave_j, type = 'probs')
+
+predictions_treatment_mh_wave_j <- 
+  predict(mod_joint, newdata = predictor_treatment_mh_wave_j, type = 'probs')
+
+predictions_treatment_ph_wave_j <- 
+  predict(mod_joint, newdata = predictor_treatment_ph_wave_j, type = 'probs')
+
+predictions_treatment_both_wave_j <- 
+  predict(mod_joint, newdata = predictor_treatment_both_wave_j, type = 'probs')
+
+
+predictions_predictors_control_wave_j <- 
+  bind_cols(
+    predictor_control_wave_j, predictions_control_wave_j
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "control")
+
+predictions_predictors_treatment_mh_wave_j <- 
+  bind_cols(
+    predictor_treatment_mh_wave_j, predictions_treatment_mh_wave_j
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "treat_mh")
+
+predictions_predictors_treatment_ph_wave_j <- 
+  bind_cols(
+    predictor_treatment_ph_wave_j, predictions_treatment_ph_wave_j
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "treat_ph")
+
+predictions_predictors_treatment_both_wave_j <- 
+  bind_cols(
+    predictor_treatment_both_wave_j, predictions_treatment_both_wave_j
+  ) %>% 
+  pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
+  mutate(arm = "treat_both")
+
+
+predictions_predictors_both_wave_j <- 
+  bind_rows(
+    predictions_predictors_control_wave_j,
+    predictions_predictors_treatment_mh_wave_j,
+    predictions_predictors_treatment_ph_wave_j,
+    predictions_predictors_treatment_both_wave_j
+
+  )
+
+
+rm(
+  predictions_predictors_control_wave_j,
+  predictions_predictors_treatment_mh_wave_j,
+  predictions_predictors_treatment_ph_wave_j,
+  predictions_predictors_treatment_both_wave_j
+
+)
+```
+
+```{r}
+joint_summary_predictions <- 
+  predictions_predictors_both_wave_j %>% 
+    select(-z_mh, -z_ph) %>% 
+    pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
+    group_by(current_status) %>% 
+    summarise(
+      across(control:treat_both, sum)
+    ) 
+
+
+joint_summary_predictions
+```
+
+```{r}
+joint_summary_predictions %>% 
+  mutate(
+    across(control:treat_both, ~ (. - control) / control)
+  ) %>% 
+  mutate(
+    treat_sum = treat_mh + treat_ph
+  )
+
+```
+
+## Discussion/summary
+
+The results here suggest that MH interventions are more effective at reducing the size of the unemployed population, and PH interventions are more effective at reducing the size of the inactive - long-term sick population. However the models are somewhat artificial, not least because interventions which are likely to be effective at improving PH are likely to be effective at MH, and so on. By contrast, the MH and PH only scenarios model cases where one factor has been changed considerably, but the other has not change at all.

@@ -72,3 +72,28 @@ test_that("can return correct values and labels for a given column", {
     varlabLookup2
   )
 })
+
+
+test_that("standardise_scores works as espected", {
+
+  set.seed(50)
+  x <- rnorm(100, 4, 2)
+
+  z <- standardise_scores(x)
+  testthat::expect_true(
+    all.equal(mean(x), 4, tolerance = 0.1)
+  )
+  testthat::expect_true(
+    all.equal(sd(x), 2, tolerance = 0.1)
+  )
+
+
+  testthat::expect_true(
+    all.equal(mean(z), 0, tolerance = 0.1)
+  )
+  testthat::expect_true(
+    all.equal(sd(z), 1, tolerance = 0.1)
+  )
+
+
+})

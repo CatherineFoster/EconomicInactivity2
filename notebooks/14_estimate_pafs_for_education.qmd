@@ -1,0 +1,338 @@
+---
+title: "11_estimating_pafs_on_mh_and_ph"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+# Aim
+
+This notebook will aim to estimate PAFs attributable to low/no education.
+
+
+Variables to consider:
+
+- feend - age left further education 
+- qfhigh - highest qualication (will require some recoding)
+
+```{r}
+
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", 'feend', 'hiqual_dv'
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "labels", "labels"
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+```
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+
+econ_act_statuses_sevenlevels <- 
+  long_slimmed_data %>% 
+    filter(variable == 'jbstat') %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_3),
+      by = c('value' = 'original')
+    ) %>% 
+    select(pidp, wave, econ_act_status = recoded)
+
+econ_act_statuses_sevenlevels
+```
+
+
+
+```{r}
+jj <- 
+  econ_act_statuses_sevenlevels %>% 
+    mutate(wavenumber = match(wave, letters[1:26])) %>% 
+    select(pidp, wavenumber, econ_act_status)
+
+econ_act_current_gvn_last <- 
+  jj %>% 
+    filter(wavenumber > 1) %>%
+    rename(this_status = econ_act_status) %>% 
+    left_join(
+      jj %>% mutate(wavenumber = wavenumber - 1) %>% 
+        rename(last_status = econ_act_status)
+    ) %>% 
+  filter(
+    this_status != 'Missing',
+    last_status != 'Missing'
+  )
+
+rm(jj)
+    
+econ_act_current_gvn_last
+```
+
+```{r}
+econ_act_current_gvn_last_with_sex_age_and_highest_qual <- 
+  econ_act_current_gvn_last %>%
+    left_join(
+      long_slimmed_data %>% 
+        filter(variable == 'sex')  %>% 
+        mutate(wavenumber = match(wave, letters[1:26])) %>% 
+        select(pidp, wavenumber, sex = value) 
+  ) %>% 
+    filter(sex %in% c('male', 'female')) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'dvage') %>% 
+      mutate(age = as.numeric(value)) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, age)  
+  ) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(variable == 'hiqual_dv') %>% 
+      mutate(highest_qualification = value) %>% 
+      mutate(wavenumber = match(wave, letters[1:26])) %>% 
+      select(pidp, wavenumber, highest_qualification)  
+  ) %>% 
+  filter(age >= 0) %>% #negative values indicate missing 
+  filter(between(age, 25, 65))  %>%  #Increasing minimum age to 25 because at younger ages many people are 
+ # still likely to be undergoing some form of further education
+  filter(!(highest_qualification %in% c('inapplicable', 'missing')))
+```
+What is the distribution of qualifications using these schema? 
+
+```{r}
+econ_act_current_gvn_last_with_sex_age_and_highest_qual %>% 
+  count(highest_qualification)
+```
+
+We should remove inapplicable and missing (DONE!), but in the first instance perhaps treat the other qualifications as categorical, before looking at ordinal models and recategorisations. 
+
+
+
+Now to build the models:
+
+```{r}
+mod_01 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_age_and_highest_qual
+)
+
+mod_02 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + highest_qualification,
+  data = econ_act_current_gvn_last_with_sex_age_and_highest_qual
+)
+
+
+```
+
+
+And how do the models compare using BIC and AIC?
+
+```{r}
+BIC(mod_01, mod_02)
+
+```
+
+The qualification model has a superior model fit using BIC, which penalises complexity more harshly than AIC
+
+```{r}
+AIC(mod_01, mod_02)
+```
+
+Using AIC, the model with qualification included has a better score than the base model.
+
+## Counterfactuals 
+
+What are some counterfactual scenarios we want to consider? 
+
+- Baseline: Everyone's qualification is unchanged
+- Level 1: Everyone has at least a level 1 qualification
+- Level 2: Everyone has at least a level 2 qualification
+
+Let's look at wave 10 
+
+```{r}
+predictors_baseline <- 
+  econ_act_current_gvn_last_with_sex_age_and_highest_qual %>% 
+    filter(wavenumber == 10) %>% 
+    select(pidp, last_status, sex, age, highest_qualification)
+
+predictors_level1 <- 
+  predictors_baseline  %>% 
+  mutate(
+    highest_qualification = ifelse(highest_qualification == 'No qualification', "GCSE etc", as.character(highest_qualification))
+  ) %>% 
+  mutate(
+    highest_qualification = 
+             factor(
+               highest_qualification, levels = c("No qualification", "GCSE etc", "Other qualification", "A-level etc", "Degree", "Other higher degree")
+      )
+    ) 
+
+# levels = c("No qualification", "GCSE etc", "A-level etc", "Degree", "Other higher degree")
+
+
+predictors_level2 <- 
+  predictors_baseline  %>% 
+  mutate(
+    highest_qualification = ifelse(
+      highest_qualification %in% c("No qualification", "Other qualification", "GCSE etc"),
+      "A-level etc"
+      , as.character(highest_qualification))
+    ) %>% 
+  mutate(
+    highest_qualification = 
+             factor(
+               highest_qualification, levels = c("No qualification", "GCSE etc", "Other qualification", "A-level etc", "Degree", "Other higher degree")
+               )
+    ) 
+
+predictors_level3 <- 
+  predictors_baseline  %>% 
+  mutate(
+    highest_qualification = ifelse(
+      highest_qualification %in% c("No qualification", "Other qualification", "GCSE etc", "A-level etc"),
+      "Degree"
+      , as.character(highest_qualification))
+    ) %>% 
+  mutate(
+    highest_qualification = 
+             factor(
+               highest_qualification, levels = c("No qualification", "GCSE etc", "Other qualification", "A-level etc", "Degree", "Other higher degree")
+               )
+    ) 
+```
+
+Now to make the predictions 
+
+```{r}
+predictions_baseline <- 
+  predict(mod_02, newdata = predictors_baseline, type = "probs")
+
+predictions_level1 <- 
+  predict(mod_02, newdata = predictors_level1, type = "probs")
+
+predictions_level2 <- 
+  predict(mod_02, newdata = predictors_level2, type = "probs")
+
+predictions_level3 <- 
+  predict(mod_02, newdata = predictors_level3, type = "probs")
+
+```
+
+Combine
+
+```{r}
+
+all_predictions_predictors <- 
+  bind_rows(
+    predictors_baseline %>% 
+      bind_cols(predictions_baseline) %>% 
+      mutate(
+        arm = "control"
+      ) %>% 
+      select(-highest_qualification) %>% 
+      select(arm, everything()) %>% 
+      pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability"),
+    predictors_level1 %>% 
+      bind_cols(predictions_level1) %>% 
+      mutate(
+        arm = "level1"
+      ) %>% 
+      select(-highest_qualification) %>% 
+      select(arm, everything()) %>% 
+      pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability"),
+    predictors_level2 %>% 
+      bind_cols(predictions_level2) %>% 
+      mutate(
+        arm = "level2"
+      ) %>% 
+      select(-highest_qualification) %>% 
+      select(arm, everything()) %>% 
+      pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability"),
+    predictors_level3 %>% 
+      bind_cols(predictions_level3) %>% 
+      mutate(
+        arm = "level3"
+      ) %>% 
+      select(-highest_qualification) %>% 
+      select(arm, everything()) %>% 
+      pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability")
+
+  )
+
+
+
+```
+
+Now to sum up and summarise 
+
+```{r}
+all_predictions_predictors %>% 
+  group_by(arm, status) %>% 
+  summarise(
+    total_estimated = sum(predicted_probability)
+  ) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = arm, values_from = total_estimated)
+
+```
+
+These numbers appear plausible. What do they mean in relative terms?
+
+```{r}
+all_predictions_predictors %>% 
+  group_by(arm, status) %>% 
+  summarise(
+    total_estimated = sum(predicted_probability)
+  ) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = arm, values_from = total_estimated) %>% 
+  mutate(across(control:level3, function(x) (x - control) / control))
+
+```
+
+These model estimates are starting to look plausible. 
+
+If everyone had at least a GSCE level education, this predicts the size of the employed population would be about a third of a percent hgiher; and if everyone has at least an A-level qualifiation, the employed population would be about 1.2% higher. 
+If everyone had at least an A-level, the size of the student population is estimated to increase by around 13%, presumably because A-levels are a path to degrees (usually). 
+The unemployed population size is predicted to fall by around 1.4% and 10.7% respectively. 
+
+
+I've now added a level3 scenario, in which everyone now has at least a degree! 
+
+This scenario is estimated to increase the size of the employed population by around 2.6%, reduce the size of the long-term sick population by around 25%, and reduce the size of the unemployed population by around 22%. It is also estimated to reduce the size of the carer population by around 14% and increase the size of the student population by around 11%. 
+
+
+
+

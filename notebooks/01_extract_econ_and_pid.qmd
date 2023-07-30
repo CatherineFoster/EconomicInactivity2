@@ -130,7 +130,7 @@ econ_act_groupings_years <-
     )
 ```
 
-## Show above in wide format 
+## Show above in wide format
 
 I think we first want to confirm we can see the econ activity in wide format, with the pidp on the row and each column the econ act status in a different wave
 
@@ -190,7 +190,7 @@ summary(mod_1)
 summary(mod_2)
 ```
 
-Interpreting how the coefficients relate to predicted probabilities unfortunately involves some thinking. In the case of `mod_2`, for example, we need to note that the intercept value only relates to one particular condition/state, namely that in which the respondent was employed for the previous two waves. This is because Employed is used by the logistic regression as the reference category. We know Employed is the reference category is it is *not* listed as a coefficient for a or b. \
+Interpreting how the coefficients relate to predicted probabilities unfortunately involves some thinking. In the case of `mod_2`, for example, we need to note that the intercept value only relates to one particular condition/state, namely that in which the respondent was employed for the previous two waves. This is because Employed is used by the logistic regression as the reference category. We know Employed is the reference category is it is *not* listed as a coefficient for a or b.\
 In order to convert from coefficients to predicted probabilities given previous respondent economic activity history we need to sum up those coefficients which are relevant to the condition we are trying to predict for, and pass this sum of coefficients into the x slot of logit (?) function which looks as follows:
 
 $$

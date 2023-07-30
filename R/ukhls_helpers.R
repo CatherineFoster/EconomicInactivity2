@@ -52,5 +52,20 @@ get_labels_for_col <- function(x) {
 }
 
 
+#' Standardise scores
+#'
+#' @param x A vector of type numeric/double
+#'
+#' @return out: A vector of the same length as x, but with scores standardised
+#' @export
+#'
+#' @examples
+standardise_scores <- function(x){
+  mean_x <- mean(x, na.rm = TRUE)
+  sd_x <- sd(x, na.rm = TRUE)
+  z <- (x - mean_x) / sd_x
+  z
+}
+
 
 

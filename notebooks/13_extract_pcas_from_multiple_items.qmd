@@ -1,0 +1,504 @@
+---
+title: "13_extract_pcas_from_multiple_items"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+
+# Introduction
+
+The aim of this notebook is to do some factor analyses/PCA, in order to reduce from multiple items to just one or two. 
+After getting the PCA, I guess I could then try to get PAF estimates from them. 
+
+
+## Variables?
+
+Firstly, which variables should I try first?
+
+Here are the ones Martin identified:
+
+-  "jbsat"   - job satisfaction
+**autonomy measures**
+-   "wkaut1" - autonomy over job tasks
+-  "wkaut2" - autonomy over work place
+-   "wkaut3"  - autonomy over work manner
+-  "wkaut4" - autonomy over task order
+-  "wkaut5" - autonomy over work hours
+
+-  "jbsec" -  job security
+
+
+
+To this can add:
+# feelings about work 
+- depenth1 - feels **tense** about job
+- depenth2 - feels **uneasy** about job
+- depenth3 - feels **worried** about job
+- depenth4 - feels **depressed** about job
+- depenth5 - feels **gloomy** about job
+- depenth6 - feels **miserable** about job
+
+
+
+For all of the above items, lower scores = **better** 
+
+
+```{r}
+
+
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+library(lavaan)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv",
+  "jbsat", 
+  "wkaut1", "wkaut2", "wkaut3", "wkaut4", "wkaut5", 
+  "jbsec",
+  "depenth1",   "depenth2",  "depenth3",  "depenth4",
+  "depenth5", 'depenth6'
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "values", "values",
+  "values", 
+  "values", "values", "values", "values", "values",
+  "values",
+  "values", "values", "values", "values", "values", 'values'
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+
+```
+We can start by using the factanal function. Then later we can look at the lavaan package. 
+
+To start with let's just get the variables in a wide format
+
+```{r}
+
+job_vars <- c('jbsat', 'wkaut1', 'wkaut2', 'wkaut3', 'wkaut4', 'wkaut5', 'jbsec', 
+              'depenth1', 'depenth2', 'depenth3' ,'depenth4' ,'depenth5', 'depenth6')
+wave_j_scores_complete_cases <- 
+  long_slimmed_data %>% 
+    # filter(wave == "j") %>% .$variable %>% unique()
+  # wave c doesn't have all variables
+  # It's asked every other wave
+  # This includes wave j 
+    filter(wave == 'j') %>% 
+    filter(variable %in% job_vars) %>% 
+    mutate(value = as.numeric(value)) %>% 
+    mutate(value = ifelse(value < 0, NA, value)) %>% 
+    filter(!is.na(value)) %>% 
+    pivot_wider(names_from = variable, values_from = value) %>% 
+    filter(complete.cases(.))
+```
+
+Now to use factanal 
+
+```{r}
+# one factor solutions 
+scores_1_factors <- 
+  wave_j_scores_complete_cases[,-c(1:2)] %>% 
+    factanal(~ jbsat + wkaut1 + wkaut2 + wkaut3 + wkaut4 + wkaut5 + jbsec + 
+               depenth1 + depenth2 + depenth3 + depenth4 + depenth5 + depenth6, 
+             factors = 1, data = .)
+
+scores_2_factors <- 
+  wave_j_scores_complete_cases[,-c(1:2)] %>% 
+    factanal(~ jbsat + wkaut1 + wkaut2 + wkaut3 + wkaut4 + wkaut5 + jbsec + 
+               depenth1 + depenth2 + depenth3 + depenth4 + depenth5 + depenth6, 
+             factors = 2, data = .)
+
+scores_3_factors <- 
+  wave_j_scores_complete_cases[,-c(1:2)] %>% 
+    factanal(~ jbsat + wkaut1 + wkaut2 + wkaut3 + wkaut4 + wkaut5 + jbsec + 
+               depenth1 + depenth2 + depenth3 + depenth4 + depenth5 + depenth6, 
+             factors = 3, data = .)
+
+
+scores_1_factors
+scores_2_factors
+scores_3_factors
+```
+
+Factor analysis appears to have successfully differentiated items relating to feelings about work, and workplace autonomy, as the first and second factor respectively. 
+This suggest the items are appropriate for their respective domains, and that both domains are important. 
+
+The SS loadings of the third factor in the three factor solution is well above 1. 
+However the loadings of items onto this third dimension appear similar to that for the first dimension.
+This means the interpretation of the three factor solution appears harder than for the two factor solution.
+
+For this reason I will use the two factor solution, and refer to the two factors as :
+
+- Factor 1: work_feeling
+- Factor 2: work_autonomy
+
+We can get the scores by using the argument scores = 'regression'
+
+```{r}
+factor_scores <- 
+  wave_j_scores_complete_cases[,-c(1:2)] %>% 
+    factanal(~ jbsat + wkaut1 + wkaut2 + wkaut3 + wkaut4 + wkaut5 + jbsec + 
+               depenth1 + depenth2 + depenth3 + depenth4 + depenth5 + depenth6, 
+             factors = 2, data = ., scores = 'regression')
+
+
+wave_j_pids_scores <- 
+  wave_j_scores_complete_cases %>% 
+  select(pidp) %>% 
+  bind_cols(
+    factor_scores$scores %>% 
+      as_tibble() %>% 
+      rename(work_feeling = Factor1, work_autonomy = Factor2)
+  )
+
+```
+
+Here's some basic descriptive stats: 
+
+```{r}
+mean(wave_j_pids_scores$work_autonomy) ; sd(wave_j_pids_scores$work_autonomy)
+mean(wave_j_pids_scores$work_feeling) ; sd(wave_j_pids_scores$work_feeling)
+
+wave_j_pids_scores %>% 
+  pivot_longer(
+    -pidp, names_to = "factor_name", values_to = 'factor_score'
+  ) %>% 
+  ggplot(aes(x = factor_score)) + 
+    geom_histogram() + 
+    facet_wrap(~factor_name) + 
+    geom_vline(xintercept = 0, colour = 'blue', linetype = 'dashed')
+
+```
+
+So, although both scores are standardised to have a mean around 0 and SD around 1, neither are normally distributed. 
+Instead, they are left-skewed, meaning the modal response is for people to report very few issues with either autonomy or feelings about work, but with an extended right tail in the distribution in which some people report many issues. 
+As might be expected, because there are more items in work_feeling than work_autonomy, the maximum possible scores are higher. 
+
+The work_autonomy factor is also somewhat bimodal, with a second hump in values close to 0. 
+
+
+```{r}
+
+wave_j_pids_scores %>% 
+  pivot_longer(
+    -pidp, names_to = "factor_name", values_to = 'factor_score'
+  ) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(wave == 'j') %>% 
+      filter(variable == 'sex') %>% 
+      select(pidp, sex = value)
+  ) %>% 
+  ggplot(aes(x = factor_score)) + 
+    geom_histogram() + 
+    facet_grid(sex~factor_name) + 
+    geom_vline(xintercept = 0, colour = 'blue', linetype = 'dashed')
+
+```
+
+
+In general it looks like the distributions don't vary much by sex. 
+
+But let's try to summarise this 
+
+```{r}
+wave_j_pids_scores %>% 
+  pivot_longer(
+    -pidp, names_to = "factor_name", values_to = 'factor_score'
+  ) %>% 
+  left_join(
+    long_slimmed_data %>% 
+      filter(wave == 'j') %>% 
+      filter(variable == 'sex') %>% 
+      select(pidp, sex = value)
+  )  %>% 
+  group_by(factor_name, sex) %>% 
+  summarise(
+    mean_score = mean(factor_score),
+    sd_score = sd(factor_score),
+    lower = quantile(factor_score, 0.25),
+    upper = quantile(factor_score, 0.75)
+  )
+```
+So, males tend to have slightly lower scores (more satisfaction with autonomy and feelings about work) than females.
+
+
+I now want to use these scores to make predictions about state in wave k given factor scores in wave j. 
+As the scores are about workplace, we should assume all people are employed in wave j. 
+
+First we need to extract and categorise the economic activity status
+
+
+```{r}
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+
+econ_act_statuses_sevenlevels <- 
+  long_slimmed_data %>% 
+    filter(variable == 'jbstat') %>% 
+    left_join(
+      econ_act_groups %>% select(original, recoded = level_3),
+      by = c('value' = 'original')
+    ) %>% 
+    select(pidp, wave, econ_act_status = recoded)
+
+econ_act_statuses_sevenlevels
+```
+
+```{r}
+jobstat_j <- 
+  econ_act_statuses_sevenlevels %>% 
+  filter(wave == 'j') %>% 
+  rename(stat_last = econ_act_status) %>% 
+  filter(stat_last != "Missing") %>% 
+  select(pidp, stat_last)
+
+jobstat_k <- 
+  econ_act_statuses_sevenlevels %>% 
+  filter(wave == 'k') %>% 
+  rename(stat_this = econ_act_status) %>% 
+  filter(stat_this != "Missing") %>% 
+  select(pidp, stat_this)
+```
+
+
+```{r}
+wave_j_pids_scores
+
+
+combined_data <- 
+  wave_j_pids_scores %>% 
+    inner_join(jobstat_j) %>% 
+    inner_join(jobstat_k) %>% 
+    inner_join(
+      long_slimmed_data %>% 
+      filter(wave == 'j') %>% 
+      filter(variable == 'sex') %>% 
+      select(pidp, sex = value)
+    ) %>% 
+    inner_join(
+      long_slimmed_data %>% 
+        filter(wave == 'j') %>% 
+        filter(variable == 'dvage') %>% 
+        mutate(age = as.numeric(value)) %>% 
+        mutate(age = ifelse(age < 0, NA, age)) %>% 
+        select(pidp, age)
+    )
+
+combined_data
+```
+
+We now have the variables to replicate the base model selected previously, and also test whether the job_score adds to its penalised fit
+
+```{r}
+mod_base <- multinom( 
+  stat_this ~ stat_last * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = combined_data
+)
+
+mod_feeling <- multinom( 
+  stat_this ~ stat_last * sex + splines::bs(age, df = 5) + work_feeling, 
+  data = combined_data
+)
+
+mod_autonomy <- multinom( 
+  stat_this ~ stat_last * sex + splines::bs(age, df = 5) + work_autonomy, 
+  data = combined_data
+)
+
+mod_both <- multinom( 
+  stat_this ~ stat_last * sex + splines::bs(age, df = 5) + work_autonomy + work_feeling, 
+  data = combined_data
+)
+
+
+
+```
+
+Now to compare the BIC 
+
+```{r}
+
+BIC(mod_base, mod_feeling, mod_autonomy, mod_both)
+```
+None of the treatment models outperform the base model, with the feeling model having the least worst additional penalty. 
+
+The above is using BIC, which penalises additional terms more harshly than AIC.
+
+Using AIC may give a slightly different picture...
+
+```{r}
+AIC(mod_base, mod_feeling, mod_autonomy, mod_both)
+```
+When using AIC, the more complex models *are* preferred, with the joint model `mod_both` outperforming the others. 
+
+
+What scenarios are we interested in? 
+
+- Employed in previous wave
+- males and females
+- ages 20, 30, 40 and 50, (and intermediate ages)
+- job scores ranging from -1.5 to + 1.5, at 0.5 increments
+
+```{r}
+predictor_data <- 
+  expand_grid(
+    stat_last = "Employed",
+    sex = c("male", "female"),
+    age = 20:55,
+    work_feeling = seq(-1.5, 1.5, by = 0.5),
+    work_autonomy = seq(-1.5, 1.5, by = 0.5)
+  )
+```
+
+Now the predictions 
+
+```{r}
+predictions <- predict(mod_both, newdata = predictor_data, type = "probs")
+
+predictions_predictors <- 
+  bind_cols(
+    predictions, predictor_data
+  ) %>% 
+  pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability")
+```
+
+
+How best to summarise this? 
+
+Let's start by holding autonomy constant, and varying feeling
+
+```{r}
+
+predictions_predictors %>% 
+  filter(status == 'Employed') %>% 
+  filter(work_autonomy == 0) %>% 
+  ggplot(aes(x = age, y = predicted_probability, colour = factor(work_feeling), group = factor(work_feeling))) + 
+  geom_line() + 
+  facet_wrap(~sex) + 
+  labs(
+    title = "Predicted effects of different job feeling scores on remaining employed",
+    subtitle = "-1.5 indicates high job scores; +1.5 indicates low job scores",
+    x = "Age in years",
+    y = "Predicted probability of remaining employed",
+    colour = "Job Feelings factor score\n(lower is better)"
+  )
+```
+Similarly we can hold feelings constant and vary autonomy:
+
+```{r}
+predictions_predictors %>% 
+  filter(status == 'Employed') %>% 
+  filter(work_feeling == 0) %>% 
+  ggplot(aes(x = age, y = predicted_probability, colour = factor(work_autonomy), group = factor(work_autonomy))) + 
+  geom_line() + 
+  facet_wrap(~sex) + 
+  labs(
+    title = "Predicted effects of different job autonomy scores on remaining employed",
+    subtitle = "-1.5 indicates high job scores; +1.5 indicates low job scores",
+    x = "Age in years",
+    y = "Predicted probability of remaining employed",
+    colour = "Job Autonomy factor score\n(lower is better)"
+  )
+```
+
+As before, we can consider a 1 standardised unit fall in either score a 'treatment', and a value of '0' the control. 
+
+We therefore have four scenarios to consider 
+
+```{r}
+predictions_predictors %>% 
+  filter(
+    work_feeling %in% c(-1, 0), 
+    work_autonomy %in% c(-1, 0)
+  ) %>% 
+  mutate(
+    arm = case_when(
+      work_feeling == 0 & work_autonomy == 0 ~ 'control',
+      work_feeling == -1 & work_autonomy == 0 ~ 'treat_feeling',
+      work_feeling == 0 & work_autonomy == -1 ~ 'treat_autonomy',
+      work_feeling == -1 & work_autonomy == -1 ~ 'treat_both'
+    )
+  ) %>% 
+  ggplot(aes(x = age, y = predicted_probability, group = arm, colour = arm, linetype = arm)) + 
+  facet_grid(status ~ sex, scales = "free_y") + 
+  geom_line() + 
+  labs(
+    x = "Age in years", 
+    y = "Predicted probability of state", 
+    title = "Estimated effects of improving workplace autonomy and feelings about workplace on \nremaining employed or transitioning to other economic (in)activity states",
+    subtitle = "All persons assumed to be employed in previous wave."
+  )
+```
+So, what does this imply in terms of changes from the baseline? 
+
+```{r}
+predictions_predictors %>% 
+  filter(
+    work_feeling %in% c(-1, 0), 
+    work_autonomy %in% c(-1, 0)
+  ) %>% 
+  mutate(
+    arm = case_when(
+      work_feeling == 0 & work_autonomy == 0 ~ 'control',
+      work_feeling == -1 & work_autonomy == 0 ~ 'treat_feeling',
+      work_feeling == 0 & work_autonomy == -1 ~ 'treat_autonomy',
+      work_feeling == -1 & work_autonomy == -1 ~ 'treat_both'
+    )
+  ) %>% 
+  select(-work_feeling, -work_autonomy) %>% 
+  pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
+  mutate(
+    across(treat_both:control, ~.x  - control)
+  ) %>% 
+  select(-control) %>% 
+  pivot_longer(treat_both:treat_autonomy, names_to = 'arm', values_to = 'predicted_probability') %>% 
+  ggplot(aes(x = age, y = predicted_probability, group = arm, colour = arm, linetype = arm)) + 
+  facet_grid(status ~ sex, scales = "free_y") + 
+  geom_line() + 
+  labs(
+    x = "Age in years", 
+    y = "Chage in predicted probability of state (Compared with control)", 
+    title = "Estimated effects of improving workplace autonomy and feelings about workplace on \nremaining employed or transitioning to other economic (in)activity states",
+    subtitle = "All persons assumed to be employed in previous wave."
+  ) + 
+  geom_hline(yintercept = 0)
+```
+Of course, transitions directly from employment to economic inactivity due to long-term sickness are rare, so this category seems to be poorly estimated. 
+Improvements in sense of autonomy and general feelings about work seem to have effects predicted in the expected direction, on both remaining in employment and moving to unemployment. 
+
+Improving feelings associated with work appears to matter more than addressing issues of workplace autonomy.
+
+The predicted effects of moving from employment to being a full time carer appear greater for females than males. 
+
+The only prediction that goes in the opposite direction is the predicted effect of higher autonomy on the decision to retire early at older working age. But this effect is very small compared with other predicted effects. 
+
+
