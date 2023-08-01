@@ -332,7 +332,7 @@ The unemployed population size is predicted to fall by around 1.4% and 10.7% res
 I've now added a level3 scenario, in which everyone now has at least a degree! 
 
 This scenario is estimated to increase the size of the employed population by around 2.6%, reduce the size of the long-term sick population by around 25%, and reduce the size of the unemployed population by around 22%. It is also estimated to reduce the size of the carer population by around 14% and increase the size of the student population by around 11%. 
-
+TEXT
 
 
 
