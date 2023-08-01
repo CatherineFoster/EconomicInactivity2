@@ -785,6 +785,23 @@ rm(
 )
 ```
 
+```{r}
+predictions_predictors_both_ph_wave_c %>% 
+  select(-z_ph) %>% 
+  pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
+  mutate(diff_probability = treatment - control) %>% 
+  group_by(last_status, current_status) %>% 
+  summarise(
+    control = sum(control),
+    treatment = sum(treatment)
+  ) %>% 
+  mutate(abs_diff = treatment - control, 
+         rel_diff = abs_diff / control
+  ) %>% 
+  select(last_status, current_status, rel_diff) %>% 
+  pivot_wider(names_from = "current_status", values_from = 'rel_diff')
+```
+
 And here's the high level summary for PH
 
 ```{r}
@@ -983,4 +1000,3 @@ predictions_predictors_both_ph_wave_j %>%
   ) %>% 
   select(current_status, rel_diff) 
 ```
-

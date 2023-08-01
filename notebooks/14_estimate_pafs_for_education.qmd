@@ -13,7 +13,17 @@ This notebook will aim to estimate PAFs attributable to low/no education.
 Variables to consider:
 
 - feend - age left further education 
-- qfhigh - highest qualication (will require some recoding)
+- hiqual_dv - highest qualification (will require some recoding)
+
+## Discussion with Martin
+
+- We are unsure where the 'other qualification' group fits within within a simple and meaningful hierarchy going from none, to gcse, to A-level to degree
+    - We could look at making it equivalent both to gcse, or to A-level, and modelling under both assumptions?
+- We could also look at age left further education? 
+
+## Data loading and prep
+
+
 
 ```{r}
 
@@ -27,11 +37,11 @@ base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
 indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
 
 varnames <-  c(
-  "jbstat", "dvage", "sex", 'feend', 'hiqual_dv'
+  "jbstat", "dvage", "sex", 'hiqual_dv'
   )
 
 extract_what <- c(
-  "labels", "values", "labels", "labels", "labels"
+  "labels", "values", "labels", "labels"
   )
 
 overall_start_time = Sys.time()
@@ -54,7 +64,27 @@ print(paste(
 ))
 rm(long_slimmed_datalist)
 long_slimmed_data
+
+
 ```
+We want to look at age left full time education, `feend_dv`. This variable should be in one of the cross-wave datasets (prefixed x). 
+
+Let's look to extract these
+
+```{r}
+pidp_feend <- haven::read_dta(col_select = c('pidp', 'feend_dv'),
+  file = here(base_dir_location, "xwavedat.dta")
+) %>% mutate(
+    across(.cols = everything(), .fns = ~as_factor(., levels = 'values') %>% as.character() %>% as.numeric())
+  ) %>% 
+  mutate(
+    feend_dv = ifelse(feend_dv < 0, NA, feend_dv)
+  ) %>% 
+  select(pidp, feend_dv)
+
+```
+
+
 
 ```{r}
 econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
@@ -123,10 +153,30 @@ econ_act_current_gvn_last_with_sex_age_and_highest_qual <-
       mutate(wavenumber = match(wave, letters[1:26])) %>% 
       select(pidp, wavenumber, highest_qualification)  
   ) %>% 
+    left_join(
+      pidp_feend
+  ) %>% 
   filter(age >= 0) %>% #negative values indicate missing 
   filter(between(age, 25, 65))  %>%  #Increasing minimum age to 25 because at younger ages many people are 
  # still likely to be undergoing some form of further education
-  filter(!(highest_qualification %in% c('inapplicable', 'missing')))
+  filter(!(highest_qualification %in% c('inapplicable', 'missing'))) %>% 
+  filter(!is.na(feend_dv)) %>% 
+  mutate(
+    highest_qualification = ordered(
+      highest_qualification, 
+      levels = c("No qualification", "Other qualification", "GCSE etc", "A-level etc", "Degree", "Other higher degree")
+      )
+    ) %>% 
+  mutate(
+    additional_years_education = feend_dv - 16
+  ) %>% 
+  mutate(
+    years_further_education_category = cut(
+      feend_dv, breaks = c(-Inf,18, 20, 23, +Inf), 
+      labels = c("Q1: 18 or below", "Q2: 19 or 20", "Q3: 21 or 22", "Q4: 23 or above"),
+      ordered = TRUE
+    )
+  )
 ```
 What is the distribution of qualifications using these schema? 
 
@@ -135,9 +185,47 @@ econ_act_current_gvn_last_with_sex_age_and_highest_qual %>%
   count(highest_qualification)
 ```
 
+```{r}
+ econ_act_current_gvn_last_with_sex_age_and_highest_qual %>% ggplot(aes(additional_years_education, highest_qualification)) + geom_boxplot() + lims(x = c(0, 12))
+```
+
 We should remove inapplicable and missing (DONE!), but in the first instance perhaps treat the other qualifications as categorical, before looking at ordinal models and recategorisations. 
 
+Now what about age left full time education?
 
+```{r}
+econ_act_current_gvn_last_with_sex_age_and_highest_qual %>% 
+  group_by(feend_dv) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(
+    share = n / sum(n),
+    cumulative_share = cumsum(share)
+  )
+```
+```{r}
+econ_act_current_gvn_last_with_sex_age_and_highest_qual %>% 
+  group_by(feend_dv) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(
+    share = n / sum(n),
+    cumulative_share = cumsum(share)
+  ) %>% 
+  ggplot(aes(feend_dv, cumulative_share)) + 
+  geom_point() + geom_line() +
+  labs(
+    x = "Age left full time education", 
+    y = "Cumulative share of population",
+    title = "Cumulative share of population by age left full time education"
+  )
+```
+Maybe we could divide into: 
+- 18 or below (lowest quartile)
+- 19 to 22 (middle half)
+- 23 or above (highest quartile)
+
+Actually trying quartiles for consistency...
 
 Now to build the models:
 
@@ -152,6 +240,35 @@ mod_02 <- multinom(
   data = econ_act_current_gvn_last_with_sex_age_and_highest_qual
 )
 
+# We should consider a number of ways of representing age left FT education
+
+#The simplest way 
+
+mod_03 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + additional_years_education,
+  data = econ_act_current_gvn_last_with_sex_age_and_highest_qual 
+)
+
+# nonlinear on education
+mod_04 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + poly(additional_years_education, 2),
+  data = econ_act_current_gvn_last_with_sex_age_and_highest_qual 
+)
+
+mod_05 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + poly(additional_years_education, 3),
+  data = econ_act_current_gvn_last_with_sex_age_and_highest_qual 
+)
+
+# Using quartiles
+
+mod_06 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + years_further_education_category,
+  data = econ_act_current_gvn_last_with_sex_age_and_highest_qual 
+)
+
+
+
 
 ```
 
@@ -159,25 +276,31 @@ mod_02 <- multinom(
 And how do the models compare using BIC and AIC?
 
 ```{r}
-BIC(mod_01, mod_02)
+BIC(mod_01, mod_02, mod_03, mod_04, mod_05, mod_06)
 
 ```
 
 The qualification model has a superior model fit using BIC, which penalises complexity more harshly than AIC
 
 ```{r}
-AIC(mod_01, mod_02)
+AIC(mod_01, mod_02, mod_03, mod_04, mod_05, mod_06)
 ```
 
-Using AIC, the model with qualification included has a better score than the base model.
+
+By both criteria, the quartile approach outperforms alternatives. 
 
 ## Counterfactuals 
+
+
+### Counterfactuals with qualification 
+
 
 What are some counterfactual scenarios we want to consider? 
 
 - Baseline: Everyone's qualification is unchanged
-- Level 1: Everyone has at least a level 1 qualification
-- Level 2: Everyone has at least a level 2 qualification
+- Level 1: Everyone has at least a level 1 qualification (GCSE or similar)
+- Level 2: Everyone has at least a level 2 qualification (A level or similar)
+- Level 3: everyone has at least a level 3 qualification (Degree)
 
 Let's look at wave 10 
 
@@ -334,5 +457,217 @@ I've now added a level3 scenario, in which everyone now has at least a degree!
 This scenario is estimated to increase the size of the employed population by around 2.6%, reduce the size of the long-term sick population by around 25%, and reduce the size of the unemployed population by around 22%. It is also estimated to reduce the size of the carer population by around 14% and increase the size of the student population by around 11%. 
 TEXT
 
+Let's now look at things by last status as well:
+
+```{r}
+all_predictions_predictors %>% 
+  group_by(last_status, arm, status) %>% 
+  summarise(
+    total_estimated = sum(predicted_probability)
+  ) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = arm, values_from = total_estimated) %>% 
+  mutate(across(control:level3, function(x) (x - control) / control))
+
+```
+
+There's clearly a lot of values here, so perhaps we should try to present it as a graph? 
+
+```{r}
+all_predictions_predictors %>% 
+  group_by(last_status, arm, status) %>% 
+  summarise(
+    total_estimated = sum(predicted_probability)
+  ) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = arm, values_from = total_estimated) %>% 
+  mutate(across(control:level3, function(x) (x - control) / control)) %>% 
+  select(-control) %>% 
+  pivot_longer(level1:level3, names_to = "intervention_level", values_to = "predicted_proportional_change") %>% 
+  ggplot(aes(predicted_proportional_change, status, group = intervention_level, fill = intervention_level)) + 
+  facet_wrap(~last_status, scales = 'free_x') + 
+  geom_bar(stat = 'identity', position = 'dodge') +
+  labs(x = "Predicted change in proportion in category", 
+       y = "Category moved to", 
+       title = "Predicted effects of small, medium and large changes in baseline education on transitions between economic categories", subtitle = "Level 1: Everyone has at least a GCSE or similar; Level 2: Everyone has at least an A-level or similar; Level 3: Everyone has at least a degree",
+       caption = "Source: UKHLS, using sample composition in wave j. Multinomial logistic regression controlling for nonlinear effects of age, sex, and previous status. Facet labels indicate status in last wave"
+       )
+
+```
+
+### Counterfactuals with quartiles of years of education 
+
+mod_06, which uses quartile of years of education, has a better penalised model fit than other models.
+It is also relatively straightforward to interpret, and produce counterfactuals on the basis of:
+
+- baseline: all categories as is
+- level 1: Everyone has at least the second quartile (Q2: 19 or 20)
+- level 2: Everyone has at least the third quartile (Q3: 21 or 22)
+- level 3: Everyone is in the top quartile (Q4: 23 or above)
+
+```{r}
+
+predictors_baseline <- 
+  econ_act_current_gvn_last_with_sex_age_and_highest_qual %>% 
+    filter(wavenumber == 10) %>% 
+    select(pidp, last_status, sex, age, years_further_education_category)
+
+predictors_level1 <- 
+  predictors_baseline  %>% 
+  mutate(
+    years_further_education_category = ifelse(
+      years_further_education_category == 'Q1: 18 or below', 
+      "Q2: 19 or 20", 
+      as.character(years_further_education_category)
+    )
+  ) %>% 
+  mutate(
+    years_further_education_category = 
+             ordered(
+               years_further_education_category, levels = c("Q1: 18 or below", "Q2: 19 or 20", "Q3: 21 or 22", "Q4: 23 or above")
+      )
+    ) 
+
+predictors_level2 <- 
+  predictors_baseline  %>% 
+  mutate(
+    years_further_education_category = ifelse(
+      years_further_education_category %in% c('Q1: 18 or below', "Q2: 19 or 20"), 
+      "Q3: 21 or 22", 
+      as.character(years_further_education_category)
+    )
+  ) %>% 
+  mutate(
+    years_further_education_category = 
+             ordered(
+               years_further_education_category, levels = c("Q1: 18 or below", "Q2: 19 or 20", "Q3: 21 or 22", "Q4: 23 or above")
+      )
+    ) 
+
+predictors_level3 <- 
+  predictors_baseline  %>% 
+  mutate(
+    years_further_education_category = ifelse(
+      years_further_education_category %in% c('Q1: 18 or below', "Q2: 19 or 20", "Q3: 21 or 22"), 
+      "Q4: 23 or above", 
+      as.character(years_further_education_category)
+    )
+  ) %>% 
+  mutate(
+    years_further_education_category = 
+             ordered(
+               years_further_education_category, levels = c("Q1: 18 or below", "Q2: 19 or 20", "Q3: 21 or 22", "Q4: 23 or above")
+      )
+    ) 
 
 
+
+#       labels = c("Q1: 18 or below", "Q2: 19 or 20", "Q3: 21 or 22", "Q4: 23 or above"),
+```
+
+```{r}
+predictions_baseline <- 
+  predict(mod_06, newdata = predictors_baseline, type = "probs")
+
+predictions_level1 <- 
+  predict(mod_06, newdata = predictors_level1, type = "probs")
+
+predictions_level2 <- 
+  predict(mod_06, newdata = predictors_level2, type = "probs")
+
+predictions_level3 <- 
+  predict(mod_06, newdata = predictors_level3, type = "probs")
+
+```
+
+```{r}
+all_predictions_predictors <- 
+  bind_rows(
+    predictors_baseline %>% 
+      bind_cols(predictions_baseline) %>% 
+      mutate(
+        arm = "control"
+      ) %>% 
+      select(-years_further_education_category) %>% 
+      select(arm, everything()) %>% 
+      pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability"),
+    predictors_level1 %>% 
+      bind_cols(predictions_level1) %>% 
+      mutate(
+        arm = "level1"
+      ) %>% 
+      select(-years_further_education_category) %>% 
+      select(arm, everything()) %>% 
+      pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability"),
+    predictors_level2 %>% 
+      bind_cols(predictions_level2) %>% 
+      mutate(
+        arm = "level2"
+      ) %>% 
+      select(-years_further_education_category) %>% 
+      select(arm, everything()) %>% 
+      pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability"),
+    predictors_level3 %>% 
+      bind_cols(predictions_level3) %>% 
+      mutate(
+        arm = "level3"
+      ) %>% 
+      select(-years_further_education_category) %>% 
+      select(arm, everything()) %>% 
+      pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability")
+
+  )
+
+```
+
+```{r}
+all_predictions_predictors %>% 
+  group_by(arm, status) %>% 
+  summarise(
+    total_estimated = sum(predicted_probability)
+  ) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = arm, values_from = total_estimated)
+```
+
+I think this is suggesting a kind of sweet spot around level2. But let's look at these in relative terms
+
+```{r}
+all_predictions_predictors %>% 
+  group_by(arm, status) %>% 
+  summarise(
+    total_estimated = sum(predicted_probability)
+  ) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = arm, values_from = total_estimated) %>% 
+  mutate(across(control:level3, function(x) (x - control) / control))
+
+
+```
+
+The key category level 2, a scenario in which everyone is educated to at least age 21. (Effectively, to undergrad degree level.)
+
+In this scenario, the size of the long-term sick population is estimated to reduce by around an eighth, and unemployment to fall by about a tenth. The increase in the size of the employed population is only estimated to increase by about 0.7%, however, whereas the student population is estimated to increase by around 7.6%. The full-time carer population is estimated to fall by around a twentieth too. 
+
+The maximal, level 3 scenario, in which everyone stays in further education until at least age 23, appears more adverse in its estimated effects than level 2, with reduced employment, greatly increases probabilities of becoming/remaining a student (by 151%), and also an 8% increase in the size of the unemployed population and size of those inactive for 'other' reasons. 
+
+To the extent the level 3 scenario model is reasonable, could it be picking up on characteristic differences in those who remain in full time education until advanced ages? Such differences could include:
+- Being inherently less attractive to employers (e.g. issues of neurodiversity or mental health problems)
+- Being more attracted and focused on academic employment, which is more precarious and oversupplied than much of the labour market
+- Being less attracted to formal employment (the mirror of the first possible explanation), and more towards gaining further education and qualifications for its own sake, rather than to enhance employability? 
+
+
+Regardless, both the qualifications-based, and the education-leaving-age-based, approaches to estimating the effects of additional years of education suggest that a first degree appears protective of many of the more adverse labour market categories, such as unemployment and long-term sickness, but that the marginal gains of additional education beyond the first degree appear slight if not negative. 
+
+Note in the above I wrote 'a first degree appears protective of ...'. Instead it is more likely that those individual level qualities, and/or socioeconomic circumstances, which lead to increased probabilities of getting a first degree also lead to these apparently protective labour market effects.
+
+
+Queries/ideas from Neil:
+
+- What about differentiating those who just stay in further education and get more degrees,
+- compared with those who return to get another qualification after a break, or do part time qualifications to support their professional or personal/academic interests?
+- Also look at earnings
+- Motherhood penality
+  - Can we look at effects of birth of first child on female earnings and labour market engagement?
+- **Adult returners** 
+  - Considering support for adult learning   

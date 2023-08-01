@@ -502,3 +502,15 @@ The predicted effects of moving from employment to being a full time carer appea
 The only prediction that goes in the opposite direction is the predicted effect of higher autonomy on the decision to retire early at older working age. But this effect is very small compared with other predicted effects. 
 
 
+## Next steps 
+
+Look at three categories of economic (in)activity:
+- Unemployment
+- Employment
+- All Economic Inactivity
+
+Look at **jobsec** as a separate third variable.
+
+
+
+
