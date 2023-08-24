@@ -6,9 +6,10 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Jon Minton; Martin">
+<meta name="author" content="Jon Minton">
+<meta name="author" content="Martin Taulbut">
 
-<title>01_extract_pid_and_econ</title>
+<title>Notebook 01: Extract PID and Econ</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -69,18 +70,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="01_extract_econ_and_pid_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="01_extract_econ_and_pid_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 </head>
 
-<body class="fullcontent">
+<body>
 
 <div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
-
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="01_extract_econ_and_pid.docx"><i class="bi bi-file-word"></i>MS Word</a></li></ul></div></div>
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">01_extract_pid_and_econ</h1>
+<h1 class="title">Notebook 01: Extract PID and Econ</h1>
 </div>
 
 
@@ -88,9 +92,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="quarto-title-meta">
 
     <div>
-    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-heading">Authors</div>
     <div class="quarto-title-meta-contents">
-             <p>Jon Minton; Martin </p>
+             <p>Jon Minton </p>
+             <p>Martin Taulbut </p>
           </div>
   </div>
     
@@ -110,28 +115,375 @@ Later iterations will also incorporate predictor variables.</p>
 <h2 class="anchored" data-anchor-id="preparation">Preparation</h2>
 <p>First we load some packages, including the economic_inactivity package created as part of this project.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stderr">
-<pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-✔ dplyr     1.1.2     ✔ readr     2.1.4
-✔ forcats   1.0.0     ✔ stringr   1.5.0
-✔ ggplot2   3.4.2     ✔ tibble    3.2.1
-✔ lubridate 1.9.2     ✔ tidyr     1.3.0
-✔ purrr     1.0.1     
-── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-✖ dplyr::filter() masks stats::filter()
-✖ dplyr::lag()    masks stats::lag()
-ℹ Use the ]8;;http://conflicted.r-lib.org/conflicted package]8;; to force all conflicts to become errors</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(haven)</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co">#library(economic_inactivity)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(haven)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(here)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">#library(economic_inactivity)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
 <p>Now we specify the base folder location containing all the UKHLS files we will want to access and iterate over.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>base_dir_location <span class="ot">&lt;-</span> <span class="st">"big_data/UKDA-6614-stata/stata/stata13_se/ukhls"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>base_dir_location <span class="ot">&lt;-</span> <span class="st">"big_data/UKDA-6614-stata/stata/stata13_se/ukhls"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now we want to just get a list of the indresp files in the above directory</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>indresp_files <span class="ot">&lt;-</span> <span class="fu">dir</span>(<span class="fu">here</span>(base_dir_location), <span class="at">pattern =</span> <span class="st">"[a-z]_indresp.dta"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
 <p>Now we want to declare the columns that we want to extract.</p>
 <p>Initially this will just be economic activity status and PID. But soon we will expand this to cover additional explanatory variables too.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>variable_patterns <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"pidp"</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"^[a-z]{1}_jbstat"</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now to test we can select only the two (initially) columns of interest in the first data extract. Afterwards we will generalise to all data extracts</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>data_wave_1 <span class="ot">&lt;-</span> haven<span class="sc">::</span><span class="fu">read_dta</span>(indresp_files[<span class="dv">1</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now to select only those variables which match the variable patterns above</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>data_wave_1 <span class="sc">%&gt;%</span> </span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pidp, <span class="fu">ends_with</span>(<span class="st">"jbstat"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 50,994 × 2
+       pidp a_jbstat                  
+      &lt;dbl&gt; &lt;dbl+lbl&gt;                 
+ 1 68001367 2 [Paid employment(ft/pt)]
+ 2 68004087 2 [Paid employment(ft/pt)]
+ 3 68006127 3 [unemployed]            
+ 4 68006135 7 [full-time student]     
+ 5 68006807 4 [retired]               
+ 6 68007487 3 [unemployed]            
+ 7 68007491 8 [LT sick or disabled]   
+ 8 68007495 2 [Paid employment(ft/pt)]
+ 9 68007499 2 [Paid employment(ft/pt)]
+10 68008167 6 [Family care or home]   
+# ℹ 50,984 more rows</code></pre>
+</div>
+</div>
+<p>We can now do this for all waves…</p>
+<p>The steps are:</p>
+<ol type="1">
+<li>Create a dataframe with the filenames to extract from</li>
+<li>Create a function that loads that dataframe and selects, and returns, only those columns we want to return
+<ol type="1">
+<li>The above function would also split names like a_jbstat into the wave component and the variable name</li>
+</ol></li>
+<li>Bind the rows of all returns from the above</li>
+</ol>
+<p>We will end with a very long dataframe with three columns: pidp, wave, and jbstat</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>extract_vars_and_make_long <span class="ot">&lt;-</span> <span class="cf">function</span>(dta, varname){</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  out <span class="ot">&lt;-</span> dta <span class="sc">%&gt;%</span> </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>     <span class="co"># hard-coded for now</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>     <span class="fu">select</span>(pidp, <span class="fu">matches</span>(<span class="fu">paste0</span>(<span class="st">"^[a-z]{1}_"</span>, varname))) <span class="sc">%&gt;%</span> </span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>     <span class="fu">pivot_longer</span>(<span class="sc">-</span>pidp) <span class="sc">%&gt;%</span> </span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">separate_wider_delim</span>(</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>      name, </span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">delim =</span> <span class="st">"_"</span>, </span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">names =</span> <span class="fu">c</span>(<span class="st">"wave"</span>, <span class="st">"variable"</span>)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">value =</span> <span class="fu">as_factor</span>(value, <span class="at">levels =</span> <span class="st">'labels'</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>             <span class="fu">as.character</span>()</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  out</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Let’s try the above function on a single loaded dataset</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>long_dta <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">file_loc =</span> indresp_files</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">all_data =</span> <span class="fu">map</span>(file_loc, haven<span class="sc">::</span>read_dta)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">slimmed_data =</span> <span class="fu">map</span>(all_data, extract_vars_and_make_long, <span class="at">varname =</span> <span class="st">"jbstat"</span>)</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>all_data)</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>long_dta_combined <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(long_dta<span class="sc">$</span>slimmed_data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>We now need to standardise the economic activity categories across all waves</p>
+<p>We’ve created a spreadsheet with our proposed regroupings</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>econ_act_groups <span class="ot">&lt;-</span> readxl<span class="sc">::</span><span class="fu">read_excel</span>(<span class="at">path =</span> <span class="fu">here</span>(<span class="st">"data/economic_activities_categories.xlsx"</span>), <span class="at">sheet =</span> <span class="st">'categories'</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  janitor<span class="sc">::</span><span class="fu">clean_names</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>econ_act_groupings_years <span class="ot">&lt;-</span> </span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  long_dta_combined <span class="sc">%&gt;%</span> </span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># mutate(</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">#   approximate_year = map_dbl(wave, function(x) match(x, letters) + 2008)</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># ) %&gt;% </span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>      econ_act_groups,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">by  =</span> <span class="fu">c</span>(<span class="st">'value'</span> <span class="ot">=</span> <span class="st">'original'</span>)</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+<section id="show-above-in-wide-format" class="level2">
+<h2 class="anchored" data-anchor-id="show-above-in-wide-format">Show above in wide format</h2>
+<p>I think we first want to confirm we can see the econ activity in wide format, with the pidp on the row and each column the econ act status in a different wave</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>econ_act_groupings_years <span class="sc">%&gt;%</span> <span class="fu">select</span>(pidp, wave, level_2_meso) <span class="sc">%&gt;%</span> <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> <span class="st">'wave'</span>, <span class="at">values_from =</span> <span class="st">'level_2_meso'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 88,602 × 13
+       pidp a        b     c     d     e     f     g     h     i     j     k    
+      &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;
+ 1 68001367 Employed &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 2 68004087 Employed Empl… Empl… Empl… Empl… Empl… Empl… Empl… Empl… Inac… &lt;NA&gt; 
+ 3 68006127 Unemplo… Unem… Inac… Inac… Inac… Inac… Inac… Inac… Inac… Unem… Unem…
+ 4 68006135 Inactive &lt;NA&gt;  Empl… Empl… Empl… &lt;NA&gt;  Empl… &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 5 68006807 Inactive Inac… Inac… Inac… Inac… Inac… Inac… Inac… Inac… &lt;NA&gt;  &lt;NA&gt; 
+ 6 68007487 Unemplo… Unem… Empl… Empl… &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 7 68007491 Inactive &lt;NA&gt;  &lt;NA&gt;  Empl… &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 8 68007495 Employed &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 9 68007499 Employed &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+10 68008167 Inactive Inac… &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+# ℹ 88,592 more rows
+# ℹ 1 more variable: l &lt;chr&gt;</code></pre>
+</div>
+</div>
+<p>We are thinking about modelling approaches given we have panel data.</p>
+<p>One way of starting would just be to predict whether inactive at time T given activity status at time T-1, and also given activity status at time T-2 (i.e.&nbsp;we can compared whether there’s added value of ‘remembering’ the status of an individual’s activity status two waves ago rather than just in the last wave.</p>
+<p>Let’s start to trial this approach by building two logistic regression models and comparing them.</p>
+<p>We will initially just try to predict status in wave c.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>inact_in_wave_c_data <span class="ot">&lt;-</span> econ_act_groupings_years <span class="sc">%&gt;%</span> </span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pidp, wave, level_2_meso) <span class="sc">%&gt;%</span>  </span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> <span class="st">'wave'</span>, <span class="at">values_from =</span> <span class="st">'level_2_meso'</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pidp, a<span class="sc">:</span>c) </span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>inact_in_wave_c_data <span class="ot">&lt;-</span> inact_in_wave_c_data <span class="sc">%&gt;%</span> </span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">complete.cases</span>(.))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>The above is an extract of the data for waves a, b and c.&nbsp;Only complete cases were retained so there are issues with representativeness/bias etc.</p>
+<p>The three models below attempt to predict the probability of being economically inactive at wave c based on increasing amounts of information:</p>
+<ul>
+<li><p><code>mod_0</code>: No predictors (i.e.&nbsp;the general probability for all included in the sample frame of being inactive in wave c)</p></li>
+<li><p><code>mod_1</code>: Predicted on economic activity status in wave b only. (employed as reference category.</p></li>
+<li><p><code>mod_2</code>: Predicted on economic activity status in wave a and wave b. (i.e.&nbsp;two waves ago rather than just last wave)</p></li>
+</ul>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>mod_0 <span class="ot">&lt;-</span> <span class="fu">glm</span>(c <span class="sc">==</span> <span class="st">'Inactive'</span> <span class="sc">~</span> <span class="dv">1</span>, <span class="at">data =</span> inact_in_wave_c_data, <span class="at">family =</span> <span class="st">"binomial"</span>) </span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>mod_1 <span class="ot">&lt;-</span> <span class="fu">glm</span>(c <span class="sc">==</span> <span class="st">'Inactive'</span> <span class="sc">~</span> b, <span class="at">data =</span> inact_in_wave_c_data, <span class="at">family =</span> <span class="st">"binomial"</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>mod_2 <span class="ot">&lt;-</span> <span class="fu">glm</span>(c <span class="sc">==</span> <span class="st">'Inactive'</span> <span class="sc">~</span> b <span class="sc">+</span> a, <span class="at">data =</span> inact_in_wave_c_data, <span class="at">family =</span> <span class="st">"binomial"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>We can produce summaries of the models as follows:</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_0)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = c == "Inactive" ~ 1, family = "binomial", data = inact_in_wave_c_data)
+
+Deviance Residuals: 
+   Min      1Q  Median      3Q     Max  
+-1.005  -1.005  -1.005   1.360   1.360  
+
+Coefficients:
+            Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept) -0.41994    0.01158  -36.28   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 41884  on 31182  degrees of freedom
+Residual deviance: 41884  on 31182  degrees of freedom
+AIC: 41886
+
+Number of Fisher Scoring iterations: 4</code></pre>
+</div>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = c == "Inactive" ~ b, family = "binomial", data = inact_in_wave_c_data)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.1452  -0.3168  -0.3168   0.4595   2.4566  
+
+Coefficients:
+             Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)  -2.96718    0.03534 -83.967   &lt;2e-16 ***
+bInactive     5.16251    0.04637 111.336   &lt;2e-16 ***
+bMissing     13.53321  119.46805   0.113     0.91    
+bUnemployed   1.96171    0.06566  29.877   &lt;2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 41884  on 31182  degrees of freedom
+Residual deviance: 16671  on 31179  degrees of freedom
+AIC: 16679
+
+Number of Fisher Scoring iterations: 9</code></pre>
+</div>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = c == "Inactive" ~ b + a, family = "binomial", data = inact_in_wave_c_data)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.2761  -0.2906  -0.2906   0.3949   2.5241  
+
+Coefficients:
+             Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)  -3.14330    0.03735 -84.152   &lt;2e-16 ***
+bInactive     3.92502    0.05857  67.009   &lt;2e-16 ***
+bMissing     11.97882  119.46806   0.100   0.9201    
+bUnemployed   1.49168    0.07909  18.861   &lt;2e-16 ***
+aInactive     1.73050    0.05711  30.303   &lt;2e-16 ***
+aMissing      3.24819    1.34873   2.408   0.0160 *  
+aUnemployed   0.17285    0.08371   2.065   0.0389 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 41884  on 31182  degrees of freedom
+Residual deviance: 15730  on 31176  degrees of freedom
+AIC: 15744
+
+Number of Fisher Scoring iterations: 9</code></pre>
+</div>
+</div>
+<p>Interpreting how the coefficients relate to predicted probabilities unfortunately involves some thinking. In the case of <code>mod_2</code>, for example, we need to note that the intercept value only relates to one particular condition/state, namely that in which the respondent was employed for the previous two waves. This is because Employed is used by the logistic regression as the reference category. We know Employed is the reference category is it is <em>not</em> listed as a coefficient for a or b.<br>
+In order to convert from coefficients to predicted probabilities given previous respondent economic activity history we need to sum up those coefficients which are relevant to the condition we are trying to predict for, and pass this sum of coefficients into the x slot of logit (?) function which looks as follows:</p>
+<p><span class="math display">\[
+\exp(x) / (1 + exp(x))
+\]</span></p>
+<p>For example, passing just the intercept into the above produces a value of around 0.04. This is the prediction for the case where a and b are both ‘Employed’ (the reference category.</p>
+<p>And if we want to predict the case where the respondent was Employed at wave a and Unemployed at wave b, we should add the coefficient on bUnemployed to x. (i.e., approximately -3.14 + 1.49). This produces a predicted value of around 0.16.</p>
+<p>Note the above calculations are approximate as the coefficients are truncated to 2dp.</p>
+<p>We can get more exact estimates of the predicted probabilities either by using more decimal places, or by using the predict function, passing the background states we want to predict for as parameters in a dataframe passed in the newdata parameter in this function. For example:</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(mod_2, <span class="at">newdata =</span> <span class="fu">data.frame</span>(<span class="at">a =</span> <span class="st">'Employed'</span>, <span class="at">b =</span> <span class="st">'Employed'</span>), <span class="at">type =</span> <span class="st">'response'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>         1 
+0.04135618 </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(mod_2, <span class="at">newdata =</span> <span class="fu">data.frame</span>(<span class="at">a =</span> <span class="st">'Employed'</span>, <span class="at">b =</span> <span class="st">'Unemployed'</span>), <span class="at">type =</span> <span class="st">'response'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        1 
+0.1608901 </code></pre>
+</div>
+</div>
+<p>Note that type = ‘response’ is added as an argument to predict in order that the predict function returns the predicted probability rather than the log odds.</p>
+</section>
+<section id="estimation-of-predicted-transitions-to-inactivity-based-on-above-approach" class="level2">
+<h2 class="anchored" data-anchor-id="estimation-of-predicted-transitions-to-inactivity-based-on-above-approach">Estimation of predicted transitions to inactivity based on above approach</h2>
+<p>The notebook `predicted_transitions_to_inactivity_in_2011 and 2019.qmd` formalises the logistic regression analysis above for both the start of the UKHLS and the last pre-pandemic year.</p>
+<p>……..</p>
+</section>
+<section id="generalise-to-all-years" class="level2">
+<h2 class="anchored" data-anchor-id="generalise-to-all-years">Generalise to all years</h2>
+<p>Let’s write a function that takes the following arguments:</p>
+<ul>
+<li><p><code>econ_group_col</code>: column of economic activity groupings</p></li>
+<li><p><code>pid_col</code>: name of column with pid</p></li>
+<li><p><code>t0</code>: letter or number indicating initial year (to calculate transitions <em>from</em>)</p></li>
+<li><p><code>time_col</code>: column indicating time variable (either a letter or a number)</p></li>
+</ul>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>econ_act_groupings_years <span class="sc">%&gt;%</span> </span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pidp, wave, level_2_meso) <span class="sc">%&gt;%</span> </span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> <span class="st">'wave'</span>, <span class="at">values_from =</span> <span class="st">'level_2_meso'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 88,602 × 13
+       pidp a        b     c     d     e     f     g     h     i     j     k    
+      &lt;dbl&gt; &lt;chr&gt;    &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;
+ 1 68001367 Employed &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 2 68004087 Employed Empl… Empl… Empl… Empl… Empl… Empl… Empl… Empl… Inac… &lt;NA&gt; 
+ 3 68006127 Unemplo… Unem… Inac… Inac… Inac… Inac… Inac… Inac… Inac… Unem… Unem…
+ 4 68006135 Inactive &lt;NA&gt;  Empl… Empl… Empl… &lt;NA&gt;  Empl… &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 5 68006807 Inactive Inac… Inac… Inac… Inac… Inac… Inac… Inac… Inac… &lt;NA&gt;  &lt;NA&gt; 
+ 6 68007487 Unemplo… Unem… Empl… Empl… &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 7 68007491 Inactive &lt;NA&gt;  &lt;NA&gt;  Empl… &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 8 68007495 Employed &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+ 9 68007499 Employed &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+10 68008167 Inactive Inac… &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt;  &lt;NA&gt; 
+# ℹ 88,592 more rows
+# ℹ 1 more variable: l &lt;chr&gt;</code></pre>
+</div>
+</div>
+</section>
+<section id="next-steps" class="level2">
+<h2 class="anchored" data-anchor-id="next-steps">Next steps</h2>
+<ul>
+<li><p>Automate to all years</p></li>
+<li><p>Use more disaggregated categories</p></li>
+<li><p>Work out better ways of presenting transitions (e.g.&nbsp;graphically)</p></li>
+<li><p>Take other variables, link, and use to group (e.g.&nbsp;male/female; LLTI/no LLTI; age categories)</p></li>
+<li><p>(Longer term): think about appropriate regression framework, e.g.&nbsp;multinomial regression</p></li>
+</ul>
 </section>
 
 </main>

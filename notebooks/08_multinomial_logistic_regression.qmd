@@ -1,8 +1,21 @@
 ---
-title: "08_look_at_multinomial_models"
-author: "Jon Minton"
-format: html
+title: "Notebook 08: Multinomial logistic regression - first notebook"
+author: 
+ - "Jon Minton"
+ - "Martin Taulbut"
+format: 
+  html:
+    code-fold: true
+    echo: true
+  docx: 
+    toc: true
+    number-sections: true
 editor: visual
+execute: 
+  echo: false
+  warning: false
+  fig-width: 9
+  fig-height: 6
 ---
 
 ## Aim
@@ -129,9 +142,11 @@ pred_prob_outcomes <- predict(mod_01, type = "probs", newdata = predDf)
 predictions_predictors <- bind_cols(pred_prob_outcomes, predDf)
 ```
 
-Now to visualise
+Now to visualise in @fig-multi-toy-example
 
 ```{r}
+#| label: fig-multi-toy-example
+#| fig-cap: "Toy example of multinomial logistic regression for three mutually exclsive states"
 predictions_predictors %>% 
   pivot_longer(cols = c("academic", "general", "vocation"), names_to = "outcome_category", values_to = "outcome_probability") %>% 
   ggplot(aes(x = write, y = outcome_probability, group = ses, colour = ses)) + 

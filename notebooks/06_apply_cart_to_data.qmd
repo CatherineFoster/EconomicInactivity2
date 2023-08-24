@@ -1,8 +1,21 @@
 ---
-title: "06_apply_cart_to_data"
-author: "Jon Minton; Martin Taulbut"
-format: docx
+title: "Notebook 06: Apply cartogram to data"
+author: 
+ - "Jon Minton"
+ - "Martin Taulbut"
+format: 
+  html:
+    code-fold: true
+    echo: true
+  docx: 
+    toc: true
+    number-sections: true
 editor: visual
+execute: 
+  echo: false
+  warning: false
+  fig-width: 9
+  fig-height: 6
 ---
 
 # Introduction
@@ -220,6 +233,8 @@ data_2016to2019 <- extract_three_periods(long_slimmed_data, c("h", "i", "j")) %>
 To start with, let's try to predict probability of being inactive in current wave given age and sex. I'm going to use [this webpage](https://www.r-bloggers.com/2021/04/decision-trees-in-r/) as a reference to borrow from.
 
 ```{r}
+#| fig-cap: "Recursive partition decision tree showing algorithm for predicting whether someone is economically inactive given their age and sex"
+#| label: fig-rpart-inact-given-age-and-sex 
 library(rpart)
 library(rpart.plot)
 
@@ -238,7 +253,7 @@ rpart.plot(tree_01)
 
 ```
 
-Let's try to interpret this:
+Let's try to interpret @fig-rpart-inact-given-age-and-sex
 
 -   If a person is under 20 years old, there is a 51% probability of being inactive. This group comprises 8% of the sample.
 -   If the person is 20 or older then:
@@ -259,6 +274,7 @@ I promised to consider the following additional variables
 We can do equivalised household income and number of dependent children now:
 
 ```{r}
+
 data_2009to2011_linkedToHh <- data_2009to2011 %>% 
   left_join(
     eq_incomes_nkids_linked %>% 
@@ -271,6 +287,8 @@ data_2009to2011_linkedToHh <- data_2009to2011 %>%
 Now to do the CART...
 
 ```{r}
+#| fig-cap: "Recursive partition decision tree showing algorithm for predicting whether someone is economically inactive given previous economic activity status and some other variables"
+#| label: fig-rpart-inact-last-status-etc 
 tree_02 <- data_2009to2011_linkedToHh %>% 
   filter(!is.na(current)) %>% 
   mutate(
@@ -308,6 +326,8 @@ Note: even though this model was given more variables from which to recursively 
 How about if I don't give last wave's status?
 
 ```{r}
+#| fig-cap: "Recursive partition decision tree based on various variables excluding previous wave's economic activity status"
+#| label: fig-rpart-inact-no-last-status-etc 
 tree_03 <- data_2009to2011_linkedToHh %>% 
   filter(!is.na(current)) %>% 
   mutate(
@@ -323,9 +343,13 @@ tree_03 <- data_2009to2011_linkedToHh %>%
 rpart.plot(tree_03)
 ```
 
-Let's now focus on probabilities of transition to economic inactivity given not economically inactive in last wave. This is a matter of just filtering the data then running the model again....
+It appears from @fig-rpart-inact-no-last-status-etc that if last wave's status is not included in the model, other variables are more likely to be used as predictors. But to what extent are these variables proxies for economic activity status, especially equivalised monthly income?
+
+Let's now focus on probabilities of transition to economic inactivity given not economically inactive in last wave. This is a matter of just filtering the data then running the model again.... This is shown in @fig-rpart-inact-given-inact-etc
 
 ```{r}
+#| fig-cap: "Decision tree: prediction of economic activity given not economically inactive in previous wage"
+#| label: fig-rpart-inact-given-notinact-etc 
 tree_04 <- data_2009to2011_linkedToHh %>% 
   filter(!is.na(current)) %>% 
   mutate(
@@ -347,6 +371,8 @@ rpart.plot(tree_04)
 Of course monthly income is in part (largely?) a consequence of economic activity status, so this might be a facetious predictor in this case. How about if we look at average equivalised monthly income in the previous wave? (The problem with this may be similar... equivalised monthly income in last wave may be determined quite a lot by economic activity status in last wave)
 
 ```{r}
+#| fig-cap: "Decision tree: predicted probabilities of being economically inactive given not previously inactive, given various variables from last wave including monthly income"
+#| label: fig-rpart-inact-given-not-inact-etc-last-wave 
 data_2009to2011_linkedToHhFromLastWave <- data_2009to2011 %>% 
   left_join(
     eq_incomes_nkids_linked %>% 
@@ -376,7 +402,8 @@ Here only income in the previous wave matters as a predictor. An 11% probability
 Again, what happens if last period's equivalised monthly income and last period were included in the model?
 
 ```{r}
-
+#| fig-cap: "Decision tree: predicted probabilities of being economically inactive given not previously inactive, given various variables from last wave including monthly income and status last period"
+#| label: fig-rpart-inact-given-not-inact-etc-last-wave-plus 
 data_2009to2011_linkedToHhFromLastWave <- data_2009to2011 %>% 
   left_join(
     eq_incomes_nkids_linked %>% 

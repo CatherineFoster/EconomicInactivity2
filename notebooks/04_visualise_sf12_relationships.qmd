@@ -1,8 +1,21 @@
 ---
-title: "04_visualise_sf12_relationships"
-author: "Jon Minton; Martin Taulbut"
-format: html
+title: "Notebook 04: Visualise SF-12 relationships"
+author: 
+ - "Jon Minton"
+ - "Martin Taulbut"
+format: 
+  html:
+    code-fold: true
+    echo: true
+  docx: 
+    toc: true
+    number-sections: true
 editor: visual
+execute: 
+  echo: false
+  warning: false
+  fig-width: 9
+  fig-height: 6
 ---
 
 ## Introduction
@@ -129,7 +142,11 @@ long_slimmed_data
 
 ## Visualise
 
+@fig-sf-mean-scores-by-age shows something...
+
 ```{r}
+#| fig-cap: "Mean SF-12 scores by age in wave A, by age, sex and economic activity status"
+#| label: fig-sf-mean-scores-by-age
 long_slimmed_data %>% 
   filter(wave == "b") %>% 
   pivot_wider(names_from = variable, values_from  = value) %>% 

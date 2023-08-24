@@ -5,12 +5,9 @@ format: html
 editor: visual
 ---
 
-
 # Introduction
 
-The aim of this notebook is to do some factor analyses/PCA, in order to reduce from multiple items to just one or two. 
-After getting the PCA, I guess I could then try to get PAF estimates from them. 
-
+The aim of this notebook is to do some factor analyses/PCA, in order to reduce from multiple items to just one or two. After getting the PCA, I guess I could then try to get PAF estimates from them.
 
 ## Variables?
 
@@ -18,31 +15,35 @@ Firstly, which variables should I try first?
 
 Here are the ones Martin identified:
 
--  "jbsat"   - job satisfaction
-**autonomy measures**
--   "wkaut1" - autonomy over job tasks
--  "wkaut2" - autonomy over work place
--   "wkaut3"  - autonomy over work manner
--  "wkaut4" - autonomy over task order
--  "wkaut5" - autonomy over work hours
+-   `jbsat` - job satisfaction
 
--  "jbsec" -  job security
+-   `wkaut1` - autonomy over job tasks
 
+-   `wkaut2` - autonomy over work place
 
+-   `wkaut3` - autonomy over work manner
 
-To this can add:
-# feelings about work 
-- depenth1 - feels **tense** about job
-- depenth2 - feels **uneasy** about job
-- depenth3 - feels **worried** about job
-- depenth4 - feels **depressed** about job
-- depenth5 - feels **gloomy** about job
-- depenth6 - feels **miserable** about job
+-   `wkaut4` - autonomy over task order
 
+-   `wkaut5` - autonomy over work hours
 
+-   `jbsec` - job security
 
-For all of the above items, lower scores = **better** 
+To this can add: feelings about work:
 
+-   `depenth1` feels **tense** about job
+
+-   `depenth2` feels **uneasy** about job
+
+-   `depenth3` feels **worried** about job
+
+-   `depenth4` feels **depressed** about job
+
+-   `depenth5` feels **gloomy** about job
+
+-   `depenth6` feels **miserable** about job
+
+For all of the above items, lower scores = **better**
 
 ```{r}
 
@@ -96,7 +97,8 @@ rm(long_slimmed_datalist)
 long_slimmed_data
 
 ```
-We can start by using the factanal function. Then later we can look at the lavaan package. 
+
+We can start by using the factanal function. Then later we can look at the lavaan package.
 
 To start with let's just get the variables in a wide format
 
@@ -119,7 +121,7 @@ wave_j_scores_complete_cases <-
     filter(complete.cases(.))
 ```
 
-Now to use factanal 
+Now to use factanal
 
 ```{r}
 # one factor solutions 
@@ -147,17 +149,14 @@ scores_2_factors
 scores_3_factors
 ```
 
-Factor analysis appears to have successfully differentiated items relating to feelings about work, and workplace autonomy, as the first and second factor respectively. 
-This suggest the items are appropriate for their respective domains, and that both domains are important. 
+Factor analysis appears to have successfully differentiated items relating to feelings about work, and workplace autonomy, as the first and second factor respectively. This suggest the items are appropriate for their respective domains, and that both domains are important.
 
-The SS loadings of the third factor in the three factor solution is well above 1. 
-However the loadings of items onto this third dimension appear similar to that for the first dimension.
-This means the interpretation of the three factor solution appears harder than for the two factor solution.
+The SS loadings of the third factor in the three factor solution is well above 1. However the loadings of items onto this third dimension appear similar to that for the first dimension. This means the interpretation of the three factor solution appears harder than for the two factor solution.
 
 For this reason I will use the two factor solution, and refer to the two factors as :
 
-- Factor 1: work_feeling
-- Factor 2: work_autonomy
+-   Factor 1: work_feeling
+-   Factor 2: work_autonomy
 
 We can get the scores by using the argument scores = 'regression'
 
@@ -180,7 +179,7 @@ wave_j_pids_scores <-
 
 ```
 
-Here's some basic descriptive stats: 
+Here's some basic descriptive stats:
 
 ```{r}
 mean(wave_j_pids_scores$work_autonomy) ; sd(wave_j_pids_scores$work_autonomy)
@@ -197,12 +196,9 @@ wave_j_pids_scores %>%
 
 ```
 
-So, although both scores are standardised to have a mean around 0 and SD around 1, neither are normally distributed. 
-Instead, they are left-skewed, meaning the modal response is for people to report very few issues with either autonomy or feelings about work, but with an extended right tail in the distribution in which some people report many issues. 
-As might be expected, because there are more items in work_feeling than work_autonomy, the maximum possible scores are higher. 
+So, although both scores are standardised to have a mean around 0 and SD around 1, neither are normally distributed. Instead, they are left-skewed, meaning the modal response is for people to report very few issues with either autonomy or feelings about work, but with an extended right tail in the distribution in which some people report many issues. As might be expected, because there are more items in work_feeling than work_autonomy, the maximum possible scores are higher.
 
-The work_autonomy factor is also somewhat bimodal, with a second hump in values close to 0. 
-
+The work_autonomy factor is also somewhat bimodal, with a second hump in values close to 0.
 
 ```{r}
 
@@ -223,10 +219,9 @@ wave_j_pids_scores %>%
 
 ```
 
+In general it looks like the distributions don't vary much by sex.
 
-In general it looks like the distributions don't vary much by sex. 
-
-But let's try to summarise this 
+But let's try to summarise this
 
 ```{r}
 wave_j_pids_scores %>% 
@@ -247,14 +242,12 @@ wave_j_pids_scores %>%
     upper = quantile(factor_score, 0.75)
   )
 ```
+
 So, males tend to have slightly lower scores (more satisfaction with autonomy and feelings about work) than females.
 
-
-I now want to use these scores to make predictions about state in wave k given factor scores in wave j. 
-As the scores are about workplace, we should assume all people are employed in wave j. 
+I now want to use these scores to make predictions about state in wave k given factor scores in wave j. As the scores are about workplace, we should assume all people are employed in wave j.
 
 First we need to extract and categorise the economic activity status
-
 
 ```{r}
 econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
@@ -288,7 +281,6 @@ jobstat_k <-
   filter(stat_this != "Missing") %>% 
   select(pidp, stat_this)
 ```
-
 
 ```{r}
 wave_j_pids_scores
@@ -343,13 +335,14 @@ mod_both <- multinom(
 
 ```
 
-Now to compare the BIC 
+Now to compare the BIC
 
 ```{r}
 
 BIC(mod_base, mod_feeling, mod_autonomy, mod_both)
 ```
-None of the treatment models outperform the base model, with the feeling model having the least worst additional penalty. 
+
+None of the treatment models outperform the base model, with the feeling model having the least worst additional penalty.
 
 The above is using BIC, which penalises additional terms more harshly than AIC.
 
@@ -358,15 +351,15 @@ Using AIC may give a slightly different picture...
 ```{r}
 AIC(mod_base, mod_feeling, mod_autonomy, mod_both)
 ```
-When using AIC, the more complex models *are* preferred, with the joint model `mod_both` outperforming the others. 
 
+When using AIC, the more complex models *are* preferred, with the joint model `mod_both` outperforming the others.
 
-What scenarios are we interested in? 
+What scenarios are we interested in?
 
-- Employed in previous wave
-- males and females
-- ages 20, 30, 40 and 50, (and intermediate ages)
-- job scores ranging from -1.5 to + 1.5, at 0.5 increments
+-   Employed in previous wave
+-   males and females
+-   ages 20, 30, 40 and 50, (and intermediate ages)
+-   job scores ranging from -1.5 to + 1.5, at 0.5 increments
 
 ```{r}
 predictor_data <- 
@@ -379,7 +372,7 @@ predictor_data <-
   )
 ```
 
-Now the predictions 
+Now the predictions
 
 ```{r}
 predictions <- predict(mod_both, newdata = predictor_data, type = "probs")
@@ -391,8 +384,7 @@ predictions_predictors <-
   pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability")
 ```
 
-
-How best to summarise this? 
+How best to summarise this?
 
 Let's start by holding autonomy constant, and varying feeling
 
@@ -412,6 +404,7 @@ predictions_predictors %>%
     colour = "Job Feelings factor score\n(lower is better)"
   )
 ```
+
 Similarly we can hold feelings constant and vary autonomy:
 
 ```{r}
@@ -430,9 +423,9 @@ predictions_predictors %>%
   )
 ```
 
-As before, we can consider a 1 standardised unit fall in either score a 'treatment', and a value of '0' the control. 
+As before, we can consider a 1 standardised unit fall in either score a 'treatment', and a value of '0' the control.
 
-We therefore have four scenarios to consider 
+We therefore have four scenarios to consider
 
 ```{r}
 predictions_predictors %>% 
@@ -458,7 +451,8 @@ predictions_predictors %>%
     subtitle = "All persons assumed to be employed in previous wave."
   )
 ```
-So, what does this imply in terms of changes from the baseline? 
+
+So, what does this imply in terms of changes from the baseline?
 
 ```{r}
 predictions_predictors %>% 
@@ -492,25 +486,115 @@ predictions_predictors %>%
   ) + 
   geom_hline(yintercept = 0)
 ```
-Of course, transitions directly from employment to economic inactivity due to long-term sickness are rare, so this category seems to be poorly estimated. 
-Improvements in sense of autonomy and general feelings about work seem to have effects predicted in the expected direction, on both remaining in employment and moving to unemployment. 
+
+Of course, transitions directly from employment to economic inactivity due to long-term sickness are rare, so this category seems to be poorly estimated. Improvements in sense of autonomy and general feelings about work seem to have effects predicted in the expected direction, on both remaining in employment and moving to unemployment.
 
 Improving feelings associated with work appears to matter more than addressing issues of workplace autonomy.
 
-The predicted effects of moving from employment to being a full time carer appear greater for females than males. 
+The predicted effects of moving from employment to being a full time carer appear greater for females than males.
 
-The only prediction that goes in the opposite direction is the predicted effect of higher autonomy on the decision to retire early at older working age. But this effect is very small compared with other predicted effects. 
+The only prediction that goes in the opposite direction is the predicted effect of higher autonomy on the decision to retire early at older working age. But this effect is very small compared with other predicted effects.
 
+## Next steps
 
-## Next steps 
-
-Look at three categories of economic (in)activity:
-- Unemployment
-- Employment
-- All Economic Inactivity
+Look at three categories of economic (in)activity: - Unemployment - Employment - All Economic Inactivity
 
 Look at **jobsec** as a separate third variable.
 
+## Adding Job Security
+
+```{r}
+combined_data <- 
+  wave_j_pids_scores %>% 
+  inner_join(jobstat_j) %>% 
+  inner_join(jobstat_k) %>% 
+  inner_join(
+    long_slimmed_data %>% 
+      filter(wave == 'j') %>% 
+      filter(variable == 'sex') %>% 
+      select(pidp, sex = value)
+  ) %>% 
+  inner_join(
+    long_slimmed_data %>% 
+      filter(wave == 'j') %>% 
+      filter(variable == 'dvage') %>% 
+      mutate(age = as.numeric(value)) %>% 
+      mutate(age = ifelse(age < 0, NA, age)) %>% 
+      select(pidp, age)
+  ) %>% 
+  inner_join(
+    long_slimmed_data %>% 
+      filter(wave == 'j') %>% 
+      filter(variable == 'jbsec') %>% 
+      mutate(jbsec = as.numeric(value)) %>% 
+      mutate(jbsec = ifelse(jbsec < 0, NA, jbsec)) %>% 
+      select(pidp, jbsec)
+  )
+
+combined_data
+# Let's add job security independently to model
 
 
+mod_jbsec <- multinom( 
+  stat_this ~ stat_last * sex + splines::bs(age, df = 5) + jbsec, 
+  data = combined_data
+)
+
+mod_jbsec_aut <- multinom( 
+  stat_this ~ stat_last * sex + splines::bs(age, df = 5) + jbsec + work_autonomy, 
+  data = combined_data
+)
+
+mod_jbsec_feeling <- multinom( 
+  stat_this ~ stat_last * sex + splines::bs(age, df = 5) + jbsec + work_feeling, 
+  data = combined_data
+)
+
+mod_jbsec_aut_feeling <- multinom( 
+  stat_this ~ stat_last * sex + splines::bs(age, df = 5) + jbsec + work_autonomy + work_feeling, 
+  data = combined_data
+)
+
+BIC(
+  mod_base, mod_feeling, mod_autonomy, mod_both, mod_jbsec, mod_jbsec_aut, mod_jbsec_feeling, mod_jbsec_aut_feeling
+)
+
+
+AIC(
+  mod_base, mod_feeling, mod_autonomy, mod_both, mod_jbsec, mod_jbsec_aut, mod_jbsec_feeling, mod_jbsec_aut_feeling
+)
+
+
+
+predictor_data <- 
+  expand_grid(
+    stat_last = "Employed",
+    sex = c("male", "female"),
+    age = 20:55,
+    jbsec = 1:4
+  )
+
+
+predictions <- predict(mod_jbsec, newdata = predictor_data, type = "probs")
+
+predictions_predictors <- 
+  bind_cols(
+    predictions, predictor_data
+  ) %>% 
+  pivot_longer(cols = Employed:Unemployed, names_to = "status", values_to = "predicted_probability")
+
+
+predictions_predictors %>% 
+  filter(status == 'Employed') %>% 
+  ggplot(aes(x = age, y = predicted_probability, colour = factor(jbsec), group = factor(jbsec))) + 
+  geom_line() + 
+  facet_wrap(~sex) + 
+  labs(
+    title = "Predicted effects of different levels of job security on probability of remaining employed",
+    subtitle = "1 = most secure; 4 = most insecure",
+    x = "Age in years",
+    y = "Predicted probability of remaining employed",
+    colour = "Job Security \n(lower is worse)"
+  )
+```
 

@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.353">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Jon Minton">
+<meta name="author" content="Martin Taulbut">
+
+<title>Notebook 08: Multinomial logistic regression - first notebook</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="08_multinomial_logistic_regression_files/libs/clipboard/clipboard.min.js"></script>
+<script src="08_multinomial_logistic_regression_files/libs/quarto-html/quarto.js"></script>
+<script src="08_multinomial_logistic_regression_files/libs/quarto-html/popper.min.js"></script>
+<script src="08_multinomial_logistic_regression_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="08_multinomial_logistic_regression_files/libs/quarto-html/anchor.min.js"></script>
+<link href="08_multinomial_logistic_regression_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="08_multinomial_logistic_regression_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="08_multinomial_logistic_regression_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="08_multinomial_logistic_regression_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="08_multinomial_logistic_regression_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="08_multinomial_logistic_regression.docx"><i class="bi bi-file-word"></i>MS Word</a></li></ul></div></div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Notebook 08: Multinomial logistic regression - first notebook</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Authors</div>
+    <div class="quarto-title-meta-contents">
+             <p>Jon Minton </p>
+             <p>Martin Taulbut </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="aim" class="level2">
+<h2 class="anchored" data-anchor-id="aim">Aim</h2>
+<p>The aim of this notebook is to use multinomial logistic regression for estimating transition probabilities between different economic activity and inactivity states using the UKHLS.</p>
+<p>The previous notebook suggests that transition probabilities appear broadly invariant at three level groupings, so perhaps we can start by assuming that all data on transitions can be used. We can then refine the approach further by including both additional predictors and additional economic inactivity categories.</p>
+</section>
+<section id="getting-started-with-multinomial-logistic-regression" class="level2">
+<h2 class="anchored" data-anchor-id="getting-started-with-multinomial-logistic-regression">Getting started with multinomial logistic regression</h2>
+<p>Let’s start by seeing if I can follow a tutorial or two on the approach.</p>
+<ul>
+<li><p><a href="https://stats.oarc.ucla.edu/r/dae/multinomial-logistic-regression/">This guide</a> looks fairly good though makes use of older pre-tidyverse packages.</p></li>
+<li><p><a href="https://www.r-bloggers.com/2020/05/multinomial-logistic-regression-with-r/">This guide</a> appears quite similar though uses the <code>caret</code> package for performing a training/test data split.</p></li>
+<li><p><a href="https://www.analyticsvidhya.com/blog/2016/02/multinomial-ordinal-logistic-regression/">This guide</a> appears very similar to the first two, using <code>nnet::multinom</code> and proceeding in roughly the same order.</p></li>
+<li><p><a href="https://bookdown.org/chua/ber642_advanced_regression/multinomial-logistic-regression.html">This guide</a> is from an online book on advanced regression techniques and goes into more detail about the theory/derivations etc.</p></li>
+</ul>
+<p>For <em>all</em> guides the package and function used appears to be <code>nnet::multinom</code></p>
+<p>Let’s pick the guide with the simplest dataset and make sure I can get the same results by following the same process.</p>
+<p>I think I’ll just pick the first one…</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>ml <span class="ot">&lt;-</span> haven<span class="sc">::</span><span class="fu">read_dta</span>(<span class="st">"https://stats.idre.ucla.edu/stat/data/hsbdemo.dta"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>I’ve used <code>haven::read_dta</code> rather than the <code>foreign::read.dta</code> function. This means I probably need to use the <code>haven::as_factor</code> variable with <code>levels = 'labels'</code> too to convert the variables of interest into easily readable formats.</p>
+<p>The particular variables of interest in the above guide are <code>ses</code> and <code>prog</code></p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>ml_sesProg <span class="ot">&lt;-</span> </span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  ml <span class="sc">%&gt;%</span> </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(ses, prog, write) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">ses =</span> haven<span class="sc">::</span><span class="fu">as_factor</span>(ses), </span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">prog =</span> haven<span class="sc">::</span><span class="fu">as_factor</span>(prog)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Tidyverse way of getting frequency table:</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>ml_sesProg <span class="sc">%&gt;%</span> </span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(ses, prog) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 9 × 3
+# Groups:   ses, prog [9]
+  ses    prog         n
+  &lt;fct&gt;  &lt;fct&gt;    &lt;int&gt;
+1 low    general     16
+2 low    academic    19
+3 low    vocation    12
+4 middle general     20
+5 middle academic    44
+6 middle vocation    31
+7 high   general      9
+8 high   academic    42
+9 high   vocation     7</code></pre>
+</div>
+</div>
+<p>using <code>xtabs</code></p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">xtabs</span>( <span class="sc">~</span> ses <span class="sc">+</span> prog, ml_sesProg) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        prog
+ses      general academic vocation
+  low         16       19       12
+  middle      20       44       31
+  high         9       42        7</code></pre>
+</div>
+</div>
+<p>Now the regression</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages('nnet')</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(nnet)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>relevelling</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>ml_sesProg <span class="ot">&lt;-</span> ml_sesProg <span class="sc">%&gt;%</span> </span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">prog =</span> <span class="fu">relevel</span>(prog, <span class="at">ref =</span> <span class="st">'academic'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>reg itself</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>mod_01 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(prog <span class="sc">~</span> ses <span class="sc">+</span> write, <span class="at">data =</span> ml_sesProg)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  15 (8 variable)
+initial  value 219.722458 
+iter  10 value 179.982880
+final  value 179.981726 
+converged</code></pre>
+</div>
+</div>
+<p>summarise</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_01)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Call:
+multinom(formula = prog ~ ses + write, data = ml_sesProg)
+
+Coefficients:
+         (Intercept)  sesmiddle    seshigh      write
+general     2.852198 -0.5332810 -1.1628226 -0.0579287
+vocation    5.218260  0.2913859 -0.9826649 -0.1136037
+
+Std. Errors:
+         (Intercept) sesmiddle   seshigh      write
+general     1.166441 0.4437323 0.5142196 0.02141097
+vocation    1.163552 0.4763739 0.5955665 0.02221996
+
+Residual Deviance: 359.9635 
+AIC: 375.9635 </code></pre>
+</div>
+</div>
+<p>And to get z scores:</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>mod_01_z <span class="ot">&lt;-</span> <span class="fu">summary</span>(mod_01)<span class="sc">$</span>coefficients<span class="sc">/</span><span class="fu">summary</span>(mod_01)<span class="sc">$</span>standard.errors</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>mod_01_z</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>         (Intercept)  sesmiddle   seshigh     write
+general     2.445214 -1.2018081 -2.261334 -2.705562
+vocation    4.484769  0.6116747 -1.649967 -5.112689</code></pre>
+</div>
+</div>
+<p>Absolute z scores above around 2 should be considered statistically significant.</p>
+<p>The rest of the guide is about getting meaningful predicted probabilities using the predict function. It looks like ‘write’ scores are between 30 and 70.</p>
+<p>Let’s try to understand the data structure returned by predict first.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">fitted</span>(mod_01))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   academic   general  vocation
+1 0.1482764 0.3382454 0.5134781
+2 0.1202017 0.1806283 0.6991700
+3 0.4186747 0.2368082 0.3445171
+4 0.1726885 0.3508384 0.4764731
+5 0.1001231 0.1689374 0.7309395
+6 0.3533566 0.2377976 0.4088458</code></pre>
+</div>
+</div>
+<p>So, as expected, three probabilities are returned for each observation, one for each of the discrete outcomes.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>predDf <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">ses =</span> <span class="fu">c</span>(<span class="st">'low'</span>, <span class="st">'middle'</span>, <span class="st">'high'</span>),</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">write =</span> <span class="dv">30</span><span class="sc">:</span><span class="dv">70</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>pred_prob_outcomes <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_01, <span class="at">type =</span> <span class="st">"probs"</span>, <span class="at">newdata =</span> predDf)</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>predictions_predictors <span class="ot">&lt;-</span> <span class="fu">bind_cols</span>(pred_prob_outcomes, predDf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now to visualise in <a href="#fig-multi-toy-example">Figure&nbsp;1</a></p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>predictions_predictors <span class="sc">%&gt;%</span> </span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> <span class="fu">c</span>(<span class="st">"academic"</span>, <span class="st">"general"</span>, <span class="st">"vocation"</span>), <span class="at">names_to =</span> <span class="st">"outcome_category"</span>, <span class="at">values_to =</span> <span class="st">"outcome_probability"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> write, <span class="at">y =</span> outcome_probability, <span class="at">group =</span> ses, <span class="at">colour =</span> ses)) <span class="sc">+</span> </span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span> </span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(outcome_category <span class="sc">~</span> .)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-multi-toy-example" class="quarto-figure quarto-figure-center anchored">
+<figure class="figure">
+<p><img src="08_multinomial_logistic_regression_files/figure-html/fig-multi-toy-example-1.png" class="img-fluid figure-img" width="864"></p>
+<figcaption class="figure-caption">Figure&nbsp;1: Toy example of multinomial logistic regression for three mutually exclsive states</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>This all seems fairly straightforward, so let’s now do the same with our real data.</p>
+</section>
+<section id="using-ukhls-data" class="level2">
+<h2 class="anchored" data-anchor-id="using-ukhls-data">Using UKHLS data</h2>
+<p>Let’s start with age, sex, wave. We can see whether the wave effects disappear if the age and sex effect are included in the model.</p>
+<p>Let’s define the following models:</p>
+<ul>
+<li><p>mod_01: state given last state</p></li>
+<li><p>mod_02: state given last state + sex</p></li>
+<li><p>mod_03: state given last state + sex + age</p></li>
+<li><p>mod_04: state given last state + sex + poly(age, 2)</p></li>
+<li><p>mod_05: state given last state + sex + poly(age, 2) + wave (to account for trends)</p></li>
+</ul>
+<p>Further variables with modifiable factors will then build on the best performing of the above.</p>
+<ul>
+<li>equivalised household income and number of dependent children are highest priority for inclusion</li>
+</ul>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(haven)</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(here)</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(nnet)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="fu">here</span>(<span class="st">'R'</span>))</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>base_dir_location <span class="ot">&lt;-</span> <span class="st">"big_data/UKDA-6614-stata/stata/stata13_se/ukhls"</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>indresp_files <span class="ot">&lt;-</span> <span class="fu">dir</span>(<span class="fu">here</span>(base_dir_location), <span class="at">pattern =</span> <span class="st">"[a-z]_indresp.dta"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>varnames <span class="ot">&lt;-</span>  <span class="fu">c</span>(</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">"jbstat"</span>, <span class="st">"dvage"</span>, <span class="st">"sex"</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>extract_what <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">"labels"</span>, <span class="st">"values"</span>, <span class="st">"labels"</span></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>overall_start_time <span class="ot">=</span> <span class="fu">Sys.time</span>()</span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>long_slimmed_datalist <span class="ot">&lt;-</span> <span class="fu">lapply</span>(indresp_files, </span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>       read_and_slim_data, </span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>       <span class="at">varnames =</span> varnames, </span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>       <span class="at">extract_what =</span> extract_what, </span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>       <span class="at">verbose =</span> <span class="cn">TRUE</span></span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/a_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.279004096984863 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.102365970611572 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/b_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.356990098953247 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.105301141738892 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/c_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.536908864974976 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.120635032653809 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/d_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.383631944656372 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.0933289527893066 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/e_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.441070795059204 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.156924962997437 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/f_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.377636909484863 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.0917961597442627 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/g_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.471426963806152 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.156546115875244 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/h_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.347228050231934 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.144757032394409 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/i_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.444481134414673 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.0748560428619385 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/j_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.341084003448486 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.0710849761962891 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/k_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.417111873626709 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.067169189453125 seconds"
+[1] "extracting file: /Users/JonMinton/repos/economic_inactivity/big_data/UKDA-6614-stata/stata/stata13_se/ukhls/l_indresp.dta"
+[1] "Attempting to find 3 variables"
+[1] "All variables requested found"
+[1] "read file in 0.331954002380371 seconds"
+[1] "slimming file..."
+[1] "extracted 3 variables in 0.0624358654022217 seconds"</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>long_slimmed_data <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(long_slimmed_datalist)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>overall_end_time <span class="ot">=</span> <span class="fu">Sys.time</span>()</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">paste</span>(</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Overall process took"</span>,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">difftime</span>(overall_end_time, overall_start_time, <span class="at">units =</span> <span class="st">"mins"</span>),</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">"minutes"</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Overall process took 0.102169235547384 minutes"</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(long_slimmed_datalist)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>long_slimmed_data</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1,516,371 × 4
+       pidp wave  variable value 
+      &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;    &lt;chr&gt; 
+ 1 68001367 a     sex      male  
+ 2 68004087 a     sex      male  
+ 3 68006127 a     sex      female
+ 4 68006135 a     sex      female
+ 5 68006807 a     sex      female
+ 6 68007487 a     sex      female
+ 7 68007491 a     sex      male  
+ 8 68007495 a     sex      male  
+ 9 68007499 a     sex      male  
+10 68008167 a     sex      female
+# ℹ 1,516,361 more rows</code></pre>
+</div>
+</div>
+<p>Now to load the code for recategorising economic (in)activity groups</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>econ_act_groups <span class="ot">&lt;-</span> readxl<span class="sc">::</span><span class="fu">read_excel</span>(<span class="at">path =</span> <span class="fu">here</span>(<span class="st">"data/economic_activities_categories.xlsx"</span>), <span class="at">sheet =</span> <span class="st">'categories'</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  janitor<span class="sc">::</span><span class="fu">clean_names</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>econ_act_statuses_threelevels <span class="ot">&lt;-</span> </span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  long_slimmed_data <span class="sc">%&gt;%</span> </span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(variable <span class="sc">==</span> <span class="st">'jbstat'</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>      econ_act_groups <span class="sc">%&gt;%</span> <span class="fu">select</span>(original, <span class="at">recoded =</span> level_2_meso),</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">by =</span> <span class="fu">c</span>(<span class="st">'value'</span> <span class="ot">=</span> <span class="st">'original'</span>)</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> </span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(pidp, wave, <span class="at">econ_act_status =</span> recoded)</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>econ_act_statuses_threelevels</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 505,457 × 3
+       pidp wave  econ_act_status
+      &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;          
+ 1 68001367 a     Employed       
+ 2 68004087 a     Employed       
+ 3 68006127 a     Unemployed     
+ 4 68006135 a     Inactive       
+ 5 68006807 a     Inactive       
+ 6 68007487 a     Unemployed     
+ 7 68007491 a     Inactive       
+ 8 68007495 a     Employed       
+ 9 68007499 a     Employed       
+10 68008167 a     Inactive       
+# ℹ 505,447 more rows</code></pre>
+</div>
+</div>
+<p>We can start with this, after a little bit of recoding to turn waves into letters</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>jj <span class="ot">&lt;-</span> </span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  econ_act_statuses_threelevels <span class="sc">%&gt;%</span> </span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">wavenumber =</span> <span class="fu">match</span>(wave, letters[<span class="dv">1</span><span class="sc">:</span><span class="dv">26</span>])) <span class="sc">%&gt;%</span> </span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(pidp, wavenumber, econ_act_status)</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>econ_act_current_gvn_last <span class="ot">&lt;-</span> </span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>  jj <span class="sc">%&gt;%</span> </span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(wavenumber <span class="sc">&gt;</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rename</span>(<span class="at">this_status =</span> econ_act_status) <span class="sc">%&gt;%</span> </span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(</span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>      jj <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">wavenumber =</span> wavenumber <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>        <span class="fu">rename</span>(<span class="at">last_status =</span> econ_act_status)</span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> </span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>    this_status <span class="sc">!=</span> <span class="st">'Missing'</span>,</span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a>    last_status <span class="sc">!=</span> <span class="st">'Missing'</span></span>
+<span id="cb30-17"><a href="#cb30-17" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb30-18"><a href="#cb30-18" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb30-19"><a href="#cb30-19" aria-hidden="true" tabindex="-1"></a>econ_act_current_gvn_last</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 355,647 × 4
+      pidp wavenumber this_status last_status
+     &lt;dbl&gt;      &lt;dbl&gt; &lt;chr&gt;       &lt;chr&gt;      
+ 1  280165          2 Employed    Employed   
+ 2  956765          2 Employed    Employed   
+ 3  987365          2 Inactive    Employed   
+ 4 1558565          2 Inactive    Inactive   
+ 5 1833965          2 Employed    Employed   
+ 6 2670365          2 Inactive    Employed   
+ 7 2853965          2 Employed    Employed   
+ 8 3915445          2 Inactive    Employed   
+ 9 4091565          2 Employed    Unemployed 
+10 4192205          2 Employed    Employed   
+# ℹ 355,637 more rows</code></pre>
+</div>
+</div>
+<p>Now let’s try to model this</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>mod_01 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(this_status <span class="sc">~</span> last_status, <span class="at">data =</span> econ_act_current_gvn_last)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  12 (6 variable)
+initial  value 390718.164628 
+iter  10 value 148583.428102
+iter  20 value 128761.890188
+final  value 128721.519506 
+converged</code></pre>
+</div>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_01)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Call:
+multinom(formula = this_status ~ last_status, data = econ_act_current_gvn_last)
+
+Coefficients:
+           (Intercept) last_statusInactive last_statusUnemployed
+Inactive     -2.990816            5.608353              3.195381
+Unemployed   -3.665558            2.863556              4.205698
+
+Std. Errors:
+           (Intercept) last_statusInactive last_statusUnemployed
+Inactive    0.01062167          0.01509096            0.02437465
+Unemployed  0.01470796          0.02371201            0.02521938
+
+Residual Deviance: 257443 
+AIC: 257455 </code></pre>
+</div>
+</div>
+<p>Eyeballing, all coefficients look very statistically significant</p>
+<p>Now what are the predicted probabilities?</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(mod_01, <span class="at">newdata =</span> <span class="fu">tibble</span>(<span class="at">last_status =</span> <span class="fu">c</span>(<span class="st">"Employed"</span>, <span class="st">"Inactive"</span>, <span class="st">"Unemployed"</span>)), <span class="at">type =</span> <span class="st">"probs"</span>) <span class="sc">%&gt;%</span> <span class="fu">as_tibble</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">last_status =</span> <span class="fu">c</span>(<span class="st">"Employed"</span>, <span class="st">"Inactive"</span>, <span class="st">"Unemployed"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> <span class="fu">c</span>(<span class="st">"Employed"</span>, <span class="st">"Inactive"</span>, <span class="st">"Unemployed"</span>), <span class="at">names_to =</span> <span class="st">"current_status"</span>, <span class="at">values_to =</span> <span class="st">"predicted_probability"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 9 × 3
+  last_status current_status predicted_probability
+  &lt;chr&gt;       &lt;chr&gt;                          &lt;dbl&gt;
+1 Employed    Employed                      0.930 
+2 Employed    Inactive                      0.0467
+3 Employed    Unemployed                    0.0238
+4 Inactive    Employed                      0.0660
+5 Inactive    Inactive                      0.904 
+6 Inactive    Unemployed                    0.0296
+7 Unemployed  Employed                      0.254 
+8 Unemployed  Inactive                      0.311 
+9 Unemployed  Unemployed                    0.435 </code></pre>
+</div>
+</div>
+<p>According to this:</p>
+<ul>
+<li><p>Of those previous employed:</p>
+<ul>
+<li><p>93.0% remain employed</p></li>
+<li><p>4.7% become inactive</p></li>
+<li><p>2.4% become unemployed</p></li>
+</ul></li>
+<li><p>Of those previously unemployed:</p>
+<ul>
+<li><p>25.4% become employed</p></li>
+<li><p>31.1% become inactive</p></li>
+<li><p>43.5% remain unemployed</p></li>
+</ul></li>
+<li><p>Of those previously inactive</p>
+<ul>
+<li><p>6.6% become employed</p></li>
+<li><p>90.4% remain inactive</p></li>
+<li><p>3.0% become unemployed</p></li>
+</ul></li>
+</ul>
+<p>Note this is for all waves, so assumes no change in these transition probabilities over time. (This can be tested by including wavenum as a covariate)</p>
+<p>For the next model I want to include sex in the model both independently and as an interaction term with previous status.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>econ_act_current_gvn_last_with_sex <span class="ot">&lt;-</span> </span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>  econ_act_current_gvn_last <span class="sc">%&gt;%</span></span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>      long_slimmed_data <span class="sc">%&gt;%</span> </span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>        <span class="fu">filter</span>(variable <span class="sc">==</span> <span class="st">'sex'</span>)  <span class="sc">%&gt;%</span> </span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>        <span class="fu">mutate</span>(<span class="at">wavenumber =</span> <span class="fu">match</span>(wave, letters[<span class="dv">1</span><span class="sc">:</span><span class="dv">26</span>])) <span class="sc">%&gt;%</span> </span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>        <span class="fu">select</span>(pidp, wavenumber, <span class="at">sex =</span> value) </span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb38-9"><a href="#cb38-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(sex <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">'male'</span>, <span class="st">'female'</span>))</span>
+<span id="cb38-10"><a href="#cb38-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb38-11"><a href="#cb38-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Just to be consistent I'll redo model 1 with this dataset</span></span>
+<span id="cb38-12"><a href="#cb38-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-13"><a href="#cb38-13" aria-hidden="true" tabindex="-1"></a>mod_01 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb38-14"><a href="#cb38-14" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status, <span class="co"># No sex</span></span>
+<span id="cb38-15"><a href="#cb38-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex</span>
+<span id="cb38-16"><a href="#cb38-16" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  12 (6 variable)
+initial  value 390714.868791 
+iter  10 value 148580.271134
+iter  20 value 128761.648677
+final  value 128721.300210 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>mod_02 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">+</span> sex, <span class="co"># No interaction</span></span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  15 (8 variable)
+initial  value 390714.868791 
+iter  10 value 134593.270783
+iter  20 value 128424.781753
+final  value 128424.768081 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>mod_03 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex, <span class="co"># WITH interaction</span></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  21 (12 variable)
+initial  value 390714.868791 
+iter  10 value 146857.638369
+iter  20 value 128095.302715
+final  value 128090.965520 
+converged</code></pre>
+</div>
+</div>
+<p>Let’s now compare the models with AIC and BIC</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_01, mod_02, mod_03)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      AIC
+mod_01  6 257454.6
+mod_02  8 256865.5
+mod_03 12 256205.9</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(mod_01, mod_02, mod_03)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      BIC
+mod_01  6 257519.3
+mod_02  8 256951.8
+mod_03 12 256335.3</code></pre>
+</div>
+</div>
+<p>In both cases the model with interaction terms is preferred, so let’s include them (i.e.&nbsp;use <code>mod_03</code></p>
+<p>What does this predict?</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>predictor_matrix <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">last_status =</span> <span class="fu">c</span>(<span class="st">'Unemployed'</span>, <span class="st">'Employed'</span>, <span class="st">'Inactive'</span>),</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">sex =</span> <span class="fu">c</span>(<span class="st">"female"</span>, <span class="st">'male'</span>)</span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_03, <span class="at">newdata =</span> predictor_matrix, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_03 <span class="ot">&lt;-</span> <span class="fu">bind_cols</span>(predictions, predictor_matrix) <span class="sc">%&gt;%</span> </span>
+<span id="cb48-9"><a href="#cb48-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> <span class="fu">c</span>(<span class="st">'Employed'</span>, <span class="st">'Inactive'</span>, <span class="st">'Unemployed'</span>), <span class="at">names_to =</span> <span class="st">'current_status'</span>, <span class="at">values_to =</span> <span class="st">'predicted_probability'</span>)</span>
+<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-11"><a href="#cb48-11" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_03 <span class="sc">%&gt;%</span> </span>
+<span id="cb48-12"><a href="#cb48-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(sex) <span class="sc">%&gt;%</span> </span>
+<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> current_status, <span class="at">values_from =</span> predicted_probability)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 5
+  last_status sex    Employed Inactive Unemployed
+  &lt;chr&gt;       &lt;chr&gt;     &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;
+1 Unemployed  female   0.243    0.391      0.365 
+2 Employed    female   0.921    0.0587     0.0200
+3 Inactive    female   0.0659   0.904      0.0300
+4 Unemployed  male     0.263    0.237      0.500 
+5 Employed    male     0.938    0.0339     0.0279
+6 Inactive    male     0.0661   0.905      0.0290</code></pre>
+</div>
+</div>
+<p>The main difference here seems to be that a female unemployed in the previous wave has a much higher probability of being inactive the next wave than a male unemployed at the last wave.</p>
+<p>Females unemployed:</p>
+<ul>
+<li><p>Employed: 24.3%</p></li>
+<li><p>Inactive: 39.1%</p></li>
+<li><p>Unemployed: 36.5%</p></li>
+</ul>
+<p>Males unemployed:</p>
+<ul>
+<li><p>Employed 26.3%</p></li>
+<li><p>Inactive: 23.7%</p></li>
+<li><p>Unemployed: 50.0%</p></li>
+</ul>
+<p>All other entries look very similar.</p>
+<p>Next we can incorporate age, and possibly age^2 as well?</p>
+<p>We could also look at the broad age groups as categorical variables used previously</p>
+<p>When considering age we should also restrict the age range to 16 to 60 as before.</p>
+<p>As before we should redo the previous models so comparisons are made on the basis of exactly the same dataset.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>econ_act_current_gvn_last_with_sex_and_age <span class="ot">&lt;-</span> </span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>  econ_act_current_gvn_last <span class="sc">%&gt;%</span></span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>      long_slimmed_data <span class="sc">%&gt;%</span> </span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>        <span class="fu">filter</span>(variable <span class="sc">==</span> <span class="st">'sex'</span>)  <span class="sc">%&gt;%</span> </span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a>        <span class="fu">mutate</span>(<span class="at">wavenumber =</span> <span class="fu">match</span>(wave, letters[<span class="dv">1</span><span class="sc">:</span><span class="dv">26</span>])) <span class="sc">%&gt;%</span> </span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a>        <span class="fu">select</span>(pidp, wavenumber, <span class="at">sex =</span> value) </span>
+<span id="cb50-8"><a href="#cb50-8" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb50-9"><a href="#cb50-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(sex <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">'male'</span>, <span class="st">'female'</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb50-10"><a href="#cb50-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb50-11"><a href="#cb50-11" aria-hidden="true" tabindex="-1"></a>    long_slimmed_data <span class="sc">%&gt;%</span> </span>
+<span id="cb50-12"><a href="#cb50-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(variable <span class="sc">==</span> <span class="st">'dvage'</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb50-13"><a href="#cb50-13" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">age =</span> <span class="fu">as.numeric</span>(value)) <span class="sc">%&gt;%</span> </span>
+<span id="cb50-14"><a href="#cb50-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">wavenumber =</span> <span class="fu">match</span>(wave, letters[<span class="dv">1</span><span class="sc">:</span><span class="dv">26</span>])) <span class="sc">%&gt;%</span> </span>
+<span id="cb50-15"><a href="#cb50-15" aria-hidden="true" tabindex="-1"></a>      <span class="fu">select</span>(pidp, wavenumber, age)  </span>
+<span id="cb50-16"><a href="#cb50-16" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
+<span id="cb50-17"><a href="#cb50-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(age <span class="sc">&gt;=</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span> <span class="co">#negative values indicate missing </span></span>
+<span id="cb50-18"><a href="#cb50-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">between</span>(age, <span class="dv">16</span>, <span class="dv">65</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb50-19"><a href="#cb50-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">age_group =</span> <span class="fu">case_when</span>(</span>
+<span id="cb50-20"><a href="#cb50-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">between</span>(age, <span class="dv">16</span>, <span class="dv">24</span>) <span class="sc">~</span> <span class="st">"16-24"</span>,</span>
+<span id="cb50-21"><a href="#cb50-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">between</span>(age, <span class="dv">25</span>, <span class="dv">49</span>) <span class="sc">~</span> <span class="st">"25-49"</span>,</span>
+<span id="cb50-22"><a href="#cb50-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">between</span>(age, <span class="dv">50</span>, <span class="dv">65</span>) <span class="sc">~</span> <span class="st">"50-65"</span></span>
+<span id="cb50-23"><a href="#cb50-23" aria-hidden="true" tabindex="-1"></a>  )) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now to specify a number of models:</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>mod_01 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status, <span class="co"># No sex</span></span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  12 (6 variable)
+initial  value 307402.704493 
+iter  10 value 115294.751688
+iter  20 value 113260.511453
+final  value 113259.242650 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a>mod_02 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">+</span> sex, <span class="co"># No interaction</span></span>
+<span id="cb53-3"><a href="#cb53-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb53-4"><a href="#cb53-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  15 (8 variable)
+initial  value 307402.704493 
+iter  10 value 132393.162764
+iter  20 value 112732.543701
+final  value 112732.521526 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>mod_03 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex, <span class="co"># WITH interaction</span></span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  21 (12 variable)
+initial  value 307402.704493 
+iter  10 value 137054.021466
+iter  20 value 113116.887885
+final  value 112535.228425 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>mod_04 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> age, <span class="co">#Linear age, no interaction</span></span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  24 (14 variable)
+initial  value 307402.704493 
+iter  10 value 125488.331733
+iter  20 value 110049.698258
+final  value 110046.436734 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>mod_05 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> <span class="fu">poly</span>(age, <span class="dv">2</span>), <span class="co">#quadratic age, no interaction</span></span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  27 (16 variable)
+initial  value 307402.704493 
+iter  10 value 137042.753555
+iter  20 value 109481.551227
+iter  30 value 106310.194118
+iter  40 value 106212.380633
+iter  50 value 106209.808952
+final  value 106209.691383 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb61"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a>mod_06 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb61-2"><a href="#cb61-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> age_group, <span class="co">#age group, no interaction</span></span>
+<span id="cb61-3"><a href="#cb61-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb61-4"><a href="#cb61-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  27 (16 variable)
+initial  value 307402.704493 
+iter  10 value 168491.409705
+iter  20 value 130418.695968
+iter  30 value 107419.036597
+iter  40 value 107383.044678
+iter  40 value 107383.044061
+final  value 107383.009769 
+converged</code></pre>
+</div>
+</div>
+<p>Compare model fit</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb63"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(</span>
+<span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a>  mod_01, mod_02, mod_03, mod_04, mod_05, mod_06</span>
+<span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      AIC
+mod_01  6 226530.5
+mod_02  8 225481.0
+mod_03 12 225094.5
+mod_04 14 220120.9
+mod_05 16 212451.4
+mod_06 16 214798.0</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb65"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(</span>
+<span id="cb65-2"><a href="#cb65-2" aria-hidden="true" tabindex="-1"></a>  mod_01, mod_02, mod_03, mod_04, mod_05, mod_06</span>
+<span id="cb65-3"><a href="#cb65-3" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      BIC
+mod_01  6 226593.7
+mod_02  8 225565.4
+mod_03 12 225221.0
+mod_04 14 220268.5
+mod_05 16 212620.1
+mod_06 16 214966.7</code></pre>
+</div>
+</div>
+<p>This seems to suggest age squared has the best penalised model fit.</p>
+<p>Let’s see what mod_05 predicts…</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a>predictor_matrix <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(</span>
+<span id="cb67-2"><a href="#cb67-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">sex =</span> <span class="fu">c</span>(<span class="st">'male'</span>, <span class="st">'female'</span>), </span>
+<span id="cb67-3"><a href="#cb67-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">age =</span> <span class="dv">16</span><span class="sc">:</span><span class="dv">65</span>, </span>
+<span id="cb67-4"><a href="#cb67-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">last_status =</span> <span class="fu">c</span>(<span class="st">'Unemployed'</span>, <span class="st">'Employed'</span>, <span class="st">'Inactive'</span>)</span>
+<span id="cb67-5"><a href="#cb67-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb67-6"><a href="#cb67-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-7"><a href="#cb67-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-8"><a href="#cb67-8" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_05, <span class="at">newdata =</span> predictor_matrix, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb67-9"><a href="#cb67-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-10"><a href="#cb67-10" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_05 <span class="ot">&lt;-</span> <span class="fu">bind_cols</span>(predictions, predictor_matrix) <span class="sc">%&gt;%</span> </span>
+<span id="cb67-11"><a href="#cb67-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> <span class="fu">c</span>(<span class="st">'Employed'</span>, <span class="st">'Inactive'</span>, <span class="st">'Unemployed'</span>), <span class="at">names_to =</span> <span class="st">'current_status'</span>, <span class="at">values_to =</span> <span class="st">'predicted_probability'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>We now have to think about how to visualise this.</p>
+<ul>
+<li><p>Predicted probability on y axis</p></li>
+<li><p>group/colour on last status</p></li>
+<li><p>age on x axis</p></li>
+<li><p>facet grid by sex and current_status?</p></li>
+</ul>
+<p>(Unsure about current/last)</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_05 <span class="sc">%&gt;%</span> </span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> predicted_probability, <span class="at">group =</span> current_status, <span class="at">colour =</span> current_status)) <span class="sc">+</span> </span>
+<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span> </span>
+<span id="cb68-4"><a href="#cb68-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(last_status <span class="sc">~</span> sex)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="08_multinomial_logistic_regression_files/figure-html/unnamed-chunk-29-1.png" class="img-fluid" width="864"></p>
+</div>
+</div>
+<p>I’m slightly concerned that in using a quadratic polynomial the tail is wagging the dog too much in terms of the shapes of the curve.</p>
+<p>Alternatives are higher order polynomials, using splines, or possibly logging age, which I think would allow slightly more of a j-shaped pattern.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a>mod_07 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> <span class="fu">poly</span>(age, <span class="dv">3</span>), <span class="co">#cubic age, no interaction</span></span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  30 (18 variable)
+initial  value 307402.704493 
+iter  10 value 137041.828106
+iter  20 value 109228.746554
+iter  30 value 105825.067065
+iter  40 value 105699.048544
+final  value 105699.047291 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb71"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a>mod_08 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb71-2"><a href="#cb71-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> <span class="fu">poly</span>(<span class="fu">log</span>(age), <span class="dv">2</span>), <span class="co">#quadratic on log of age, no interaction</span></span>
+<span id="cb71-3"><a href="#cb71-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb71-4"><a href="#cb71-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  27 (16 variable)
+initial  value 307402.704493 
+iter  10 value 137041.035864
+iter  20 value 109005.854029
+iter  30 value 105642.374096
+iter  40 value 105499.128019
+final  value 105499.100408 
+converged</code></pre>
+</div>
+</div>
+<p>Let’s compared these with model 5</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb73"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_05, mod_07, mod_08)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      AIC
+mod_05 16 212451.4
+mod_07 18 211434.1
+mod_08 16 211030.2</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb75"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb75-1"><a href="#cb75-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(mod_05, mod_07, mod_08)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      BIC
+mod_05 16 212620.1
+mod_07 18 211623.8
+mod_08 16 211198.9</code></pre>
+</div>
+</div>
+<p>Both indicate a reason for preferring quadratic on log age not age. Let’s see what the predictions for this model look like…</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb77"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb77-1"><a href="#cb77-1" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_08, <span class="at">newdata =</span> predictor_matrix, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb77-2"><a href="#cb77-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb77-3"><a href="#cb77-3" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_08 <span class="ot">&lt;-</span> <span class="fu">bind_cols</span>(predictions, predictor_matrix) <span class="sc">%&gt;%</span> </span>
+<span id="cb77-4"><a href="#cb77-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> <span class="fu">c</span>(<span class="st">'Employed'</span>, <span class="st">'Inactive'</span>, <span class="st">'Unemployed'</span>), <span class="at">names_to =</span> <span class="st">'current_status'</span>, <span class="at">values_to =</span> <span class="st">'predicted_probability'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb78"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_08 <span class="sc">%&gt;%</span> </span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> predicted_probability, <span class="at">group =</span> current_status, <span class="at">colour =</span> current_status)) <span class="sc">+</span> </span>
+<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span> </span>
+<span id="cb78-4"><a href="#cb78-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(last_status <span class="sc">~</span> sex)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="08_multinomial_logistic_regression_files/figure-html/unnamed-chunk-33-1.png" class="img-fluid" width="864"></p>
+</div>
+</div>
+<p>I’m still not sure about this.</p>
+<p>I think splines is an appropriate approach. Here are some links:</p>
+<ul>
+<li><p><a href="https://www.statology.org/spline-regression-in-r/">Spline regression in R</a></p>
+<ul>
+<li><p>There’s the <code>splines::bs</code> function (for b-splines)</p>
+<ul>
+<li><p>b-splines stand for basis splines</p></li>
+<li><p><a href="https://en.wikipedia.org/wiki/B-spline">Wikipedia article (involved)</a></p></li>
+<li><p><a href="https://www.rdocumentation.org/packages/splines/versions/3.6.2/topics/bs">Function documentation</a></p>
+<ul>
+<li>Can specify either degrees of freedom <code>df</code> or <code>knots</code>.</li>
+</ul></li>
+<li><p>This allows the position of knots to be specified</p></li>
+<li><p>For age I think this would be a useful feature.</p></li>
+<li><p>It also shows it in the context of a <code>lm</code> model, so as a component to other models.</p></li>
+</ul></li>
+</ul></li>
+<li><p><a href="http://users.stat.umn.edu/~helwig/notes/smooth-spline-notes.html">Smoothing spline regression in R</a></p>
+<ul>
+<li><p>Goes into more algebraic detail</p></li>
+<li><p>There’s the <code>stats::smooth.spline</code> function</p></li>
+<li><p>There’s the <code>npreg::ss</code> function</p></li>
+</ul></li>
+</ul>
+<p>I think I’d like to try the <code>splines::bs</code> function because it clearly works inside other regression functions and knot positions can be specified.</p>
+<p>I think the knots should be at the following ages:</p>
+<ul>
+<li>21, 60</li>
+</ul>
+<p>Let’s try to do this</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb79"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb79-1"><a href="#cb79-1" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("splines")</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Warnings that splines is part of base. (So no need to explicitly install?)</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb80"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a>mod_09 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">knots =</span> <span class="fu">c</span>(<span class="dv">21</span>, <span class="dv">60</span>)), <span class="co">#b-splines with two knots</span></span>
+<span id="cb80-3"><a href="#cb80-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb80-4"><a href="#cb80-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  36 (22 variable)
+initial  value 307402.704493 
+iter  10 value 148367.156221
+iter  20 value 137711.290944
+iter  30 value 108040.788637
+iter  40 value 105168.485352
+final  value 105168.409069 
+converged</code></pre>
+</div>
+</div>
+<p>And how does this compare with the last model?</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb82"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(mod_08, mod_09)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      BIC
+mod_08 16 211198.9
+mod_09 22 210612.7</code></pre>
+</div>
+</div>
+<p>So a sizeable improvement in fit.</p>
+<p>Let’s see what the modelled predictions look like…</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb84"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_09, <span class="at">newdata =</span> predictor_matrix, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb84-2"><a href="#cb84-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb84-3"><a href="#cb84-3" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_09 <span class="ot">&lt;-</span> <span class="fu">bind_cols</span>(predictions, predictor_matrix) <span class="sc">%&gt;%</span> </span>
+<span id="cb84-4"><a href="#cb84-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> <span class="fu">c</span>(<span class="st">'Employed'</span>, <span class="st">'Inactive'</span>, <span class="st">'Unemployed'</span>), <span class="at">names_to =</span> <span class="st">'current_status'</span>, <span class="at">values_to =</span> <span class="st">'predicted_probability'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb85"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb85-1"><a href="#cb85-1" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_09 <span class="sc">%&gt;%</span> </span>
+<span id="cb85-2"><a href="#cb85-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> predicted_probability, <span class="at">group =</span> current_status, <span class="at">colour =</span> current_status)) <span class="sc">+</span> </span>
+<span id="cb85-3"><a href="#cb85-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span> </span>
+<span id="cb85-4"><a href="#cb85-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(last_status <span class="sc">~</span> sex)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="08_multinomial_logistic_regression_files/figure-html/unnamed-chunk-38-1.png" class="img-fluid" width="864"></p>
+</div>
+</div>
+<p>I think this looks okay, but the choice of knots looks like it’s bringing some artefacts into the schedules.</p>
+<p>Is there a way of letting the data ‘decide’ on the knots?</p>
+<p>I’m going to try a number of different numbers of degrees of freedom, say 3, 6, and 9</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb86"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a>mod_10 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb86-2"><a href="#cb86-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">3</span>), <span class="co">#b-splines with two knots</span></span>
+<span id="cb86-3"><a href="#cb86-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb86-4"><a href="#cb86-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  30 (18 variable)
+initial  value 307402.704493 
+iter  10 value 131657.492373
+iter  20 value 121831.886086
+iter  30 value 105697.097381
+final  value 105696.978577 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb88"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb88-1"><a href="#cb88-1" aria-hidden="true" tabindex="-1"></a>mod_11 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb88-2"><a href="#cb88-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">6</span>), <span class="co">#b-splines with two knots</span></span>
+<span id="cb88-3"><a href="#cb88-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb88-4"><a href="#cb88-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  39 (24 variable)
+initial  value 307402.704493 
+iter  10 value 152150.205114
+iter  20 value 139243.364942
+iter  30 value 107470.108005
+iter  40 value 104959.486055
+final  value 104959.336244 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb90"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true" tabindex="-1"></a>mod_12 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb90-2"><a href="#cb90-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">9</span>), <span class="co">#b-splines with two knots</span></span>
+<span id="cb90-3"><a href="#cb90-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb90-4"><a href="#cb90-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  48 (30 variable)
+initial  value 307402.704493 
+iter  10 value 124111.471610
+iter  20 value 120773.311055
+iter  30 value 114774.733469
+iter  40 value 104982.948748
+final  value 104946.589922 
+converged</code></pre>
+</div>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb92"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb92-1"><a href="#cb92-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(mod_09, mod_10, mod_11, mod_12)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      BIC
+mod_09 22 210612.7
+mod_10 18 211619.7
+mod_11 24 210219.7
+mod_12 30 210269.4</code></pre>
+</div>
+</div>
+<p>It seems to have found a trade-off, with mod_11 outperforming mod_12 on penalised model fit. Let’s see if this can be further tweaked by looking at variants with df around those of mod_11 (i.e.&nbsp;5 and 7 df)</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb94"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb94-1"><a href="#cb94-1" aria-hidden="true" tabindex="-1"></a>mod_13 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb94-2"><a href="#cb94-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">5</span>), <span class="co">#b-splines with 5 dfs</span></span>
+<span id="cb94-3"><a href="#cb94-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb94-4"><a href="#cb94-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  36 (22 variable)
+initial  value 307402.704493 
+iter  10 value 145211.566286
+iter  20 value 136228.957222
+iter  30 value 107433.576904
+iter  40 value 104965.579604
+final  value 104965.574669 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb96"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb96-1"><a href="#cb96-1" aria-hidden="true" tabindex="-1"></a>mod_14 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb96-2"><a href="#cb96-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">7</span>), <span class="co">#b-splines with 7 df</span></span>
+<span id="cb96-3"><a href="#cb96-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb96-4"><a href="#cb96-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  42 (26 variable)
+initial  value 307402.704493 
+iter  10 value 126897.900293
+iter  20 value 122830.719113
+iter  30 value 111069.861683
+iter  40 value 104950.795658
+final  value 104950.769759 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb98"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb98-1"><a href="#cb98-1" aria-hidden="true" tabindex="-1"></a>mod_15 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb98-2"><a href="#cb98-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">4</span>), <span class="co">#b-splines with 4 df</span></span>
+<span id="cb98-3"><a href="#cb98-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb98-4"><a href="#cb98-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  33 (20 variable)
+initial  value 307402.704493 
+iter  10 value 143902.619621
+iter  20 value 132466.693068
+iter  30 value 105427.610143
+final  value 105047.884132 
+converged</code></pre>
+</div>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb100"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb100-1"><a href="#cb100-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(mod_15, mod_13, mod_11, mod_14)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      BIC
+mod_15 20 210346.6
+mod_13 22 210207.1
+mod_11 24 210219.7
+mod_14 26 210227.6</code></pre>
+</div>
+</div>
+<p>So model 13, with 5df, seems to be preferred. What does this look like?</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb102"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb102-1"><a href="#cb102-1" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_13, <span class="at">newdata =</span> predictor_matrix, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb102-2"><a href="#cb102-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb102-3"><a href="#cb102-3" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_13 <span class="ot">&lt;-</span> <span class="fu">bind_cols</span>(predictions, predictor_matrix) <span class="sc">%&gt;%</span> </span>
+<span id="cb102-4"><a href="#cb102-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> <span class="fu">c</span>(<span class="st">'Employed'</span>, <span class="st">'Inactive'</span>, <span class="st">'Unemployed'</span>), <span class="at">names_to =</span> <span class="st">'current_status'</span>, <span class="at">values_to =</span> <span class="st">'predicted_probability'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb103"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb103-1"><a href="#cb103-1" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_13 <span class="sc">%&gt;%</span> </span>
+<span id="cb103-2"><a href="#cb103-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> predicted_probability, <span class="at">group =</span> current_status, <span class="at">colour =</span> current_status)) <span class="sc">+</span> </span>
+<span id="cb103-3"><a href="#cb103-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span> </span>
+<span id="cb103-4"><a href="#cb103-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(last_status <span class="sc">~</span> sex)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="08_multinomial_logistic_regression_files/figure-html/unnamed-chunk-44-1.png" class="img-fluid" width="864"></p>
+</div>
+</div>
+<p>I think this now looks reasonable. There’s a risk it’s overfit and so on, but I think this looks like a good base model to work from.</p>
+<p>I think the next step, and final step in terms of producing a decent base model, would be to see if there’s benefit in adding a time term.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb104"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb104-1"><a href="#cb104-1" aria-hidden="true" tabindex="-1"></a>mod_16 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb104-2"><a href="#cb104-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">5</span>) <span class="sc">+</span> wavenumber, <span class="co">#b-splines with 5 dfs</span></span>
+<span id="cb104-3"><a href="#cb104-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb104-4"><a href="#cb104-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  39 (24 variable)
+initial  value 307402.704493 
+iter  10 value 220150.425081
+iter  20 value 203128.435455
+iter  30 value 127183.900269
+iter  40 value 105710.958730
+iter  50 value 104888.726297
+iter  50 value 104888.726248
+final  value 104888.726248 
+converged</code></pre>
+</div>
+</div>
+<p>Does this improve fit?</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb106"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb106-1"><a href="#cb106-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(mod_13, mod_16)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>       df      BIC
+mod_13 22 210207.1
+mod_16 24 210078.5</code></pre>
+</div>
+</div>
+<p>Somewhat… What are the coefficients?</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb108"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb108-1"><a href="#cb108-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod_16)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Call:
+multinom(formula = this_status ~ last_status * sex + splines::bs(age, 
+    df = 5) + wavenumber, data = econ_act_current_gvn_last_with_sex_and_age)
+
+Coefficients:
+           (Intercept) last_statusInactive last_statusUnemployed    sexmale
+Inactive     0.8800076            4.811167              3.242393 -0.6919970
+Unemployed  -1.7736372            3.306712              4.215143  0.3237047
+           splines::bs(age, df = 5)1 splines::bs(age, df = 5)2
+Inactive                   -4.238180                 -3.619865
+Unemployed                 -1.229823                 -2.187839
+           splines::bs(age, df = 5)3 splines::bs(age, df = 5)4
+Inactive                   -4.194236                 -3.845845
+Unemployed                 -2.026565                 -2.041717
+           splines::bs(age, df = 5)5  wavenumber last_statusInactive:sexmale
+Inactive                   -3.075719 -0.02523347                   0.3195781
+Unemployed                 -3.285309 -0.03790021                  -0.1842326
+           last_statusUnemployed:sexmale
+Inactive                     -0.07852146
+Unemployed                   -0.15505957
+
+Std. Errors:
+           (Intercept) last_statusInactive last_statusUnemployed    sexmale
+Inactive    0.04275450          0.02169530            0.03519487 0.02424536
+Unemployed  0.05974973          0.03387868            0.03878176 0.02987847
+           splines::bs(age, df = 5)1 splines::bs(age, df = 5)2
+Inactive                  0.08085568                0.05371576
+Unemployed                0.10275698                0.06765968
+           splines::bs(age, df = 5)3 splines::bs(age, df = 5)4
+Inactive                  0.06829166                0.05453309
+Unemployed                0.09100167                0.07766852
+           splines::bs(age, df = 5)5  wavenumber last_statusInactive:sexmale
+Inactive                  0.05375949 0.002688237                  0.03545025
+Unemployed                0.09440825 0.003508282                  0.05019411
+           last_statusUnemployed:sexmale
+Inactive                      0.05274922
+Unemployed                    0.05175962
+
+Residual Deviance: 209777.5 
+AIC: 209825.5 </code></pre>
+</div>
+</div>
+<p>This is difficult to make intuitive sense of. Instead what if we predict but using two time periods: 3 (c) and 10 (j)?</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb110"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb110-1"><a href="#cb110-1" aria-hidden="true" tabindex="-1"></a>predictor_matrix <span class="ot">&lt;-</span> <span class="fu">expand_grid</span>(</span>
+<span id="cb110-2"><a href="#cb110-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">sex =</span> <span class="fu">c</span>(<span class="st">'male'</span>, <span class="st">'female'</span>), </span>
+<span id="cb110-3"><a href="#cb110-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">age =</span> <span class="dv">16</span><span class="sc">:</span><span class="dv">65</span>, </span>
+<span id="cb110-4"><a href="#cb110-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">last_status =</span> <span class="fu">c</span>(<span class="st">'Unemployed'</span>, <span class="st">'Employed'</span>, <span class="st">'Inactive'</span>),</span>
+<span id="cb110-5"><a href="#cb110-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">wavenumber =</span> <span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">10</span>)</span>
+<span id="cb110-6"><a href="#cb110-6" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb111"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb111-1"><a href="#cb111-1" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_16, <span class="at">newdata =</span> predictor_matrix, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb111-2"><a href="#cb111-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb111-3"><a href="#cb111-3" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_16 <span class="ot">&lt;-</span> <span class="fu">bind_cols</span>(predictions, predictor_matrix) <span class="sc">%&gt;%</span> </span>
+<span id="cb111-4"><a href="#cb111-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> <span class="fu">c</span>(<span class="st">'Employed'</span>, <span class="st">'Inactive'</span>, <span class="st">'Unemployed'</span>), <span class="at">names_to =</span> <span class="st">'current_status'</span>, <span class="at">values_to =</span> <span class="st">'predicted_probability'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb112"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb112-1"><a href="#cb112-1" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_16 <span class="sc">%&gt;%</span> </span>
+<span id="cb112-2"><a href="#cb112-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> predicted_probability, <span class="at">group =</span> <span class="fu">paste</span>(current_status, wavenumber), <span class="at">colour =</span> current_status, <span class="at">linetype =</span> <span class="fu">factor</span>(wavenumber))) <span class="sc">+</span> </span>
+<span id="cb112-3"><a href="#cb112-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span> </span>
+<span id="cb112-4"><a href="#cb112-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(last_status <span class="sc">~</span> sex)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="08_multinomial_logistic_regression_files/figure-html/unnamed-chunk-50-1.png" class="img-fluid" width="864"></p>
+</div>
+</div>
+<p>It looks like the predicted probabilities of employment are increasing over time, the predicted probabilities of unemployment are decreasing over time, and the predicted probabilities of being inactive are decreasing. These trends seem to be largest for employment and unemployment, with inactivity appearing to change less.</p>
+<p>Let’s finish for now with a couple of mega-models, to see if interactions between included factors ought to be included</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb113"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb113-1"><a href="#cb113-1" aria-hidden="true" tabindex="-1"></a>mod_17 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb113-2"><a href="#cb113-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">*</span> wavenumber <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">5</span>) , <span class="co">#wavenumber now interacting</span></span>
+<span id="cb113-3"><a href="#cb113-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb113-4"><a href="#cb113-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  54 (34 variable)
+initial  value 307402.704493 
+iter  10 value 166020.520145
+iter  20 value 148994.734858
+iter  30 value 137295.455224
+iter  40 value 116604.837071
+iter  50 value 104848.189717
+final  value 104846.332149 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb115"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb115-1"><a href="#cb115-1" aria-hidden="true" tabindex="-1"></a>mod_18 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb115-2"><a href="#cb115-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">*</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">5</span>) <span class="sc">+</span> wavenumber, <span class="co"># agesplines now interacting</span></span>
+<span id="cb115-3"><a href="#cb115-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb115-4"><a href="#cb115-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  114 (74 variable)
+initial  value 307402.704493 
+iter  10 value 146761.456931
+iter  20 value 137590.157871
+iter  30 value 129111.423766
+iter  40 value 119049.279517
+iter  50 value 112852.545851
+iter  60 value 107889.591974
+iter  70 value 103226.121007
+iter  80 value 102136.838288
+iter  90 value 102059.260321
+final  value 102059.225036 
+converged</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb117"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb117-1"><a href="#cb117-1" aria-hidden="true" tabindex="-1"></a>mod_19 <span class="ot">&lt;-</span> <span class="fu">multinom</span>(</span>
+<span id="cb117-2"><a href="#cb117-2" aria-hidden="true" tabindex="-1"></a>  this_status <span class="sc">~</span> last_status <span class="sc">*</span> sex <span class="sc">*</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="at">df =</span> <span class="dv">5</span>) <span class="sc">*</span> wavenumber, <span class="co"># everything now interacting</span></span>
+<span id="cb117-3"><a href="#cb117-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> econ_act_current_gvn_last_with_sex_and_age</span>
+<span id="cb117-4"><a href="#cb117-4" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  219 (144 variable)
+initial  value 307402.704493 
+iter  10 value 164101.229136
+iter  20 value 152794.604105
+iter  30 value 150123.116683
+iter  40 value 147406.636678
+iter  50 value 144461.961083
+iter  60 value 140999.348474
+iter  70 value 133780.433328
+iter  80 value 127305.430175
+iter  90 value 121461.101659
+iter 100 value 117794.568633
+final  value 117794.568633 
+stopped after 100 iterations</code></pre>
+</div>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb119"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb119-1"><a href="#cb119-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(mod_16, mod_17, mod_18, mod_19)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        df      BIC
+mod_16  24 210078.5
+mod_17  34 210119.1
+mod_18  74 205046.5
+mod_19 144 237395.2</code></pre>
+</div>
+</div>
+<p>This suggests including age-spline interactions should be done, but other proposed interactions make the penalised model fit worse.</p>
+<p>Importantly, it suggests no reason to assume interactions with wavenumber</p>
+<p>So, what do the predictions look like with mod_18?</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb121"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb121-1"><a href="#cb121-1" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_18, <span class="at">newdata =</span> predictor_matrix, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb121-2"><a href="#cb121-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb121-3"><a href="#cb121-3" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_18 <span class="ot">&lt;-</span> <span class="fu">bind_cols</span>(predictions, predictor_matrix) <span class="sc">%&gt;%</span> </span>
+<span id="cb121-4"><a href="#cb121-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> <span class="fu">c</span>(<span class="st">'Employed'</span>, <span class="st">'Inactive'</span>, <span class="st">'Unemployed'</span>), <span class="at">names_to =</span> <span class="st">'current_status'</span>, <span class="at">values_to =</span> <span class="st">'predicted_probability'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb122"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb122-1"><a href="#cb122-1" aria-hidden="true" tabindex="-1"></a>predictions_predictor_mod_18 <span class="sc">%&gt;%</span> </span>
+<span id="cb122-2"><a href="#cb122-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age, <span class="at">y =</span> predicted_probability, <span class="at">group =</span> <span class="fu">paste</span>(current_status, wavenumber), <span class="at">colour =</span> current_status, <span class="at">linetype =</span> <span class="fu">factor</span>(wavenumber))) <span class="sc">+</span> </span>
+<span id="cb122-3"><a href="#cb122-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span> </span>
+<span id="cb122-4"><a href="#cb122-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(last_status <span class="sc">~</span> sex)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="08_multinomial_logistic_regression_files/figure-html/unnamed-chunk-54-1.png" class="img-fluid" width="864"></p>
+</div>
+</div>
+<p>I think this is a decent baseline model.</p>
+<p>Things to consider adding which have at least some kind of modifiable component:</p>
+<ul>
+<li><p>Skills/highest education?</p></li>
+<li><p>Income (caveat is this may be a proxy for previous and current economic activity state)</p>
+<ul>
+<li>could look at benefits-based income only?</li>
+</ul></li>
+<li><p>Physical health</p></li>
+<li><p>Mental health</p></li>
+<li><p>household types</p>
+<ul>
+<li><p>Single parent households</p>
+<ul>
+<li>eligibility for …</li>
+</ul></li>
+<li><p>larger families (three or more dependent children)</p>
+<ul>
+<li><p>lower income larger families</p></li>
+<li><p>two child limit affects ~ 20k families in Scotland</p></li>
+</ul></li>
+<li><p>Older women affected by pension changes</p></li>
+<li><p>Young unemployed men claiming out-of-work benefits (JSA/Universal Credit)</p></li>
+</ul></li>
+<li><p>job quality!</p>
+<ul>
+<li>could look, for those groups who were employed in last wave, whether their measures of job-quality affect probability of remaining in employment, or moving to either unemployment or inactivity</li>
+</ul></li>
+</ul>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

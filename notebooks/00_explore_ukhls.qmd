@@ -1,8 +1,17 @@
 ---
-title: "Getting used to UKHLS data"
+title: "Notebook 0: Getting used to UKHLS data"
 author: "Jon Minton"
-format: html
+format: 
+  docx: 
+    toc: true
+    number-sections: true
+  html:
+    code-fold: true
+    echo: true
 editor: visual
+execute: 
+  echo: false
+  warning: false
 ---
 
 ## Aim
@@ -69,7 +78,7 @@ base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
 library(tidyverse)
 library(haven)
 library(here)
-library(economic_inactivity)
+devtools::load_all(here('R'))
 
 ```
 

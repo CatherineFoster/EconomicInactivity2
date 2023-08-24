@@ -8,7 +8,7 @@
 
 <meta name="author" content="Jon Minton">
 
-<title>Getting used to UKHLS data</title>
+<title>Notebook 0: Getting used to UKHLS data</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -72,15 +72,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 </head>
 
-<body class="fullcontent">
+<body>
 
 <div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
-
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="00_explore_ukhls.docx"><i class="bi bi-file-word"></i>MS Word</a></li></ul></div></div>
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Getting used to UKHLS data</h1>
+<h1 class="title">Notebook 0: Getting used to UKHLS data</h1>
 </div>
 
 
@@ -112,6 +113,59 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>Once code has reached a sufficient level of complexity, I will attempt to convert them into functions within the utils folder, and set up associated tests in the tests directory.</p>
 </section>
+<section id="variables-we-need" class="level2">
+<h2 class="anchored" data-anchor-id="variables-we-need">Variables we need</h2>
+<ul>
+<li>from individual surveys:
+<ul>
+<li>Outcomes/state
+<ul>
+<li><code>demographics_w12.jbstat</code> : current economic activity</li>
+</ul></li>
+<li>Demographic determinants
+<ul>
+<li><code>pid</code>: Person identifier (for linking between waves)</li>
+<li><code>demographics_w12.psex</code>: sex</li>
+<li><code>demographics_w12.pdvage</code>: age</li>
+<li><code>ethnicityandnationalidentity_12.racel</code>: ‘race’/ethnicity</li>
+<li><code>gridvariables_w12.pmarstat</code>: marital status</li>
+<li><code>gridvariables_w12.nkids05</code>: number of children</li>
+<li><code>gridvaribles_w12.nunder16abs</code>: number of kids aged 0-15 with one and only one parent in HH</li>
+</ul></li>
+<li>Caring responsibilities
+<ul>
+<li><code>caringw12.aidxhh</code> : Non residents cared for: do you provide regular service or help for any sick, disabled or elderly person not living with you?</li>
+<li><code>caringw12.aidhrs</code>: hours per week spent caring.</li>
+</ul></li>
+<li>Education and training:
+<ul>
+<li><code>nisced11_dv</code> : highest education achieved</li>
+<li><code>feend</code> : Further education leaving age</li>
+<li><code>fenow</code> : Still in further education</li>
+<li>Possibly something further on training</li>
+</ul></li>
+<li>Health
+<ul>
+<li><code>scaghq_w12</code>: self completion ghq module</li>
+<li><code>scasf12_w12:</code> self completion physical and mental health</li>
+</ul></li>
+</ul></li>
+<li>from household surveys:
+<ul>
+<li>Nothing yet</li>
+</ul></li>
+<li>Geographic indicators
+<ul>
+<li>Want local authority and travel to work areas;</li>
+<li>potentially urban-rural too;</li>
+<li>Probably can’t do until special access versions used and permissions sought and accepted</li>
+</ul></li>
+<li>Deprivation
+<ul>
+<li>Possibly SIMD/IMD?</li>
+</ul></li>
+</ul>
+</section>
 <section id="starting-off" class="level2">
 <h2 class="anchored" data-anchor-id="starting-off">Starting off</h2>
 <ul>
@@ -123,10 +177,820 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul></li>
 <li><p>The files I think I need to target have <code>indresp</code> as the name portion of the file above.</p></li>
 </ul>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>base_dir_location <span class="ot">&lt;-</span> <span class="st">"big_data/UKDA-6614-stata"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(haven)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dir</span>(base_dir_location)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>base_dir_location <span class="ot">&lt;-</span> <span class="st">"big_data/UKDA-6614-stata/stata/stata13_se/ukhls"</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(haven)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(here)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(<span class="fu">here</span>(<span class="st">'R'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dir</span>(<span class="fu">here</span>(base_dir_location))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>  [1] "a_adopt.dta"    "a_callrec.dta"  "a_child.dta"    "a_cohab.dta"   
+  [5] "a_egoalt.dta"   "a_empstat.dta"  "a_hhresp.dta"   "a_hhsamp.dta"  
+  [9] "a_income.dta"   "a_indall.dta"   "a_indresp.dta"  "a_issue.dta"   
+ [13] "a_marriage.dta" "a_natchild.dta" "a_youth.dta"    "b_callrec.dta" 
+ [17] "b_child.dta"    "b_egoalt.dta"   "b_hhresp.dta"   "b_hhsamp.dta"  
+ [21] "b_income.dta"   "b_indall.dta"   "b_indresp.dta"  "b_indsamp.dta" 
+ [25] "b_issue.dta"    "b_newborn.dta"  "b_youth.dta"    "c_callrec.dta" 
+ [29] "c_child.dta"    "c_chmain.dta"   "c_egoalt.dta"   "c_hhresp.dta"  
+ [33] "c_hhsamp.dta"   "c_income.dta"   "c_indall.dta"   "c_indresp.dta" 
+ [37] "c_indsamp.dta"  "c_issue.dta"    "c_newborn.dta"  "c_parstyle.dta"
+ [41] "c_youth.dta"    "d_callrec.dta"  "d_child.dta"    "d_egoalt.dta"  
+ [45] "d_hhresp.dta"   "d_hhsamp.dta"   "d_income.dta"   "d_indall.dta"  
+ [49] "d_indresp.dta"  "d_indsamp.dta"  "d_issue.dta"    "d_newborn.dta" 
+ [53] "d_parstyle.dta" "d_youth.dta"    "e_callrec.dta"  "e_child.dta"   
+ [57] "e_chmain.dta"   "e_egoalt.dta"   "e_empstat.dta"  "e_hhresp.dta"  
+ [61] "e_hhsamp.dta"   "e_income.dta"   "e_indall.dta"   "e_indresp.dta" 
+ [65] "e_indsamp.dta"  "e_issue.dta"    "e_newborn.dta"  "e_parstyle.dta"
+ [69] "e_youth.dta"    "f_adopt.dta"    "f_callrec.dta"  "f_child.dta"   
+ [73] "f_cohab.dta"    "f_egoalt.dta"   "f_hhresp.dta"   "f_hhsamp.dta"  
+ [77] "f_income.dta"   "f_indall.dta"   "f_indresp.dta"  "f_indsamp.dta" 
+ [81] "f_marriage.dta" "f_natchild.dta" "f_newborn.dta"  "f_parstyle.dta"
+ [85] "f_youth.dta"    "g_callrec.dta"  "g_child.dta"    "g_chmain.dta"  
+ [89] "g_egoalt.dta"   "g_hhresp.dta"   "g_hhsamp.dta"   "g_income.dta"  
+ [93] "g_indall.dta"   "g_indresp.dta"  "g_indsamp.dta"  "g_newborn.dta" 
+ [97] "g_parstyle.dta" "g_youth.dta"    "h_callrec.dta"  "h_child.dta"   
+[101] "h_egoalt.dta"   "h_hhresp.dta"   "h_hhsamp.dta"   "h_income.dta"  
+[105] "h_indall.dta"   "h_indresp.dta"  "h_indsamp.dta"  "h_newborn.dta" 
+[109] "h_parstyle.dta" "h_youth.dta"    "i_callrec.dta"  "i_child.dta"   
+[113] "i_chmain.dta"   "i_egoalt.dta"   "i_hhresp.dta"   "i_hhsamp.dta"  
+[117] "i_income.dta"   "i_indall.dta"   "i_indresp.dta"  "i_indsamp.dta" 
+[121] "i_newborn.dta"  "i_parstyle.dta" "i_youth.dta"    "j_callrec.dta" 
+[125] "j_child.dta"    "j_egoalt.dta"   "j_hhresp.dta"   "j_hhsamp.dta"  
+[129] "j_income.dta"   "j_indall.dta"   "j_indresp.dta"  "j_indsamp.dta" 
+[133] "j_newborn.dta"  "j_parstyle.dta" "j_youth.dta"    "k_callrec.dta" 
+[137] "k_child.dta"    "k_chmain.dta"   "k_egoalt.dta"   "k_hhresp.dta"  
+[141] "k_hhsamp.dta"   "k_income.dta"   "k_indall.dta"   "k_indresp.dta" 
+[145] "k_indsamp.dta"  "k_newborn.dta"  "k_parstyle.dta" "k_youth.dta"   
+[149] "l_callrec.dta"  "l_child.dta"    "l_egoalt.dta"   "l_hhresp.dta"  
+[153] "l_hhsamp.dta"   "l_income.dta"   "l_indall.dta"   "l_indresp.dta" 
+[157] "l_indsamp.dta"  "l_newborn.dta"  "l_parstyle.dta" "l_youth.dta"   
+[161] "xhhrel.dta"     "xwavedat.dta"   "xwaveid.dta"   </code></pre>
+</div>
+</div>
+<p>This confirms we’re targetting the correct directory. Now to only return those files of the correct type…</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>indresp_files <span class="ot">&lt;-</span> <span class="fu">dir</span>(<span class="fu">here</span>(base_dir_location), <span class="at">pattern =</span> <span class="st">"[a-z]_indresp.dta"</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now let’s try to read in the first one</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>dta <span class="ot">&lt;-</span> haven<span class="sc">::</span><span class="fu">read_dta</span>(indresp_files[<span class="dv">1</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>I want to remind myself how Haven reads in .dta files and keeps the label information</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>dta[<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 8 × 8
+      pidp a_hidp    a_pno     a_hhorig        a_memorig a_psu a_strata a_sampst
+     &lt;dbl&gt; &lt;dbl+lbl&gt; &lt;dbl+lbl&gt; &lt;dbl+lbl&gt;       &lt;dbl+lbl&gt; &lt;dbl&gt; &lt;dbl+lb&gt; &lt;dbl+lb&gt;
+1 68001367 68001363  1         1 [ukhls gb 20… 1 [ukhls… 2012  2006     1 [osm] 
+2 68004087 68004083  1         1 [ukhls gb 20… 1 [ukhls… 2012  2006     1 [osm] 
+3 68006127 68006123  1         1 [ukhls gb 20… 1 [ukhls… 2012  2006     1 [osm] 
+4 68006135 68006123  3         1 [ukhls gb 20… 1 [ukhls… 2012  2006     1 [osm] 
+5 68006807 68006803  1         1 [ukhls gb 20… 1 [ukhls… 2012  2006     1 [osm] 
+6 68007487 68007483  1         1 [ukhls gb 20… 1 [ukhls… 2012  2006     1 [osm] 
+7 68007491 68007483  2         1 [ukhls gb 20… 1 [ukhls… 2012  2006     1 [osm] 
+8 68007495 68007483  3         1 [ukhls gb 20… 1 [ukhls… 2012  2006     1 [osm] </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>lab_col <span class="ot">&lt;-</span> dta<span class="sc">$</span>a_pno</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(lab_col)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>&lt;labelled&lt;double&gt;[6]&gt;: person number
+[1] 1 1 1 3 1 1
+
+Labels:
+ value            label
+    -9          missing
+    -8     inapplicable
+    -7 proxy respondent
+    -2          refusal
+    -1       don't know</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># This shows the result of the single column as a data frame, with value and label as the two columns. </span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="co"># There are three options for the levels parameter in as_factor (note, NOT as.factor()) - 'labels', 'values' and 'both'.</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>labs_pulled <span class="ot">&lt;-</span> <span class="fu">as_factor</span>(lab_col, <span class="at">levels =</span> <span class="st">'labels'</span>)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(labs_pulled)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>labs_pulled
+         missing     inapplicable proxy respondent          refusal 
+               0                0                0                0 
+      don't know 
+               0 </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># This indicates that only labelled attributes are returned, which for this example appear to be different types of missing value. </span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co"># We are likely to want other variables too! </span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="co"># There's also the mode levels = 'both' </span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>both_pulled <span class="ot">&lt;-</span> <span class="fu">as_factor</span>(lab_col, <span class="at">levels =</span> <span class="st">'both'</span>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(both_pulled)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>both_pulled
+         [-9] missing     [-8] inapplicable [-7] proxy respondent 
+                    0                     0                     0 
+         [-2] refusal       [-1] don't know                     1 
+                    0                     0                 29691 
+                    2                     3                     4 
+                15921                  3485                  1292 
+                    5                     6                     7 
+                  397                   122                    47 
+                    8                     9                    10 
+                   22                    12                     3 
+                   11 
+                    2 </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># This returns values as well. In this case it's the person number of the respondent in the household, which is itself a partial indicator of household size. </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>We can build a function that automatically converts columns which are of time haven_labelled into the above format.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>dta2 <span class="ot">&lt;-</span> <span class="fu">return_labels_as_factors</span>(dta)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>This takes a while but seems to work. I think the function above should be the first I turn into a function in its own right.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">get_col_labels</span>(dta)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>x[<span class="fu">str_detect</span>(x, <span class="st">"economic"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                           a_jbstat                          a_jbseg_dv 
+        "Current economic activity" "Current job: Socio-economic Group" 
+                         a_jlseg_dv 
+   "Last job: Socio-economic Group" </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>x[<span class="fu">str_detect</span>(x, <span class="st">"sex"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                               a_sex 
+                                               "sex" 
+                                     a_respromodeny1 
+                                          "your sex" 
+                                     a_respromodeny4 
+                           "your sexual orientation" 
+                                     a_restraindeny1 
+                                          "your sex" 
+                                     a_restraindeny4 
+                           "your sexual orientation" 
+                                   a_resunsafew1_1_1 
+                     "reason unsafe in place 1: sex" 
+                                   a_resunsafew1_1_4 
+      "reason unsafe in place 1: sexual orientation" 
+                                   a_resunsafew1_2_1 
+                     "reason unsafe in place 2: sex" 
+                                   a_resunsafew1_2_4 
+      "reason unsafe in place 2: sexual orientation" 
+                                   a_resunsafew1_3_1 
+                     "reason unsafe in place 3: sex" 
+                                   a_resunsafew1_3_4 
+      "reason unsafe in place 3: sexual orientation" 
+                                   a_resunsafew1_4_1 
+                     "reason unsafe in place 4: sex" 
+                                   a_resunsafew1_4_4 
+      "reason unsafe in place 4: sexual orientation" 
+                                   a_resunsafew1_5_1 
+                     "reason unsafe in place 5: sex" 
+                                   a_resunsafew1_5_4 
+      "reason unsafe in place 5: sexual orientation" 
+                                   a_resunsafew1_6_1 
+                     "reason unsafe in place 6: sex" 
+                                   a_resunsafew1_6_4 
+      "reason unsafe in place 6: sexual orientation" 
+                                   a_resunsafew1_7_1 
+                     "reason unsafe in place 7: sex" 
+                                   a_resunsafew1_7_4 
+      "reason unsafe in place 7: sexual orientation" 
+                                  a_resunsafew1_97_1 
+                 "reason unsafe in place other: sex" 
+                                  a_resunsafew1_97_4 
+  "reason unsafe in place other: sexual orientation" 
+                                    a_resavoidw1_1_1 
+                      "reason avoid in place 1: sex" 
+                                    a_resavoidw1_1_4 
+       "reason avoid in place 1: sexual orientation" 
+                                    a_resavoidw1_2_1 
+                      "reason avoid in place 2: sex" 
+                                    a_resavoidw1_2_4 
+       "reason avoid in place 2: sexual orientation" 
+                                    a_resavoidw1_3_1 
+                      "reason avoid in place 3: sex" 
+                                    a_resavoidw1_3_4 
+       "reason avoid in place 3: sexual orientation" 
+                                    a_resavoidw1_4_1 
+                      "reason avoid in place 4: sex" 
+                                    a_resavoidw1_4_4 
+       "reason avoid in place 4: sexual orientation" 
+                                    a_resavoidw1_5_1 
+                      "reason avoid in place 5: sex" 
+                                    a_resavoidw1_5_4 
+       "reason avoid in place 5: sexual orientation" 
+                                    a_resavoidw1_6_1 
+                      "reason avoid in place 6: sex" 
+                                    a_resavoidw1_6_4 
+       "reason avoid in place 6: sexual orientation" 
+                                    a_resavoidw1_7_1 
+                      "reason avoid in place 7: sex" 
+                                    a_resavoidw1_7_4 
+       "reason avoid in place 7: sexual orientation" 
+                                   a_resavoidw1_97_1 
+                  "reason avoid in place other: sex" 
+                                   a_resavoidw1_97_4 
+   "reason avoid in place other: sexual orientation" 
+                                 a_resinsultedw1_1_1 
+                   "reason insulted in place 1: sex" 
+                                 a_resinsultedw1_1_4 
+    "reason insulted in place 1: sexual orientation" 
+                                 a_resinsultedw1_2_1 
+                   "reason insulted in place 2: sex" 
+                                 a_resinsultedw1_2_4 
+    "reason insulted in place 2: sexual orientation" 
+                                 a_resinsultedw1_3_1 
+                   "reason insulted in place 3: sex" 
+                                 a_resinsultedw1_3_4 
+    "reason insulted in place 3: sexual orientation" 
+                                 a_resinsultedw1_4_1 
+                   "reason insulted in place 4: sex" 
+                                 a_resinsultedw1_4_4 
+    "reason insulted in place 4: sexual orientation" 
+                                 a_resinsultedw1_5_1 
+                   "reason insulted in place 5: sex" 
+                                 a_resinsultedw1_5_4 
+    "reason insulted in place 5: sexual orientation" 
+                                 a_resinsultedw1_6_1 
+                   "reason insulted in place 6: sex" 
+                                 a_resinsultedw1_6_4 
+    "reason insulted in place 6: sexual orientation" 
+                                 a_resinsultedw1_7_1 
+                   "reason insulted in place 7: sex" 
+                                 a_resinsultedw1_7_4 
+    "reason insulted in place 7: sexual orientation" 
+                                a_resinsultedw1_97_1 
+               "reason insulted in place other: sex" 
+                                a_resinsultedw1_97_4 
+"reason insulted in place other: sexual orientation" 
+                                 a_resattackedw1_1_1 
+                   "reason attacked in place 1: sex" 
+                                 a_resattackedw1_1_4 
+    "reason attacked in place 1: sexual orientation" 
+                                 a_resattackedw1_2_1 
+                   "reason attacked in place 2: sex" 
+                                 a_resattackedw1_2_4 
+    "reason attacked in place 2: sexual orientation" 
+                                 a_resattackedw1_3_1 
+                   "reason attacked in place 3: sex" 
+                                 a_resattackedw1_3_4 
+    "reason attacked in place 3: sexual orientation" 
+                                 a_resattackedw1_4_1 
+                   "reason attacked in place 4: sex" 
+                                 a_resattackedw1_4_4 
+    "reason attacked in place 4: sexual orientation" 
+                                 a_resattackedw1_5_1 
+                   "reason attacked in place 5: sex" 
+                                 a_resattackedw1_5_4 
+    "reason attacked in place 5: sexual orientation" 
+                                 a_resattackedw1_6_1 
+                   "reason attacked in place 6: sex" 
+                                 a_resattackedw1_6_4 
+    "reason attacked in place 6: sexual orientation" 
+                                 a_resattackedw1_7_1 
+                   "reason attacked in place 7: sex" 
+                                 a_resattackedw1_7_4 
+    "reason attacked in place 7: sexual orientation" 
+                                a_resattackedw1_97_1 
+               "reason attacked in place other: sex" 
+                                a_resattackedw1_97_4 
+"reason attacked in place other: sexual orientation" 
+                                             a_prsex 
+                                         "proxy sex" 
+                                             a_ppsex 
+                                     "Partner's sex" </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>x[<span class="fu">str_detect</span>(x, <span class="st">"ethnic"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                             a_racel 
+                                      "ethnic group" 
+                                       a_racelo_code 
+           "specific code for generic ethnic groups" 
+                                              a_paid 
+                             "father's ethnic group" 
+                                             a_spaid 
+"strength of identification with father's ethnicity" 
+                                              a_maid 
+                             "mother's ethnic group" 
+                                             a_smaid 
+"strength of identification with mother's ethnicity" 
+                                     a_respromodeny3 
+                                    "your ethnicity" 
+                                     a_restraindeny3 
+                                    "your ethnicity" 
+                                   a_resunsafew1_1_3 
+               "reason unsafe in place 1: ethnicity" 
+                                   a_resunsafew1_2_3 
+               "reason unsafe in place 2: ethnicity" 
+                                   a_resunsafew1_3_3 
+               "reason unsafe in place 3: ethnicity" 
+                                   a_resunsafew1_4_3 
+               "reason unsafe in place 4: ethnicity" 
+                                   a_resunsafew1_5_3 
+               "reason unsafe in place 5: ethnicity" 
+                                   a_resunsafew1_6_3 
+               "reason unsafe in place 6: ethnicity" 
+                                   a_resunsafew1_7_3 
+               "reason unsafe in place 7: ethnicity" 
+                                  a_resunsafew1_97_3 
+           "reason unsafe in place other: ethnicity" 
+                                    a_resavoidw1_1_3 
+                "reason avoid in place 1: ethnicity" 
+                                    a_resavoidw1_2_3 
+                "reason avoid in place 2: ethnicity" 
+                                    a_resavoidw1_3_3 
+                "reason avoid in place 3: ethnicity" 
+                                    a_resavoidw1_4_3 
+                "reason avoid in place 4: ethnicity" 
+                                    a_resavoidw1_5_3 
+                "reason avoid in place 5: ethnicity" 
+                                    a_resavoidw1_6_3 
+                "reason avoid in place 6: ethnicity" 
+                                    a_resavoidw1_7_3 
+                "reason avoid in place 7: ethnicity" 
+                                   a_resavoidw1_97_3 
+            "reason avoid in place other: ethnicity" 
+                                 a_resinsultedw1_1_3 
+             "reason insulted in place 1: ethnicity" 
+                                 a_resinsultedw1_2_3 
+             "reason insulted in place 2: ethnicity" 
+                                 a_resinsultedw1_3_3 
+             "reason insulted in place 3: ethnicity" 
+                                 a_resinsultedw1_4_3 
+             "reason insulted in place 4: ethnicity" 
+                                 a_resinsultedw1_5_3 
+             "reason insulted in place 5: ethnicity" 
+                                 a_resinsultedw1_6_3 
+             "reason insulted in place 6: ethnicity" 
+                                 a_resinsultedw1_7_3 
+             "reason insulted in place 7: ethnicity" 
+                                a_resinsultedw1_97_3 
+         "reason insulted in place other: ethnicity" 
+                                 a_resattackedw1_1_3 
+             "reason attacked in place 1: ethnicity" 
+                                 a_resattackedw1_2_3 
+             "reason attacked in place 2: ethnicity" 
+                                 a_resattackedw1_3_3 
+             "reason attacked in place 3: ethnicity" 
+                                 a_resattackedw1_4_3 
+             "reason attacked in place 4: ethnicity" 
+                                 a_resattackedw1_5_3 
+             "reason attacked in place 5: ethnicity" 
+                                 a_resattackedw1_6_3 
+             "reason attacked in place 6: ethnicity" 
+                                 a_resattackedw1_7_3 
+             "reason attacked in place 7: ethnicity" 
+                                a_resattackedw1_97_3 
+         "reason attacked in place other: ethnicity" 
+                                           a_emboost 
+                        "ethnic minority boost flag" 
+                                               a_lda 
+            "low density area for ethnic minorities" 
+                                         a_ethnic_tm 
+            "start time for ethnic module (seconds)" </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>x[<span class="fu">str_detect</span>(x, <span class="st">"marital"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                         a_mlstatchk                             a_mlstat 
+              "marital status check"       "Present legal marital status" 
+                           a_marstat                         a_marstat_dv 
+              "legal marital status" "Harmonised de facto marital status" 
+                         a_mastat_dv 
+           "De facto marital status" </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>x[<span class="fu">str_detect</span>(x, <span class="st">"children"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                                                          a_lprnt 
+                                                     "Ever had/fathered children" 
+                                                                         a_lnprnt 
+                                "number of biological children ever had/fathered" 
+                                                                         a_lchmor 
+                                            "likely resp will have more children" 
+                                                                        a_lchmorn 
+                                          "no. more children resp likely to have" 
+                                                                        a_hlphmwk 
+                                      "parent helps their children with homework" 
+                                                                         a_samsch 
+                                                     "children go to same school" 
+                                                                        a_quarrel 
+                                                "how often quarrel with children" 
+                                                                     a_talkmatter 
+                           "how often talk about important matters with children" 
+                                                                         a_lvrel5 
+                                                                  "Grandchildren" 
+                                                                         a_lvrel7 
+                                                            "Great Grandchildren" 
+                                                                       a_nrelsw13 
+                                                 "number of absent grandchildren" 
+                                                                       a_nrelsw15 
+                                           "number of absent great grandchildren" 
+                                                                         a_ohch16 
+                                             "children under 16 not living in hh" 
+                                                                          a_chsee 
+                                           "frequency of seeing children over 16" 
+                                                                      a_nch14resp 
+                            "number of children under 15 resp is responsible for" 
+                                                                     a_nch415resp 
+                  "number of children aged 4 to 15 resp is responsible adult for" 
+                                                                        a_nchresp 
+                      "number of children under 16 resp is responsible adult for" 
+                                                                   a_nchund18resp 
+                              "number of children aged under 18 responsible for." 
+                                                                        a_natch01 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch02 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch03 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch04 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch05 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch06 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch07 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch08 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch09 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch10 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch11 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch12 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch13 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch14 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch15 
+                    "person numbers of respondents natural children in household" 
+                                                                        a_natch16 
+                    "person numbers of respondents natural children in household" 
+                                                                         a_nnatch 
+                                     "number of biological children in household" 
+                                                                       a_nadoptch 
+                                       "number of adoptive children in household" 
+                                                                      a_adoptch01 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch02 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch03 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch04 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch05 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch06 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch07 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch08 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch09 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch10 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch11 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch12 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch13 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch14 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch15 
+               "person numbers of respondents adopted/step children in household" 
+                                                                      a_adoptch16 
+               "person numbers of respondents adopted/step children in household" 
+                                                                     a_nchunder16 
+                             "number of children aged under 16 resp is parent of" 
+                                                                       a_nch5to15 
+                              "number of children aged 5 to 15 resp is parent of" 
+                                                                      a_nch10to15 
+                             "number of children aged 10 to 15 resp is parent of" 
+                                                                        a_allch01 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch02 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch03 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch04 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch05 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch06 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch07 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch08 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch09 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch10 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch11 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch12 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch13 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch14 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch15 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                        a_allch16 
+"person numbers of respondents children (natural,adopt,foster,step) in household" 
+                                                                      a_nchild_dv 
+                                            "Number of own children in household" 
+                                                                     a_ndepchl_dv 
+                                  "Number of own dependent children in household" </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>x[<span class="fu">str_detect</span>(x, <span class="st">"education"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                          a_fenow 
+                     "Still in further education" 
+                                          a_feend 
+                  "further education leaving age" 
+                                         a_edtype 
+      "type of educational institution attending" 
+                                         a_fedlik 
+       "likelihood of entering further education" 
+                                          a_fednt 
+      "reasons not going on to further education" 
+                                         a_paedqf 
+            "father's educational qualifications" 
+                                         a_maedqf 
+            "mother's educational qualifications" 
+                                         a_lgaped 
+  "whether left f/t education before starting fe" 
+                                        a_edlinkb 
+                   "adult education consent capi" 
+                                      a_qfhigh_dv 
+"Highest educational qualification ever reported" </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>x[<span class="fu">str_detect</span>(x, <span class="st">"health"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                                           a_sf1 
+                                                "General health" 
+                                                          a_sf2a 
+                              "health limits typical activities" 
+                                                          a_sf2b 
+                                 "health limits climbing stairs" 
+                                                          a_sf3a 
+                                            "health limits work" 
+                                                          a_sf3b 
+                                    "health limits kind of work" 
+                                                           a_sf7 
+"health or emotional problems interfered with social activities" 
+                                                      a_disdif12 
+                            "Other health problem or disability" 
+                                                      a_hconds01 
+                          "still have health condition : asthma" 
+                                                      a_hconds02 
+                       "still have health condition : arthritis" 
+                                                      a_hconds03 
+        "still have health condition : congestive heart failure" 
+                                                      a_hconds04 
+          "still have health condition : coronary heart disease" 
+                                                      a_hconds05 
+                          "still have health condition : angina" 
+                                                      a_hconds06 
+                    "still have health condition : heart attack" 
+                                                      a_hconds07 
+                          "still have health condition : stroke" 
+                                                      a_hconds08 
+                       "still have health condition : emphysema" 
+                                                      a_hconds09 
+                 "still have health condition : hyperthyroidism" 
+                                                      a_hconds10 
+                  "still have health condition : hypothyroidism" 
+                                                      a_hconds11 
+              "still have health condition : chronic bronchitis" 
+                                                      a_hconds12 
+                 "still have health condition : liver condition" 
+                                                      a_hconds13 
+            "still have health condition : cancer or malignancy" 
+                                                      a_hconds14 
+                        "still have health condition : diabetes" 
+                                                      a_hconds15 
+                        "still have health condition : epilepsy" 
+                                                      a_hconds16 
+             "still have health condition : high blood pressure" 
+                                                      a_hconds17 
+              "still have health condition: clinical depression" 
+                                                      a_hconda01 
+                        "age told had health condition : asthma" 
+                                                      a_hconda02 
+                     "age told had health condition : arthritis" 
+                                                      a_hconda03 
+      "age told had health condition : congestive heart failure" 
+                                                      a_hconda04 
+        "age told had health condition : coronary heart disease" 
+                                                      a_hconda05 
+                        "age told had health condition : angina" 
+                                                      a_hconda06 
+                  "age told had health condition : heart attack" 
+                                                      a_hconda07 
+                        "age told had health condition : stroke" 
+                                                      a_hconda08 
+                     "age told had health condition : emphysema" 
+                                                      a_hconda09 
+               "age told had health condition : hyperthyroidism" 
+                                                      a_hconda10 
+                "age told had health condition : hypothyroidism" 
+                                                      a_hconda11 
+            "age told had health condition : chronic bronchitis" 
+                                                      a_hconda12 
+               "age told had health condition : liver condition" 
+                                                      a_hconda13 
+          "age told had health condition : cancer or malignancy" 
+                                                      a_hconda14 
+                      "age told had health condition : diabetes" 
+                                                      a_hconda15 
+                      "age told had health condition : epilepsy" 
+                                                      a_hconda16 
+           "age told had health condition : high blood pressure" 
+                                                      a_hconda17 
+            "age told had health condition: clinical depression" 
+                                                 a_respromodeny5 
+                                     "your health or disability" 
+                                                 a_restraindeny5 
+                                     "your health or disability" 
+                                               a_resunsafew1_1_5 
+                "reason unsafe in place 1: health or disability" 
+                                               a_resunsafew1_2_5 
+                "reason unsafe in place 2: health or disability" 
+                                               a_resunsafew1_3_5 
+                "reason unsafe in place 3: health or disability" 
+                                               a_resunsafew1_4_5 
+                "reason unsafe in place 4: health or disability" 
+                                               a_resunsafew1_5_5 
+                "reason unsafe in place 5: health or disability" 
+                                               a_resunsafew1_6_5 
+                "reason unsafe in place 6: health or disability" 
+                                               a_resunsafew1_7_5 
+                "reason unsafe in place 7: health or disability" 
+                                              a_resunsafew1_97_5 
+            "reason unsafe in place other: health or disability" 
+                                                a_resavoidw1_1_5 
+                 "reason avoid in place 1: health or disability" 
+                                                a_resavoidw1_2_5 
+                 "reason avoid in place 2: health or disability" 
+                                                a_resavoidw1_3_5 
+                 "reason avoid in place 3: health or disability" 
+                                                a_resavoidw1_4_5 
+                 "reason avoid in place 4: health or disability" 
+                                                a_resavoidw1_5_5 
+                 "reason avoid in place 5: health or disability" 
+                                                a_resavoidw1_6_5 
+                 "reason avoid in place 6: health or disability" 
+                                                a_resavoidw1_7_5 
+                 "reason avoid in place 7: health or disability" 
+                                               a_resavoidw1_97_5 
+             "reason avoid in place other: health or disability" 
+                                             a_resinsultedw1_1_5 
+              "reason insulted in place 1: health or disability" 
+                                             a_resinsultedw1_2_5 
+              "reason insulted in place 2: health or disability" 
+                                             a_resinsultedw1_3_5 
+              "reason insulted in place 3: health or disability" 
+                                             a_resinsultedw1_4_5 
+              "reason insulted in place 4: health or disability" 
+                                             a_resinsultedw1_5_5 
+              "reason insulted in place 5: health or disability" 
+                                             a_resinsultedw1_6_5 
+              "reason insulted in place 6: health or disability" 
+                                             a_resinsultedw1_7_5 
+              "reason insulted in place 7: health or disability" 
+                                            a_resinsultedw1_97_5 
+          "reason insulted in place other: health or disability" 
+                                             a_resattackedw1_1_5 
+              "reason attacked in place 1: health or disability" 
+                                             a_resattackedw1_2_5 
+              "reason attacked in place 2: health or disability" 
+                                             a_resattackedw1_3_5 
+              "reason attacked in place 3: health or disability" 
+                                             a_resattackedw1_4_5 
+              "reason attacked in place 4: health or disability" 
+                                             a_resattackedw1_5_5 
+              "reason attacked in place 5: health or disability" 
+                                             a_resattackedw1_6_5 
+              "reason attacked in place 6: health or disability" 
+                                             a_resattackedw1_7_5 
+              "reason attacked in place 7: health or disability" 
+                                            a_resattackedw1_97_5 
+          "reason attacked in place other: health or disability" 
+                                                    a_healthlink 
+                                     "adult health consent capi" 
+                                                      a_flaglink 
+                       "adult health consent flag on nhscr capi" 
+                                                      a_sclfsat1 
+                                      "Satisfaction with health" 
+                                                     a_health_tm 
+                        "start time for health module (seconds)" </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>x[<span class="fu">str_detect</span>(x, <span class="st">"general health"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>named character(0)</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>x[<span class="fu">str_detect</span>(x, <span class="st">"sm"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                         a_hcond9 
+      "Hyperthyroidism or an over-active thyroid" 
+                                        a_hcond10 
+      "Hypothyroidism or an under-active thyroid" 
+                                       a_hconds09 
+  "still have health condition : hyperthyroidism" 
+                                       a_hconds10 
+   "still have health condition : hypothyroidism" 
+                                       a_hconda09 
+"age told had health condition : hyperthyroidism" 
+                                       a_hconda10 
+ "age told had health condition : hypothyroidism" 
+                                  a_harassment_tm 
+     "start time for harassment module (seconds)" </code></pre>
+</div>
+</div>
+<p>Variables found of interest:</p>
+<ul>
+<li><p><code>{w}_jbstat</code>: Current economic activity</p></li>
+<li><p><code>{w}_dvage</code>: Age from birth</p></li>
+<li><p><code>{w}_sex</code> : sex</p></li>
+<li><p><code>{w}_racel</code>: ethnic group</p></li>
+<li><p><code>{w}_marstat_dv</code>: Harmonised de facto marital status</p>
+<ul>
+<li>We think this is more important for understanding economic situations than whether someone is married, divorced or in a civil partnership</li>
+</ul></li>
+<li><p><code>{w}_nchild_dv</code>: number of own children in household</p></li>
+<li><p><code>{w}_ndepchl_dv</code>: Number of own dependent children in household</p></li>
+<li><p><code>{w}_fenow</code>: Still in further education</p></li>
+<li><p><code>{w}_feend</code>: Further education leaving age</p></li>
+<li><p><code>{w}_qfhigh_dv</code>: Highest education qualification ever reported</p></li>
+<li><p><code>{w}_sf1</code>: General health</p></li>
+<li><p><code>{w}_sf2a</code>: Health limits typical activities</p></li>
+<li><p><code>{w}_sf3a</code>: Health limits work</p></li>
+<li><p><code>{w}_sf3b</code>: Health limits kind of work</p></li>
+<li><p>Looking for something like <code>scaghq</code>: self completion ghq score (derived)</p></li>
+</ul>
 </section>
 
 </main>

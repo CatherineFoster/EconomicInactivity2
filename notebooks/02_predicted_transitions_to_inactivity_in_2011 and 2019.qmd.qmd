@@ -1,9 +1,28 @@
 ---
-title: "01_extract_pid_and_econ"
-author: "Jon Minton; Martin Taulbut"
-format: html
+title: "Notebook 02: Predict Transitions to Inactivity"
+author: 
+ - "Jon Minton"
+ - "Martin Taulbut"
+format: 
+  html:
+    code-fold: true
+    echo: true
+  docx: 
+    toc: true
+    number-sections: true
 editor: visual
+execute: 
+  echo: false
+  warning: false
 ---
+
+## Note
+
+**This notebook is now not working. The variables previously extracted cannot be reextracted successfully**
+I am unclear why this is so. But will move onto the third notebook for now...
+
+
+
 
 ```{r}
 library(tidyverse)
@@ -38,7 +57,8 @@ From Martin
 
 ```{r}
 varnames <-  c(
-  "jbstat", "dvage", "sex", "hiqual_dv", "hhtype_dv",
+  "jbstat", "dvage", 
+  "sex", "hhtype_dv",
   "ethn_dv", # ethnicity
   "jbsat", #job satisfaction
   "wkaut1", # autonomy measures
@@ -55,7 +75,7 @@ varnames <-  c(
 
 extract_what <- c(
   "labels", "values", 
-  "labels", "labels", "labels",
+  "labels", "labels",
   "labels", "values",
   "values", "values", "values", "values", "values",
   "values",
@@ -111,33 +131,7 @@ long_slimmed_data %>%
   ) %>% 
   mutate(
     value = ifelse(!is.na(recoded), recoded, value)
-  ) %>% 
-  select(-recoded) %>% 
-    mutate(
-    highqual = case_when(
-      value %in% c("A level etc", "A-level etc") ~ "A-level etc",
-      value %in% c("No qual", "No qualification") ~ "No qualification",
-      value %in% c("Other higher", "Other higher degree") ~ "Other higher degree",
-      value %in% c("Other qual", "Other qualification") ~ "Other qualification",
-      value == "Degree" ~ "Degree",
-      value == "GCSE etc" ~ "GCSE etc",
-      value %in% c("inapplicable", "missing") ~ "Inapplicable or missing",
-      TRUE ~ NA_character_
-    )
-  ) %>% 
-  mutate(
-    # Now going to make this three levels only
-    simplified_highest_qualification = case_when(
-      highqual == "No qualification" ~ "No qualification",
-      highqual %in% c("GCSE etc", "Other qualification", "A-level etc") ~ "Intermediate qualifications",
-      highqual %in% c("Degree", "Other higher degree") ~ "Degree or above",
-      TRUE ~ NA_character_
-    )
-  ) %>% 
-  mutate(
-    value = ifelse(!is.na(simplified_highest_qualification), simplified_highest_qualification, value)
-  ) %>% 
-  select(-highqual, -simplified_highest_qualification)
+  ) 
 
 long_slimmed_data
 ```
@@ -155,7 +149,6 @@ What we want to do:
     -   partition into age groups ?
     -   filter by age group?
 -   link to sex
--   link to highest qualification
 
 First things first (a tautology), let's do the model for predicting whether econ inact at wave c
 
@@ -163,7 +156,7 @@ First things first (a tautology), let's do the model for predicting whether econ
 extract_three_periods <- function(data, waves){
   data %>% 
     filter(wave %in% waves) %>% 
-    filter(!(variable %in% c('dvage', 'sex', 'hiqual_dv', 'hhtype_dv', 'fihhmnnet3_dv', 'ethn_dv', 'jbsat', 'jbsec', 'wkaut1', 'wkaut2', 'wkaut3', 'wkaut4', 'wkaut5'))) %>% 
+    filter(!(variable %in% c('dvage', 'sex', 'hhtype_dv', 'fihhmnnet3_dv', 'ethn_dv', 'jbsat', 'jbsec', 'wkaut1', 'wkaut2', 'wkaut3', 'wkaut4', 'wkaut5'))) %>% 
     left_join(
       data %>% 
         filter(variable == "dvage") %>% 
@@ -177,13 +170,6 @@ extract_three_periods <- function(data, waves){
         filter(wave == waves[1]) %>% 
         mutate(sex = value) %>% 
         select(pidp, sex)
-    ) %>% 
-    left_join(
-      data %>% 
-        filter(variable == 'hiqual_dv') %>% 
-        filter(wave == waves[1]) %>% 
-        mutate(highest_qualification = value) %>% 
-        select(pidp, highest_qualification)
     ) %>% 
     left_join(
       data %>% 
@@ -317,27 +303,16 @@ mod_t2a2s_T2 <- glm(
 Predictions about differences between T1 and T2
 
 -   econ inactivity rates between sexes will have become more similar (continuing long-term trends)
-
 -   there will be differences (?!) but we are not sure in which direction
-
 -   reasons for assuming lower inactivity in T2:
-
     -   Long-term sickness rates falling but rate at which they fell slowing
-
     -   inactivity in lone parents fell
-
     -   increase in female state pension age (though only looking at up to age 60)
-
 -   reasons for assuming higher inactivity in T2:
-
     -   Generally ageing working age population?
-
     -   Poorer health
-
     -   Longer-term implications of suppressed labour market from GFC (i.e. in short term may predict more transition from working to unemployed; but in longer term some will go to inactivity)
-
     -   Continuing increases in rates of full time education.
-
     -   unintended consequences of welfare reform could push more people into long-term sickness
 
 ```{r}
@@ -462,9 +437,7 @@ ggsave(here("figures/pred_prob_inact_ukhls.png"), height = 20, width = 20, units
 We next want to add more predictor variables:
 
 -   **Highest qualification (a_hiqual_dv, j_hiqual_dv);**
-
 -   **Income (a_fihhmnnet3_dv, j_fihhmnnet3_dv);**
-
 -   **Household type (hhtype_dv)**
 
 first highest qualification

@@ -1,8 +1,19 @@
 ---
-title: "01_extract_pid_and_econ"
-author: "Jon Minton; Martin"
-format: html
+title: "Notebook 01: Extract PID and Econ"
+author: 
+ - "Jon Minton"
+ - "Martin Taulbut"
+format: 
+  docx: 
+    toc: true
+    number-sections: true
+  html:
+    code-fold: true
+    echo: true
 editor: visual
+execute: 
+  echo: false
+  warning: false
 ---
 
 ## Aim
@@ -241,11 +252,7 @@ econ_act_groupings_years %>%
 ## Next steps
 
 -   Automate to all years
-
 -   Use more disaggregated categories
-
 -   Work out better ways of presenting transitions (e.g. graphically)
-
 -   Take other variables, link, and use to group (e.g. male/female; LLTI/no LLTI; age categories)
-
 -   (Longer term): think about appropriate regression framework, e.g. multinomial regression

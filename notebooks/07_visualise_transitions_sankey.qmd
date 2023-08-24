@@ -1,8 +1,22 @@
 ---
-title: "07_calc_sankey_transitions"
-author: "Jon Minton"
-format: html
+title: "Notebook 07: Visualise transitions between economic activity states"
+author: 
+ - "Jon Minton"
+ - "Martin Taulbut"
+format: 
+  html:
+    code-fold: true
+    echo: true
+    df-print: paged
+  docx: 
+    toc: true
+    number-sections: true
 editor: visual
+execute: 
+  echo: false
+  warning: false
+  fig-width: 9
+  fig-height: 6
 ---
 
 # Introduction
@@ -31,12 +45,17 @@ mtcars
 And the variables passed to make_long are cyl, vs, am, gear, carb
 
 ```{r}
+#| label: tbl-cars-data
+#| tbl-cap: "Cars data"
 mtcars[,c('cyl','vs','am','gear','carb')]
 ```
 
 These are all numeric, so I guess the 'node values'.
 
 ```{r}
+#| label: tbl-sankey-data-cars
+#| tbl-cap: "Cars data converted to format for Sankey diagrams"
+#| tbl-colwidths: [60,40]
 df <- mtcars %>% 
   make_long(cyl, vs, am, gear, carb)
 df

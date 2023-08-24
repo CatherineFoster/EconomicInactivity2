@@ -1,8 +1,19 @@
 ---
-title: "extract_hhlevel_data_and_join"
-author: "Jon Minton; Martin Taulbut"
-format: html
+title: "Notebook 03: Extract Household Level Variables and Join"
+author: 
+ - "Jon Minton"
+ - "Martin Taulbut"
+format: 
+  html:
+    code-fold: true
+    echo: true
+  docx: 
+    toc: true
+    number-sections: true
 editor: visual
+execute: 
+  echo: false
+  warning: false
 ---
 
 ## Aim

@@ -1,0 +1,496 @@
+---
+title: "Notebook 15: Descriptive statistics of composition and transition probabilities"
+author: 
+ - "Jon Minton"
+ - "Martin Taulbut"
+format: 
+  html:
+    code-fold: true
+    echo: true
+  docx: 
+    toc: true
+    number-sections: true
+editor: visual
+execute: 
+  echo: false
+  warning: false
+  fig-width: 9
+  fig-height: 6
+---
+
+## Aim
+
+Probability of:
+
+-   moving between economic activity states between waves
+
+-   remaining in same economic states between waves
+
+-   Age groups:
+
+    -   All adults aged 16-64
+
+    -   16-24, 25-49, 50-64
+
+-   Sex:
+
+    -   Both sexes
+
+    -   Men and women separately
+
+-   Ethnic group:
+
+    -   all ethnic groups
+
+    -   Sub-samples e.g. Indian, Pakistani, Bangleshi
+
+-   Waves used:
+
+    -   all waves but final (pooled)
+
+    -   individual waves
+
+-   Representativeness of the sample - UKHLS
+
+-   Sample size
+
+## Loading packages and data
+
+```{r}
+# | message: false
+library(tidyverse)
+library(haven)
+library(here)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels"
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+
+
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+```
+
+## Probability of being in different states
+
+```{r}
+
+```
+
+## Probability of transitioning to different states
+
+The options with three states are:
+
+| Scenario | From       | To         |
+|----------|------------|------------|
+| EU       | Employed   | Unemployed |
+| EI       | Employed   | Inactive   |
+| UE       | Unemployed | Employed   |
+| UI       | Unemployed | Inactive   |
+| IE       | Inactive   | Employed   |
+| IU       | Inactive   | Unemployed |
+
+Start with EI
+
+```{r}
+simplified_wide_data <- 
+  long_slimmed_data %>% 
+    mutate(
+      wavenum = match(wave, letters[1:26])
+    ) %>% 
+    pivot_wider(names_from = "variable", values_from = 'value') %>% 
+    mutate(age = as.numeric(dvage)) %>% 
+    mutate(age = ifelse(age < 0, NA, age)) %>% 
+    select(-dvage) %>% 
+    left_join(econ_act_groups, 
+              by = c("jbstat" = "original")) %>% 
+    select(pidp, wavenum, sex, age, econ_act_status = level_1_broadest)
+
+simplified_wide_data   
+```
+
+Now to join each wave on the last wave
+
+```{r}
+wave_lastwave_simplified_wide_data <- 
+  simplified_wide_data %>% 
+    left_join(
+      simplified_wide_data %>% 
+        mutate(last_wavenum = wavenum - 1) %>% 
+        filter(last_wavenum > 0) %>% 
+        select(pidp, last_wavenum, last_econ_act_status = econ_act_status), 
+      by = c("pidp" = "pidp", "wavenum" = "last_wavenum")
+    ) %>% 
+    filter(!is.na(last_econ_act_status)) %>% 
+    filter(!is.na(age)) %>% 
+    filter(last_econ_act_status != "Missing" & econ_act_status != "Missing")
+
+wave_lastwave_simplified_wide_data
+```
+
+We can now do all kinds of conditional probabilities etc
+
+Let's do all valid ages
+
+```{r}
+wave_lastwave_simplified_wide_data %>% 
+  filter(between(age, 16, 64)) %>% 
+  count(last_econ_act_status, econ_act_status) %>% 
+  group_by(last_econ_act_status) %>% 
+  mutate(
+    share = n / sum(n)
+  )
+```
+
+Let's now move onto three status groupings (employed, unemployed, inactive) for all other analyses
+
+```{r}
+simplified_wide_data <- 
+  long_slimmed_data %>% 
+    mutate(
+      wavenum = match(wave, letters[1:26])
+    ) %>% 
+    pivot_wider(names_from = "variable", values_from = 'value') %>% 
+    mutate(age = as.numeric(dvage)) %>% 
+    mutate(age = ifelse(age < 0, NA, age)) %>% 
+    select(-dvage) %>% 
+    left_join(econ_act_groups, 
+              by = c("jbstat" = "original")) %>% 
+    select(pidp, wavenum, sex, age, econ_act_status = level_2_meso)
+
+simplified_wide_data   
+```
+
+```{r}
+wave_lastwave_simplified_wide_data <- 
+  simplified_wide_data %>% 
+    left_join(
+      simplified_wide_data %>% 
+        mutate(last_wavenum = wavenum - 1) %>% 
+        filter(last_wavenum > 0) %>% 
+        select(pidp, last_wavenum, last_econ_act_status = econ_act_status), 
+      by = c("pidp" = "pidp", "wavenum" = "last_wavenum")
+    ) %>% 
+    filter(!is.na(last_econ_act_status)) %>% 
+    filter(!is.na(age)) %>% 
+    filter(last_econ_act_status != "Missing" & econ_act_status != "Missing")
+
+wave_lastwave_simplified_wide_data
+```
+
+```{r}
+wave_lastwave_simplified_wide_data %>% 
+  filter(between(age, 16, 64)) %>% 
+  count(last_econ_act_status, econ_act_status) %>% 
+  group_by(last_econ_act_status) %>% 
+  mutate(
+    share = n / sum(n)
+  )
+```
+
+Now to disaggregate by sex
+
+```{r}
+transition_prob_by_sex <- 
+  wave_lastwave_simplified_wide_data %>% 
+    filter(sex %in% c("male", "female")) %>% 
+    filter(between(age, 16, 64)) %>% 
+    count(sex, last_econ_act_status, econ_act_status) %>% 
+    group_by(sex, last_econ_act_status) %>% 
+    mutate(
+      share = n / sum(n)
+    )
+
+transition_prob_by_sex
+```
+
+Now let's look by broad age group
+
+```{r}
+simplified_wide_data <- 
+  long_slimmed_data %>% 
+    mutate(
+      wavenum = match(wave, letters[1:26])
+    ) %>% 
+    pivot_wider(names_from = "variable", values_from = 'value') %>% 
+    mutate(age = as.numeric(dvage)) %>% 
+    mutate(age = ifelse(age < 0, NA, age)) %>% 
+    select(-dvage) %>% 
+    left_join(econ_act_groups, 
+              by = c("jbstat" = "original")) %>% 
+    select(pidp, wavenum, sex, age, econ_act_status = level_2_meso) %>% 
+    mutate(
+      age_group = case_when(
+        between(age, 16, 24) ~ "16-24",
+        between(age, 25, 49) ~ "25-49",
+        between(age, 50, 64) ~ "50-64",
+        TRUE ~ NA_character_
+      )
+    )
+
+simplified_wide_data   
+```
+
+```{r}
+wave_lastwave_simplified_wide_data <- 
+  simplified_wide_data %>% 
+    left_join(
+      simplified_wide_data %>% 
+        mutate(last_wavenum = wavenum - 1) %>% 
+        filter(last_wavenum > 0) %>% 
+        select(pidp, last_wavenum, last_econ_act_status = econ_act_status), 
+      by = c("pidp" = "pidp", "wavenum" = "last_wavenum")
+    ) %>% 
+    filter(!is.na(last_econ_act_status)) %>% 
+    filter(!is.na(age)) %>% 
+    filter(last_econ_act_status != "Missing" & econ_act_status != "Missing")
+
+wave_lastwave_simplified_wide_data
+```
+
+```{r}
+transition_prob_by_age_group <- 
+  wave_lastwave_simplified_wide_data %>% 
+    filter(between(age, 16, 64)) %>% 
+    count(age_group, last_econ_act_status, econ_act_status) %>% 
+    group_by(age_group, last_econ_act_status) %>% 
+    mutate(
+      share = n / sum(n)
+    )
+
+transition_prob_by_age_group
+
+write_csv(transition_prob_by_age_group, file = here::here("support", "transition_prob_by_age_group.csv"))
+```
+
+Now we should report transition probabilities by age group and sex
+
+```{r}
+transition_prob_by_sex_and_age_group <- 
+  wave_lastwave_simplified_wide_data %>% 
+    filter(between(age, 16, 64)) %>% 
+    count(sex, age_group, last_econ_act_status, econ_act_status) %>% 
+    group_by(sex, age_group, last_econ_act_status) %>% 
+    mutate(
+      share = n / sum(n)
+    )
+
+transition_prob_by_sex_and_age_group
+
+write_csv(transition_prob_by_sex_and_age_group, 
+          file = here::here("support", "transition_prob_by_sex_age_group.csv"))
+```
+
+n.b. we should work out the number of unique individuals not transition events
+
+Attempt at visualising a chord plot
+
+```{r}
+#| eval: false
+# devtools::install_github("mattflor/chorddiag")
+library(chorddiag)
+
+# Create dummy data
+m <- matrix(c(11975,  5871, 8916, 2868,
+              1951, 10048, 2060, 6171,
+              8010, 16145, 8090, 8045,
+              1013,   990,  940, 6907),
+            byrow = TRUE,
+            nrow = 4, ncol = 4)
+
+# A vector of 4 colors for 4 groups
+haircolors <- c("black", "blonde", "brown", "red")
+dimnames(m) <- list(have = haircolors,
+                    prefer = haircolors)
+groupColors <- c("#000000", "#FFDD89", "#957244", "#F26223")
+
+# Build the chord diagram:
+p <- chorddiag(m, groupColors = groupColors, groupnamePadding = 20)
+p
+
+# save the widget
+# library(htmlwidgets)
+# saveWidget(p, file=paste0( getwd(), "/HtmlWidget/chord_interactive.html"))
+```
+
+Now for my own data
+
+```{r}
+jj <- 
+  transition_prob_by_sex %>% 
+    ungroup() %>% 
+    filter(sex == 'female') %>% 
+    select(last_econ_act_status, econ_act_status, n) %>% 
+    pivot_wider(names_from = econ_act_status, values_from = n) 
+  
+jj2 <- 
+  jj %>% select(-last_econ_act_status) %>% 
+  as.matrix()
+
+rownames(jj2) <- colnames(jj2)
+
+jj2
+
+p <- chorddiag::chorddiag(jj2, groupnamePadding = 20)
+p
+```
+
+What about with seven states?
+
+```{r}
+less_simplified_wide_data <- 
+  long_slimmed_data %>% 
+    mutate(
+      wavenum = match(wave, letters[1:26])
+    ) %>% 
+    pivot_wider(names_from = "variable", values_from = 'value') %>% 
+    mutate(age = as.numeric(dvage)) %>% 
+    mutate(age = ifelse(age < 0, NA, age)) %>% 
+    select(-dvage) %>% 
+    left_join(econ_act_groups, 
+              by = c("jbstat" = "original")) %>% 
+    select(pidp, wavenum, sex, age, econ_act_status = level_3)
+
+less_simplified_wide_data   
+
+wave_lastwave_less_simplified_wide_data <- 
+  less_simplified_wide_data %>% 
+    left_join(
+      less_simplified_wide_data %>% 
+        mutate(last_wavenum = wavenum - 1) %>% 
+        filter(last_wavenum > 0) %>% 
+        select(pidp, last_wavenum, last_econ_act_status = econ_act_status), 
+      by = c("pidp" = "pidp", "wavenum" = "last_wavenum")
+    ) %>% 
+    filter(!is.na(last_econ_act_status)) %>% 
+    filter(!is.na(age)) %>% 
+    filter(last_econ_act_status != "Missing" & econ_act_status != "Missing")
+
+wave_lastwave_less_simplified_wide_data
+```
+
+```{r}
+transition_probs_seven_states <- 
+  wave_lastwave_less_simplified_wide_data %>% 
+    filter(between(age, 16, 64)) %>% 
+    count(last_econ_act_status, econ_act_status) %>% 
+    group_by(last_econ_act_status) %>% 
+    mutate(
+      share = n / sum(n)
+    )
+
+transition_probs_seven_states
+```
+
+```{r}
+jj <- 
+  transition_probs_seven_states %>% 
+    ungroup() %>% 
+    select(-share) %>% 
+    pivot_wider(names_from = econ_act_status, values_from = n) 
+
+jj2 <- 
+  jj %>% 
+  select(-last_econ_act_status) %>% 
+  as.matrix()
+
+rownames(jj2) <- jj$last_econ_act_status
+
+jj2
+
+```
+
+```{r}
+p <- chorddiag(jj2, groupnamePadding = 20)
+p
+```
+
+I'm going to attempt to produce a little app for displaying the above for multiple groups. But I'll also set a limit on this at the outset of two hours in case I get nowhere...
+
+```{r}
+
+transition_probs_seven_states_bysex <- 
+  wave_lastwave_less_simplified_wide_data %>% 
+    filter(between(age, 16, 64)) %>% 
+    count(sex, last_econ_act_status, econ_act_status) %>% 
+    group_by(sex, last_econ_act_status) %>% 
+    mutate(
+      share = n / sum(n)
+    )
+
+transition_probs_seven_states_bysex
+```
+
+```{r}
+
+make_matrix <- function(x){
+  jj <- 
+    x %>% 
+      ungroup() %>% 
+      pivot_wider(names_from = econ_act_status, values_from = n)
+  
+  jj2 <- 
+    jj %>% 
+    select(-last_econ_act_status) %>% 
+    as.matrix()
+  
+  rownames(jj2) <- jj$last_econ_act_status
+  jj2
+}
+
+tx_with_chords <- 
+  transition_probs_seven_states_bysex %>% 
+    select(-share) %>% 
+    filter(sex %in% c('male', 'female')) %>% 
+    group_by(sex) %>% 
+    nest() %>% 
+    mutate(
+      mtrx = map(data, make_matrix)
+    ) %>% 
+    mutate(
+      chord_diagram = map(mtrx, chorddiag)
+    )
+
+tx_with_chords$chord_diagram
+
+
+```
+
+Maybe I can use quarto to add titles to these?
+
+```{r}
+#| layout: [[1, 1]]
+
+tx_with_chords$chord_diagram[[1]]
+tx_with_chords$chord_diagram[[2]]
+
+```

@@ -23,6 +23,12 @@ The additional variables to include are:
 
 As before let's start by loading the requisite packages and data.
 
+## To do
+
+-   [ ] Add ethnicity to baseline model and those that develop from it
+
+-   [ ] Make sure this is also added to other relevant docs
+
 # Preparation
 
 ```{r}
@@ -38,11 +44,11 @@ base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
 indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
 
 varnames <-  c(
-  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv" #, "ethn_dv"
   )
 
 extract_what <- c(
-  "labels", "values", "labels", "values", "values"
+  "labels", "values", "labels", "values", "values" #, "labels"
   )
 
 overall_start_time = Sys.time()
@@ -66,6 +72,46 @@ print(paste(
 rm(long_slimmed_datalist)
 long_slimmed_data
 
+
+ # Now trying to just extract ethnicity
+ varnames <-  c(
+   "ethn_dv"
+   )
+ 
+ extract_what <- c(
+   "labels"
+   )
+ 
+ overall_start_time = Sys.time()
+ 
+ long_slimmed_ethnic_datalist <- lapply(indresp_files, 
+        read_and_slim_data, 
+        varnames = varnames, 
+        extract_what = extract_what, 
+        verbose = TRUE
+ )
+ 
+ long_slimmed_ethnicdata <- bind_rows(long_slimmed_ethnic_datalist)
+ 
+ overall_end_time = Sys.time()
+ 
+ print(paste(
+   "Overall process took",
+   difftime(overall_end_time, overall_start_time, units = "mins"),
+   "minutes"
+ ))
+ rm(long_slimmed_ethnic_datalist)
+ 
+long_slimmed_ethnicdata
+
+long_slimmed_data <- 
+  bind_rows(
+    long_slimmed_data, 
+    long_slimmed_ethnicdata
+  )
+
+rm(long_slimmed_ethnicdata)
+
 ```
 
 ```{r}
@@ -83,6 +129,63 @@ econ_act_statuses_sevenlevels <-
     select(pidp, wave, econ_act_status = recoded)
 
 econ_act_statuses_sevenlevels
+```
+
+Now the same sort of thing for ethnicity
+
+```{r}
+
+ethnic_statuses <- 
+  long_slimmed_data %>% 
+    filter(variable == 'ethn_dv') %>% 
+    select(pidp, wave, ethnicity_status = value)
+
+ethnic_statuses
+```
+
+Let's try to reduce the number of categories
+
+```{r}
+ethnic_statuses %>% group_by(wave, ethnicity_status) %>% count() %>% 
+  group_by(wave) %>% 
+  mutate(share = n / sum(n)) %>% 
+  filter(wave == 'c') %>% 
+  arrange(desc(share)) 
+```
+
+Most ethnic groups in the ukhls j wave seem broadly representative of what's observed in the 2021 census, though Chinese appears around half (or less) the reported rate
+
+We now also have a slightly simplified taxonomy to use
+
+```{r}
+
+ethnicity_recodings <- readxl::read_excel(path = here("data/ethnicity_categories.xlsx"), sheet = 'regroupings') %>% 
+  janitor::clean_names()
+
+ethnic_statuses %>% 
+  left_join(
+    ethnicity_recodings, 
+    by = c('ethnicity_status' = 'original')
+  ) %>% 
+  group_by(wave, recoded) %>% count() %>% 
+  group_by(wave) %>% 
+  mutate(share = n / sum(n)) %>% 
+  filter(wave == 'j') %>% 
+  arrange(desc(share)) %>% 
+  mutate(
+    cumulative_share = cumsum(share)
+  )
+
+ethnicity_statuses_simplified <- 
+  ethnic_statuses %>% 
+  left_join(
+    ethnicity_recodings,
+    by = c('ethnicity_status' = 'original')
+  ) %>% 
+  select(pidp, wave, ethnicity_status = recoded) %>% 
+  filter(ethnicity_status != 'Missing')
+
+ethnicity_statuses_simplified
 ```
 
 ```{r}
@@ -140,6 +243,11 @@ econ_act_current_gvn_last_with_sex_age_and_sf12 <-
       mutate(wavenumber = match(wave, letters[1:26])) %>% 
       select(pidp, wavenumber, ph_score)  
   ) %>% 
+  left_join(
+    ethnicity_statuses_simplified %>%
+      mutate(wavenumber = match(wave, letters[1:26])) %>%
+      select(pidp, wavenumber, ethnicity_status)
+  ) %>%
   filter(age >= 0) %>% #negative values indicate missing 
   filter(between(age, 16, 65)) %>% 
   mutate(age_group = case_when(
@@ -163,6 +271,37 @@ mod_01 <- multinom(
   this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
   data = econ_act_current_gvn_last_with_sex_age_and_sf12
 )
+
+mod_01a <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + ethnicity_status, #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12
+)
+
+# The following model aimed to test interactions between ethnicity and sex, but could not be run with 
+# the available data
+
+# mod_01b <- multinom( 
+#   this_status ~ last_status * sex * ethnicity_status + splines::bs(age, df = 5), #b-splines with 5 dfs
+#   data = econ_act_current_gvn_last_with_sex_age_and_sf12
+# )
+
+mod_01c <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + is_british, #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    mutate(is_british = ethnicity_status == 'British') 
+)
+
+
+```
+
+Let's compare the two baseline models, one with and the other without ethnicity
+
+```{r}
+
+# model 01b was too complex to be calculable
+BIC(mod_01, mod_01a, mod_01c)
+AIC(mod_01, mod_01a, mod_01c)
+
 ```
 
 Now the alternative models

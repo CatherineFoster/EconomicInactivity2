@@ -1,8 +1,21 @@
 ---
-title: "05_show_prop_act_status_by_age_and_wave"
-author: "Jon Minton; Martin Taulbut"
-format: docx
+title: "Notebook 05: Show proportion by activity status by age and wave"
+author: 
+ - "Jon Minton"
+ - "Martin Taulbut"
+format: 
+  html:
+    code-fold: true
+    echo: true
+  docx: 
+    toc: true
+    number-sections: true
 editor: visual
+execute: 
+  echo: false
+  warning: false
+  fig-width: 9
+  fig-height: 6
 ---
 
 # Introduction
@@ -65,6 +78,8 @@ econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_cate
 Now to pivot this
 
 ```{r}
+#| fig-cap: "Proportion of UKHLS sample registered economically inactive, unemployed, or unemployed, by wave, faceted by sex and broad age group"
+#| label: fig-threegroup-econact-by-wave-broad-agegroup
 long_slimmed_data %>% 
   pivot_wider(names_from = "variable", values_from = "value") %>% 
   mutate(age = as.numeric(dvage)) %>% 
@@ -114,6 +129,8 @@ Some observations:
 We'll now do the same but disaggregating the economic inactivity categories a bit more...
 
 ```{r}
+#| fig-cap: "Proportion of UKHLS sample by seven state economic activity status, by wave, faceted by sex and broad age group"
+#| label: fig-sevengroup-econact-by-wave-broad-agegroup
 long_slimmed_data %>% 
   pivot_wider(names_from = "variable", values_from = "value") %>% 
   mutate(age = as.numeric(dvage)) %>% 
@@ -165,11 +182,13 @@ Some observations:
     -   it appears to be fairly constant in females but possibly falling in males (in the oldest age group)
 -   rates of inactivity due to long term sickness appear around 3-5% in prime age men and women, and similar in both sexes, as well as not to have changed appreciably over time
 
-## line charts
+## Line charts
 
 We now want to show the same data but with the actual proportions rather than cumulative proportions
 
 ```{r}
+#| fig-cap: "Proportion of UKHLS sample either employed, unemployed or economically inactive by wave, faceted by sex and broad age group"
+#| label: fig-threegroup-linechart-econact-by-wave-broad-agegroup
 long_slimmed_data %>% 
   pivot_wider(names_from = "variable", values_from = "value") %>% 
   mutate(age = as.numeric(dvage)) %>% 
@@ -202,11 +221,14 @@ long_slimmed_data %>%
     labs(
       x = "wave",
       y = "Proportion",
-      colour = "Economic activity status"
+      colour = "Economic activity status",
+      title = "Proportion of UKHLS sample either unemployed, employed, or economically inactive, by UKHLS wave"
     )
 ```
 
 ```{r}
+#| fig-cap: "Proportion of UKHLS sample in any of seven economic activity or inactivty categories by wave, faceted by sex and broad age group"
+#| label: fig-sevengroup-linechart-econact-by-wave-broad-agegroup
 long_slimmed_data %>% 
   pivot_wider(names_from = "variable", values_from = "value") %>% 
   mutate(age = as.numeric(dvage)) %>% 
@@ -239,11 +261,16 @@ long_slimmed_data %>%
     labs(
       x = "wave",
       y = "Proportion",
-      colour = "Economic activity status"
+      colour = "Economic activity status",
+      title = "Proportion of UKHLS sample in seven group economic status category, by UKHLS wave"
     )
 ```
 
 ```{r}
+#| fig-cap: "Proportions by economic activity status and broad age group, coloured by sex"
+#| label: fig-sevengroup-linechart-double-faceted
+#| fig-width: 12
+#| fig-height: 12
 long_slimmed_data %>% 
   pivot_wider(names_from = "variable", values_from = "value") %>% 
   mutate(age = as.numeric(dvage)) %>% 
