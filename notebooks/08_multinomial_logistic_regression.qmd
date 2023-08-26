@@ -707,7 +707,7 @@ I think the next step, and final step in terms of producing a decent base model,
 
 ```{r}
 mod_16 <- multinom(
-  this_status ~ last_status * sex + splines::bs(age, df = 5) + wavenumber, #b-splines with 5 dfs
+  this_status ~ last_status * sex  +  splines::bs(age, df = 5) +  wavenumber , #wavenumber now interacting
   data = econ_act_current_gvn_last_with_sex_and_age
 )
 ```

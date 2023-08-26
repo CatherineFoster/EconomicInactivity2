@@ -269,13 +269,15 @@ First the (new) baseline model
 # Was model 02 in 10 (seven state) modelling
 mod_01 <- multinom( 
   this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
-  data = econ_act_current_gvn_last_with_sex_age_and_sf12
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12 
 )
 
 mod_01a <- multinom( 
   this_status ~ last_status * sex + splines::bs(age, df = 5) + ethnicity_status, #b-splines with 5 dfs
   data = econ_act_current_gvn_last_with_sex_age_and_sf12
 )
+
+
 
 # The following model aimed to test interactions between ethnicity and sex, but could not be run with 
 # the available data
@@ -291,6 +293,19 @@ mod_01c <- multinom(
     mutate(is_british = ethnicity_status == 'British') 
 )
 
+mod_01d <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12 %>% filter(wavenumber <= 11)
+)
+
+mod_01e <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + pandemic_year, #b-splines with 5 dfs
+  data = econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    mutate(pandemic_year = wavenumber >= 11)
+)
+
+
+
 
 ```
 
@@ -301,6 +316,110 @@ Let's compare the two baseline models, one with and the other without ethnicity
 # model 01b was too complex to be calculable
 BIC(mod_01, mod_01a, mod_01c)
 AIC(mod_01, mod_01a, mod_01c)
+
+
+# We also want to see if there's a signal that the pandemic year was sufficiently distinct from other years 
+
+BIC(mod_01, mod_01e)
+AIC(mod_01, mod_01e)
+
+```
+
+Example of getting predictions from our foundational model `mod_01`
+
+```{r}
+mod_01
+
+vignette_data <- tribble(
+    ~last_status, ~age, ~sex,
+    "Employed", 30, "female",
+    "Unemployed", 55, "male",
+    "Unemployed", 55, "female",
+    "Unemployed", 62, "male"
+)
+
+predict(
+  mod_01, 
+  newdata = vignette_data
+)
+
+predict(
+  mod_01, 
+  newdata = vignette_data,
+  type = "probs"
+) %>% 
+  write.csv("tmp.csv")
+
+actual_predictions <- predict(mod_01)
+tmp <- 
+  econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
+    mutate(predicted_next_wave = actual_predictions) %>% 
+  select(everything(), this_status, predicted_next_wave)
+
+view(tmp)
+
+xtabs(~predicted_next_wave + this_status, data = tmp)
+
+```
+
+## Another baseline example 
+
+Let's look at how age and gender affect the probability of remaining employed for persons who start off employed, and becoming employed for persons who start off unemployed
+
+```{r}
+demographic_predictor_matrix <- expand_grid(
+  sex = c("male", "female"),
+  age = 20:60,
+  last_status = c("Unemployed", "Employed")
+)
+
+demographic_prediction_matrix <- predict(mod_01, newdata = demographic_predictor_matrix, type = "probs")
+
+
+combined_matrix <- bind_cols(demographic_predictor_matrix, demographic_prediction_matrix) %>% 
+  pivot_longer(cols = Employed:Unemployed, names_to = "predicted_state", values_to = "probability")
+
+```
+
+Now let's use this to show how age and gender affect the probabilities of the employed staying employed, and the unemployed becoming employed
+
+Probability of employed remaining employed
+
+```{r}
+combined_matrix %>% 
+  filter(last_status == "Employed") %>% 
+  filter(predicted_state == "Employed") %>% 
+  ggplot(aes(x=age, y= probability, colour = sex)) + 
+  geom_line() + 
+  labs(
+    x = "Age in years", 
+    y = "Probability of remaining employed", 
+    title = "Predicted probabilities of employed persons remaining employed at next wave given age and sex"
+  )
+
+combined_matrix %>% 
+  filter(last_status == "Unemployed") %>% 
+  filter(predicted_state == "Employed") %>% 
+  ggplot(aes(x=age, y= probability, colour = sex)) + 
+  geom_line() + 
+  labs(
+    x = "Age in years", 
+    y = "Probability of becoming employed", 
+    title = "Predicted probabilities of unemployed persons becoming employed at next wave given age and sex"
+  )
+
+
+combined_matrix %>% 
+  filter(last_status == "Unemployed") %>% 
+  filter(predicted_state == "Inactive long term sick") %>% 
+  ggplot(aes(x=age, y= probability, colour = sex)) + 
+  geom_line() + 
+  expand_limits(y = 0) +
+  labs(
+    x = "Age in years", 
+    y = "Probability of becoming becoming long-term sick", 
+    title = "Predicted probabilities of unemployed persons becoming long-term sick at next wave given age and sex"
+  )
 
 ```
 
@@ -712,61 +831,78 @@ What would happen if I were to take the observed mh scores (standardised) and us
 
 ```{r}
 
-predictor_control_mh_wave_c <- 
+predictor_control_mh_wave_j <- 
   econ_act_current_gvn_last_with_sex_age_and_sf12 %>% 
-    filter(wavenumber == 3) %>% 
+    filter(wavenumber == 10) %>% 
     filter(!is.na(mh_score)) %>% 
     mutate(z_mh = standardise_scores(mh_score)) %>% 
     select(pidp, last_status, sex, age, z_mh)
 
-predictor_treatment_mh_wave_c <- 
-  predictor_control_mh_wave_c %>% 
+predictor_treatment_mh_wave_j <- 
+  predictor_control_mh_wave_j %>% 
   mutate(z_mh = z_mh + 1)
 
 ```
 
 ```{r}
 
-predictions_control_mh_wave_c <- 
-  predict(mod_02, newdata = predictor_control_mh_wave_c, type = 'probs')
+predictions_control_mh_wave_j <- 
+  predict(mod_02, newdata = predictor_control_mh_wave_j, type = 'probs')
 
-predictions_treatment_mh_wave_c <- 
-  predict(mod_02, newdata = predictor_treatment_mh_wave_c, type = 'probs')
+predictions_treatment_mh_wave_j <- 
+  predict(mod_02, newdata = predictor_treatment_mh_wave_j, type = 'probs')
 
 ```
 
 ```{r}
-predictions_predictors_control_mh_wave_c <- 
+predictions_predictors_control_mh_wave_j <- 
   bind_cols(
-    predictor_control_mh_wave_c, predictions_control_mh_wave_c
+    predictor_control_mh_wave_j, predictions_control_mh_wave_j
   ) %>% 
   pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
   mutate(arm = "control")
 
-predictions_predictors_treatment_mh_wave_c <- 
+predictions_predictors_treatment_mh_wave_j <- 
   bind_cols(
-    predictor_treatment_mh_wave_c, predictions_treatment_mh_wave_c
+    predictor_treatment_mh_wave_j, predictions_treatment_mh_wave_j
   ) %>% 
   pivot_longer(cols = statuses, names_to = "current_status", values_to = "predicted_probability") %>% 
   mutate(arm = "treatment")
 
-predictions_predictors_both_mh_wave_c <- 
+predictions_predictors_both_mh_wave_j <- 
   bind_rows(
-    predictions_predictors_control_mh_wave_c,
-    predictions_predictors_treatment_mh_wave_c
+    predictions_predictors_control_mh_wave_j,
+    predictions_predictors_treatment_mh_wave_j
   )
 
 
 rm(
-  predictions_predictors_control_mh_wave_c,
-  predictions_predictors_treatment_mh_wave_c
+  predictions_predictors_control_mh_wave_j,
+  predictions_predictors_treatment_mh_wave_j
 )
 ```
 
-Now let's see what difference controlling for baseline mh makes
+Let's now extract the summary distributions in both arms
 
 ```{r}
-predictions_predictors_both_mh_wave_c %>% 
+summary_status_pool_estimated_mh_wave_j <- 
+  predictions_predictors_both_mh_wave_j %>% 
+    group_by(arm, current_status) %>% 
+    summarise(total_estimated_size = sum(predicted_probability)) %>% 
+    ungroup() %>% 
+    group_by(arm) %>% 
+    mutate(share_of_population_in_state = total_estimated_size / sum(total_estimated_size)) %>% 
+    pivot_wider(names_from = arm, values_from = c(total_estimated_size, share_of_population_in_state)) %>% 
+    select(current_status, total_estimated_size_control, share_of_population_in_state_control, total_estimated_size_treatment, share_of_population_in_state_treatment)
+
+write_csv(x = summary_status_pool_estimated_mh_wave_j, file = "summary_status_pool_estimated_wave_j.csv")
+summary_status_pool_estimated_mh_wave_j
+
+
+```
+
+```{r}
+predictions_predictors_both_mh_wave_j %>% 
   select(-z_mh) %>% 
   pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
   mutate(diff_probability = treatment - control) %>% 
@@ -781,6 +917,7 @@ predictions_predictors_both_mh_wave_c %>%
 Can this be clearly summarised?
 
 ```{r}
+#| eval: FALSE
 predictions_predictors_both_mh_wave_c %>% 
   select(-z_mh) %>% 
   pivot_wider(names_from = 'arm', values_from = 'predicted_probability') %>% 
@@ -1138,4 +1275,24 @@ predictions_predictors_both_ph_wave_j %>%
          rel_diff = abs_diff / control
   ) %>% 
   select(current_status, rel_diff) 
+```
+
+Table for excel
+
+```{r}
+summary_estimates_wave_j_ph <- 
+  predictions_predictors_both_ph_wave_j %>% 
+    group_by(arm, current_status) %>% 
+    summarise(predicted_total = sum(predicted_probability)) %>% 
+    pivot_wider(names_from = arm, values_from = predicted_total) %>% 
+    mutate(
+      share_control = control / sum(control), 
+      share_treatment = treatment / sum(treatment)
+    ) %>% 
+    select(current_status, control, share_control, treatment, share_treatment) %>% 
+    ungroup()
+
+write_csv(x = summary_estimates_wave_j_ph, file = "wave_j_summary_estimates_ph.csv")
+summary_estimates_wave_j_ph
+
 ```
