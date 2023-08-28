@@ -597,4 +597,3 @@ predictions_predictors %>%
     colour = "Job Security \n(lower is worse)"
   )
 ```
-

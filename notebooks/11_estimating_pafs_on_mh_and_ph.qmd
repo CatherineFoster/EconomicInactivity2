@@ -362,7 +362,7 @@ xtabs(~predicted_next_wave + this_status, data = tmp)
 
 ```
 
-## Another baseline example 
+## Another baseline example
 
 Let's look at how age and gender affect the probability of remaining employed for persons who start off employed, and becoming employed for persons who start off unemployed
 

@@ -9,21 +9,18 @@ editor: visual
 
 This notebook will aim to estimate PAFs attributable to low/no education.
 
-
 Variables to consider:
 
-- feend - age left further education 
-- hiqual_dv - highest qualification (will require some recoding)
+-   feend - age left further education
+-   hiqual_dv - highest qualification (will require some recoding)
 
 ## Discussion with Martin
 
-- We are unsure where the 'other qualification' group fits within within a simple and meaningful hierarchy going from none, to gcse, to A-level to degree
-    - We could look at making it equivalent both to gcse, or to A-level, and modelling under both assumptions?
-- We could also look at age left further education? 
+-   We are unsure where the 'other qualification' group fits within within a simple and meaningful hierarchy going from none, to gcse, to A-level to degree
+    -   We could look at making it equivalent both to gcse, or to A-level, and modelling under both assumptions?
+-   We could also look at age left further education?
 
 ## Data loading and prep
-
-
 
 ```{r}
 
@@ -67,7 +64,8 @@ long_slimmed_data
 
 
 ```
-We want to look at age left full time education, `feend_dv`. This variable should be in one of the cross-wave datasets (prefixed x). 
+
+We want to look at age left full time education, `feend_dv`. This variable should be in one of the cross-wave datasets (prefixed x).
 
 Let's look to extract these
 
@@ -83,8 +81,6 @@ pidp_feend <- haven::read_dta(col_select = c('pidp', 'feend_dv'),
   select(pidp, feend_dv)
 
 ```
-
-
 
 ```{r}
 econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
@@ -102,8 +98,6 @@ econ_act_statuses_sevenlevels <-
 
 econ_act_statuses_sevenlevels
 ```
-
-
 
 ```{r}
 jj <- 
@@ -178,7 +172,8 @@ econ_act_current_gvn_last_with_sex_age_and_highest_qual <-
     )
   )
 ```
-What is the distribution of qualifications using these schema? 
+
+What is the distribution of qualifications using these schema?
 
 ```{r}
 econ_act_current_gvn_last_with_sex_age_and_highest_qual %>% 
@@ -189,7 +184,7 @@ econ_act_current_gvn_last_with_sex_age_and_highest_qual %>%
  econ_act_current_gvn_last_with_sex_age_and_highest_qual %>% ggplot(aes(additional_years_education, highest_qualification)) + geom_boxplot() + lims(x = c(0, 12))
 ```
 
-We should remove inapplicable and missing (DONE!), but in the first instance perhaps treat the other qualifications as categorical, before looking at ordinal models and recategorisations. 
+We should remove inapplicable and missing (DONE!), but in the first instance perhaps treat the other qualifications as categorical, before looking at ordinal models and recategorisations.
 
 Now what about age left full time education?
 
@@ -203,6 +198,7 @@ econ_act_current_gvn_last_with_sex_age_and_highest_qual %>%
     cumulative_share = cumsum(share)
   )
 ```
+
 ```{r}
 econ_act_current_gvn_last_with_sex_age_and_highest_qual %>% 
   group_by(feend_dv) %>% 
@@ -220,10 +216,8 @@ econ_act_current_gvn_last_with_sex_age_and_highest_qual %>%
     title = "Cumulative share of population by age left full time education"
   )
 ```
-Maybe we could divide into: 
-- 18 or below (lowest quartile)
-- 19 to 22 (middle half)
-- 23 or above (highest quartile)
+
+Maybe we could divide into: - 18 or below (lowest quartile) - 19 to 22 (middle half) - 23 or above (highest quartile)
 
 Actually trying quartiles for consistency...
 
@@ -272,7 +266,6 @@ mod_06 <- multinom(
 
 ```
 
-
 And how do the models compare using BIC and AIC?
 
 ```{r}
@@ -286,23 +279,20 @@ The qualification model has a superior model fit using BIC, which penalises comp
 AIC(mod_01, mod_02, mod_03, mod_04, mod_05, mod_06)
 ```
 
+By both criteria, the quartile approach outperforms alternatives.
 
-By both criteria, the quartile approach outperforms alternatives. 
+## Counterfactuals
 
-## Counterfactuals 
+### Counterfactuals with qualification
 
+What are some counterfactual scenarios we want to consider?
 
-### Counterfactuals with qualification 
+-   Baseline: Everyone's qualification is unchanged
+-   Level 1: Everyone has at least a level 1 qualification (GCSE or similar)
+-   Level 2: Everyone has at least a level 2 qualification (A level or similar)
+-   Level 3: everyone has at least a level 3 qualification (Degree)
 
-
-What are some counterfactual scenarios we want to consider? 
-
-- Baseline: Everyone's qualification is unchanged
-- Level 1: Everyone has at least a level 1 qualification (GCSE or similar)
-- Level 2: Everyone has at least a level 2 qualification (A level or similar)
-- Level 3: everyone has at least a level 3 qualification (Degree)
-
-Let's look at wave 10 
+Let's look at wave 10
 
 ```{r}
 predictors_baseline <- 
@@ -356,7 +346,7 @@ predictors_level3 <-
     ) 
 ```
 
-Now to make the predictions 
+Now to make the predictions
 
 ```{r}
 predictions_baseline <- 
@@ -418,7 +408,7 @@ all_predictions_predictors <-
 
 ```
 
-Now to sum up and summarise 
+Now to sum up and summarise
 
 ```{r}
 all_predictions_predictors %>% 
@@ -445,17 +435,13 @@ all_predictions_predictors %>%
 
 ```
 
-These model estimates are starting to look plausible. 
+These model estimates are starting to look plausible.
 
-If everyone had at least a GSCE level education, this predicts the size of the employed population would be about a third of a percent hgiher; and if everyone has at least an A-level qualifiation, the employed population would be about 1.2% higher. 
-If everyone had at least an A-level, the size of the student population is estimated to increase by around 13%, presumably because A-levels are a path to degrees (usually). 
-The unemployed population size is predicted to fall by around 1.4% and 10.7% respectively. 
+If everyone had at least a GSCE level education, this predicts the size of the employed population would be about a third of a percent hgiher; and if everyone has at least an A-level qualifiation, the employed population would be about 1.2% higher. If everyone had at least an A-level, the size of the student population is estimated to increase by around 13%, presumably because A-levels are a path to degrees (usually). The unemployed population size is predicted to fall by around 1.4% and 10.7% respectively.
 
+I've now added a level3 scenario, in which everyone now has at least a degree!
 
-I've now added a level3 scenario, in which everyone now has at least a degree! 
-
-This scenario is estimated to increase the size of the employed population by around 2.6%, reduce the size of the long-term sick population by around 25%, and reduce the size of the unemployed population by around 22%. It is also estimated to reduce the size of the carer population by around 14% and increase the size of the student population by around 11%. 
-TEXT
+This scenario is estimated to increase the size of the employed population by around 2.6%, reduce the size of the long-term sick population by around 25%, and reduce the size of the unemployed population by around 22%. It is also estimated to reduce the size of the carer population by around 14% and increase the size of the student population by around 11%. TEXT
 
 Let's now look at things by last status as well:
 
@@ -471,7 +457,7 @@ all_predictions_predictors %>%
 
 ```
 
-There's clearly a lot of values here, so perhaps we should try to present it as a graph? 
+There's clearly a lot of values here, so perhaps we should try to present it as a graph?
 
 ```{r}
 all_predictions_predictors %>% 
@@ -495,15 +481,14 @@ all_predictions_predictors %>%
 
 ```
 
-### Counterfactuals with quartiles of years of education 
+### Counterfactuals with quartiles of years of education
 
-mod_06, which uses quartile of years of education, has a better penalised model fit than other models.
-It is also relatively straightforward to interpret, and produce counterfactuals on the basis of:
+mod_06, which uses quartile of years of education, has a better penalised model fit than other models. It is also relatively straightforward to interpret, and produce counterfactuals on the basis of:
 
-- baseline: all categories as is
-- level 1: Everyone has at least the second quartile (Q2: 19 or 20)
-- level 2: Everyone has at least the third quartile (Q3: 21 or 22)
-- level 3: Everyone is in the top quartile (Q4: 23 or above)
+-   baseline: all categories as is
+-   level 1: Everyone has at least the second quartile (Q2: 19 or 20)
+-   level 2: Everyone has at least the third quartile (Q3: 21 or 22)
+-   level 3: Everyone is in the top quartile (Q4: 23 or above)
 
 ```{r}
 
@@ -647,29 +632,22 @@ all_predictions_predictors %>%
 
 The key category level 2, a scenario in which everyone is educated to at least age 21. (Effectively, to undergrad degree level.)
 
-In this scenario, the size of the long-term sick population is estimated to reduce by around an eighth, and unemployment to fall by about a tenth. The increase in the size of the employed population is only estimated to increase by about 0.7%, however, whereas the student population is estimated to increase by around 7.6%. The full-time carer population is estimated to fall by around a twentieth too. 
+In this scenario, the size of the long-term sick population is estimated to reduce by around an eighth, and unemployment to fall by about a tenth. The increase in the size of the employed population is only estimated to increase by about 0.7%, however, whereas the student population is estimated to increase by around 7.6%. The full-time carer population is estimated to fall by around a twentieth too.
 
-The maximal, level 3 scenario, in which everyone stays in further education until at least age 23, appears more adverse in its estimated effects than level 2, with reduced employment, greatly increases probabilities of becoming/remaining a student (by 151%), and also an 8% increase in the size of the unemployed population and size of those inactive for 'other' reasons. 
+The maximal, level 3 scenario, in which everyone stays in further education until at least age 23, appears more adverse in its estimated effects than level 2, with reduced employment, greatly increases probabilities of becoming/remaining a student (by 151%), and also an 8% increase in the size of the unemployed population and size of those inactive for 'other' reasons.
 
-To the extent the level 3 scenario model is reasonable, could it be picking up on characteristic differences in those who remain in full time education until advanced ages? Such differences could include:
-- Being inherently less attractive to employers (e.g. issues of neurodiversity or mental health problems)
-- Being more attracted and focused on academic employment, which is more precarious and oversupplied than much of the labour market
-- Being less attracted to formal employment (the mirror of the first possible explanation), and more towards gaining further education and qualifications for its own sake, rather than to enhance employability? 
+To the extent the level 3 scenario model is reasonable, could it be picking up on characteristic differences in those who remain in full time education until advanced ages? Such differences could include: - Being inherently less attractive to employers (e.g. issues of neurodiversity or mental health problems) - Being more attracted and focused on academic employment, which is more precarious and oversupplied than much of the labour market - Being less attracted to formal employment (the mirror of the first possible explanation), and more towards gaining further education and qualifications for its own sake, rather than to enhance employability?
 
-
-Regardless, both the qualifications-based, and the education-leaving-age-based, approaches to estimating the effects of additional years of education suggest that a first degree appears protective of many of the more adverse labour market categories, such as unemployment and long-term sickness, but that the marginal gains of additional education beyond the first degree appear slight if not negative. 
+Regardless, both the qualifications-based, and the education-leaving-age-based, approaches to estimating the effects of additional years of education suggest that a first degree appears protective of many of the more adverse labour market categories, such as unemployment and long-term sickness, but that the marginal gains of additional education beyond the first degree appear slight if not negative.
 
 Note in the above I wrote 'a first degree appears protective of ...'. Instead it is more likely that those individual level qualities, and/or socioeconomic circumstances, which lead to increased probabilities of getting a first degree also lead to these apparently protective labour market effects.
 
-
 Queries/ideas from Neil:
 
-- What about differentiating those who just stay in further education and get more degrees,
-- compared with those who return to get another qualification after a break, or do part time qualifications to support their professional or personal/academic interests?
-- Also look at earnings
-- Motherhood penality
-  - Can we look at effects of birth of first child on female earnings and labour market engagement?
-- **Adult returners** 
-  - Considering support for adult learning   
-  
-  
+-   What about differentiating those who just stay in further education and get more degrees,
+-   compared with those who return to get another qualification after a break, or do part time qualifications to support their professional or personal/academic interests?
+-   Also look at earnings
+-   Motherhood penality
+    -   Can we look at effects of birth of first child on female earnings and labour market engagement?
+-   **Adult returners**
+    -   Considering support for adult learning

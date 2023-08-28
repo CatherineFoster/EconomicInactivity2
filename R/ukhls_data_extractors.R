@@ -7,11 +7,20 @@
 #' @export
 #'
 #' @examples
-convert_varname_selection_to_regex <- function(varnames){
+convert_varname_selection_to_regex <- function(varnames, level = "individual"){
+  stopifnot("level not valid. Should be either individual or household" = level %in% c("individual", "household"))
   stopifnot("no varnames supplied. Please supply at least one" = !is.null(varnames))
-  wave_varnames_regexed <- sapply(varnames, FUN = function(x) paste0("^[a-z]{1}_", x, "$"))
-  pidp_wave_varnames_regexed <- c("pidp", wave_varnames_regexed)
-  out <- paste(pidp_wave_varnames_regexed, collapse = "|")
+
+  if (level == "individual") {
+    wave_varnames_regexed <- sapply(varnames, FUN = function(x) paste0("^[a-z]{1}_", x, "$"))
+    pidp_wave_varnames_regexed <- c("pidp", wave_varnames_regexed)
+    out <- paste(pidp_wave_varnames_regexed, collapse = "|")
+
+  } else if (level == "household") {
+    varnames <- c("hidp", varnames)
+    wave_varnames_regexed <- sapply(varnames, FUN = function(x) paste0("^[a-z]{1}_", x, "$"))
+    out <- paste(wave_varnames_regexed, collapse = "|")
+  }
   out
 }
 
@@ -29,7 +38,10 @@ convert_varname_selection_to_regex <- function(varnames){
 #' @export
 #'
 #' @examples
-extract_vars_and_make_long <- function(dta, varnames, extract_what = 'labels', verbose = TRUE){
+extract_vars_and_make_long <- function(dta, varnames, extract_what = 'labels', level = "individual", verbose = TRUE){
+
+  #level should be individual or household
+  stopifnot("level should be individual or household" = level %in% c("individual", "household"))
 
   #dta should be a dataframe
   stopifnot("dta is not a dataframe" = "data.frame" %in% class(dta))
@@ -57,20 +69,37 @@ extract_vars_and_make_long <- function(dta, varnames, extract_what = 'labels', v
   var_list <- list()
 
 
-  extract_var_and_make_long <- function(dta, varname, extract_what){
-    out <- dta %>%
-      # hard-coded for now
-      dplyr::select(pidp, matches(paste0("^[a-z]{1}_", varname, "$"))) %>%
-      tidyr::pivot_longer(-pidp) %>%
-      tidyr::separate_wider_delim(
-        name,
-        delim = "_",
-        too_many = 'merge',
-        names = c("wave", "variable")
-      ) %>%
-      dplyr::mutate(value = haven::as_factor(value, levels = extract_what) %>%
-               as.character()
-      )
+  extract_var_and_make_long <- function(dta, varname, extract_what, level = "individual"){
+
+    stopifnot("level should be individual or household" = level %in% c("individual", "household"))
+
+    if (level == "individual") {
+      out <- dta %>%
+        dplyr::select(pidp, matches(paste0("^[a-z]{1}_", varname, "$"))) %>%
+        tidyr::pivot_longer(-pidp)
+      out <- out %>%
+        tidyr::separate_wider_delim(
+          name,
+          delim = "_",
+          too_many = 'merge',
+          names = c("wave", "variable")
+        ) %>%
+        dplyr::mutate(value = haven::as_factor(value, levels = extract_what) %>%
+                        as.character()
+        )
+
+    } else if (level == "household") {
+      #if household then the first variable should be something like w_hidp
+      wave <- stringr::str_extract(names(dta)[1], "^[a-z]{1}")
+      names(dta) <- sapply(names(dta), FUN = function(x) stringr::str_remove(x, "^[a-z]{1}_"))
+      dta <- dta %>%
+        dplyr::mutate(wave = wave) %>%
+        dplyr::select(wave, everything())
+
+      out <- dta %>%
+        dplyr::select(wave, hidp, matches(varname)) %>%
+        tidyr::pivot_longer(-c('wave', 'hidp'), names_to = "variable", values_to = "value")
+    }
     out
   }
 
@@ -80,7 +109,7 @@ extract_vars_and_make_long <- function(dta, varnames, extract_what = 'labels', v
     } else {
       extract_what[i]
     }
-    var_list[[i]] <- extract_var_and_make_long(dta, varnames[i], extract_what = what_to_extract)
+    var_list[[i]] <- extract_var_and_make_long(dta, varnames[i], extract_what = what_to_extract, level = level)
   }
 
   out <- dplyr::bind_rows(var_list)
@@ -111,7 +140,9 @@ extract_vars_and_make_long <- function(dta, varnames, extract_what = 'labels', v
 #' @export
 #'
 #' @examples
-read_and_slim_data <- function(file_location, varnames, extract_what, verbose = TRUE){
+read_and_slim_data <- function(file_location, varnames, extract_what, verbose = TRUE, level = "individual"){
+
+  stopifnot("level is not individual or household" = level %in% c("individual", "household"))
 
   if (verbose) {
     print(paste("extracting file:",file_location))
@@ -119,7 +150,7 @@ read_and_slim_data <- function(file_location, varnames, extract_what, verbose = 
     start_time = Sys.time()
   }
 
-  varnames_regex_string <- convert_varname_selection_to_regex(varnames)
+  varnames_regex_string <- convert_varname_selection_to_regex(varnames, level = level)
 
   full_data <- haven::read_dta(
     file_location,
@@ -148,8 +179,17 @@ read_and_slim_data <- function(file_location, varnames, extract_what, verbose = 
   }
 
   found_varnames <- names(full_data)
-  found_varnames <- found_varnames[found_varnames != 'pidp'] %>%
-    stringr::str_remove("^[a-z]_")
+  if (level == "individual") {
+    found_varnames <- found_varnames[found_varnames != 'pidp'] %>%
+      stringr::str_remove("^[a-z]_")
+
+  } else if (level == "household") {
+    # For household data the hh variables are of the form w_hidp so the w part needs to be extracted along with
+    # all others
+    found_varnames <- found_varnames[!grepl("^[a-z]{1}_hidp", found_varnames)] %>%
+      stringr::str_remove("^[a-z]_")
+
+  }
 
   # If not all variables are found, not not all extract_what positions are relevant
   found_extract_what <- extract_what[varnames %in% found_varnames]
@@ -158,7 +198,7 @@ read_and_slim_data <- function(file_location, varnames, extract_what, verbose = 
     full_data,
     varnames = found_varnames,
     extract_what = found_extract_what,
-    verbose = verbose
+    verbose = verbose, level = level
   )
   slim_long_data
 }

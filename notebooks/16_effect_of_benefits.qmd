@@ -1,0 +1,138 @@
+---
+title: "16_effect_of_benefits_on_state"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+# Introduction
+
+The aim of this notebook is to try to explore the effect that benefits, as a form of top-up to total household income, has on the probabilities of transitions between different kinds of economic inactivity and activity.
+
+This is slightly more challenging to think through, as the total income in large part depends on whether someone is working or not.
+
+The variables we need are mainly in the household level file, I think...
+
+# Variables
+
+There are quite a lot of variables to consider, all within the \_hhresp files
+
+-   `numadult` : number of adults in hh
+-   `numchild` : number of children (0-15) in hh
+-   `nunder10` : number of children under 10 in hh
+-   `hhsize` : size of household
+-   `fihhmngrs_dv`: total gross monthly household income - month before interview
+-   `fihhmnlabgrs_dv`: total gross household labour income - month before interview
+-   `fihhmnnet1_dv` : total household net income - no deductions
+-   `fihhmnlabnet_dv` : total net household labour income - month before interview
+-   `fihhmnmisc_dv` : total household misc income - month before interview
+-   `fihhmnprben_dv` : total household private benefit income - month before interview
+-   `fihhmninv_dv`: total household investment income - month before interview
+-   `fihhmnpen_dv` : total household pension income - month before interview
+-   `fihhmnsben_dv`: total household social benefit income - month before interview
+-   `houscost1_dv` : monthly housing costs including mortgage principal payments
+-   `ncouple_dv` : number of couples in hh
+-   `nonepar_dv` : number of lone parents in hh
+-   `nkids_dv` : number of children in hh
+-   `nch02_dv` : number of children 0-2 years old in hh
+-   `nch34_dv` : number of children 3-4 years old in hh
+-   `nch511_dv` : number of children 5-11 years old in hh
+-   `nch1215_dv` : number of children 12-15 years old in hh
+-   `agechy_dv`: age of youngest child in HH
+-   `npens_dv` : number of people over pensionable age in hh
+-   `nemp_dv` : number employed in hh
+-   `nuw_dv` : number not in paid employment in hh
+-   `nwage_dv` : number working age in hh
+-   `ieqmoecd_dv` : modified OECD equivalence scale
+-   `fihhmngrs_if` : share of imputed HH total income
+
+# Preparation
+
+```{r}
+
+
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+
+# Individual level characteristics 
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels"
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+
+
+# household level characteristics 
+
+vars_types_hh <- tribble(
+  ~var_name, ~var_type, 
+  "numadult", "values",
+  "numchild", "values",
+  "nunder10", "values",
+  "hhsize", "values",
+  "fihhmngrs_dv", "values",
+  "fihhmnlabgrs_dv", "values",
+  "fihhmnnet1_dv", "values",
+  "fihhmnlabnet_dv", "values",
+  "fihhmnmisc_dv", "values",
+  "fihhmnprben_dv", "values",
+  "fihhmninv_dv", "values",
+  "fihhmnpen_dv", "values",
+  "fihhmnsben_dv", "values",
+  "houscost1_dv", "values",
+  "ncouple_dv", "values",
+  "nonepar_dv", "values",
+  "nkids_dv", "values",
+  "nch02_dv", "values",
+  "nch34_dv", "values",
+  "nch511_dv", "values",
+  "nch1215_dv", "values",
+  "agechy_dv", "values",
+  "npens_dv",  "values",
+  "nemp_dv", "values", 
+  "nuw_dv", "values",
+  "nwage_dv", "values",
+  "ieqmoecd_dv", "values",
+  "fihhmngrs_if", "values"
+)
+
+
+hhresp_files <- dir(here(base_dir_location), pattern = "[a-z]_hhresp.dta", full.names = TRUE)
+
+hh_long_slimmed_datalist <- lapply(hhresp_files, 
+       read_and_slim_data, 
+       varnames = vars_types_hh$var_name, 
+       extract_what = vars_types_hh$var_type, 
+       verbose = TRUE
+)
+```
