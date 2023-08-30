@@ -17,20 +17,12 @@ The variables we need are mainly in the household level file, I think...
 
 There are quite a lot of variables to consider, all within the \_hhresp files
 
+**Demographics**
+
 -   `numadult` : number of adults in hh
 -   `numchild` : number of children (0-15) in hh
 -   `nunder10` : number of children under 10 in hh
 -   `hhsize` : size of household
--   `fihhmngrs_dv`: total gross monthly household income - month before interview
--   `fihhmnlabgrs_dv`: total gross household labour income - month before interview
--   `fihhmnnet1_dv` : total household net income - no deductions
--   `fihhmnlabnet_dv` : total net household labour income - month before interview
--   `fihhmnmisc_dv` : total household misc income - month before interview
--   `fihhmnprben_dv` : total household private benefit income - month before interview
--   `fihhmninv_dv`: total household investment income - month before interview
--   `fihhmnpen_dv` : total household pension income - month before interview
--   `fihhmnsben_dv`: total household social benefit income - month before interview
--   `houscost1_dv` : monthly housing costs including mortgage principal payments
 -   `ncouple_dv` : number of couples in hh
 -   `nonepar_dv` : number of lone parents in hh
 -   `nkids_dv` : number of children in hh
@@ -43,7 +35,32 @@ There are quite a lot of variables to consider, all within the \_hhresp files
 -   `nemp_dv` : number employed in hh
 -   `nuw_dv` : number not in paid employment in hh
 -   `nwage_dv` : number working age in hh
+-   
+
+**Income and Expenditure**
+
+-   `fihhmngrs_dv`: total gross monthly household income - month before interview
+
+-   `fihhmnlabgrs_dv`: total gross household labour income - month before interview
+
+-   `fihhmnnet1_dv` : total household net income - no deductions
+
+-   `fihhmnlabnet_dv` : total net household labour income - month before interview
+
+-   `fihhmnmisc_dv` : total household misc income - month before interview
+
+-   `fihhmnprben_dv` : total household private benefit income - month before interview
+
+-   `fihhmninv_dv`: total household investment income - month before interview
+
+-   `fihhmnpen_dv` : total household pension income - month before interview
+
+-   `fihhmnsben_dv`: total household social benefit income - month before interview
+
+-   `houscost1_dv` : monthly housing costs including mortgage principal payments
+
 -   `ieqmoecd_dv` : modified OECD equivalence scale
+
 -   `fihhmngrs_if` : share of imputed HH total income
 
 # Preparation
@@ -123,7 +140,8 @@ vars_types_hh <- tribble(
   "nuw_dv", "values",
   "nwage_dv", "values",
   "ieqmoecd_dv", "values",
-  "fihhmngrs_if", "values"
+  "fihhmngrs_if", "values",
+  "hhtype_dv", "labels"
 )
 
 
@@ -133,6 +151,618 @@ hh_long_slimmed_datalist <- lapply(hhresp_files,
        read_and_slim_data, 
        varnames = vars_types_hh$var_name, 
        extract_what = vars_types_hh$var_type, 
-       verbose = TRUE
+       verbose = TRUE,
+       level = "household"
 )
+
+hh_long_slimmed_datalist <- bind_rows(hh_long_slimmed_datalist)
+
+hh_long_slimmed_datalist
+
+# I think we also need the lookup between pidp and hidp
+
+pid_hid_lookups <- lapply(
+  indresp_files,
+  extract_pid_with_hid_and_wave
+) %>% 
+  bind_rows()
+
+# Finally, we need the lookups to econ status 
+
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+
+```
+
+## Descriptive statistics
+
+Let's do some sense checks of the data by looking at a few household level attributes
+
+```{r}
+# Number of adults in households by wave 
+hh_long_slimmed_datalist %>% 
+  filter(variable == "numadult") %>% 
+  group_by(wave, value) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  rename(numadults = value) %>% 
+  ggplot(aes(x = numadults, y = n, group = wave, colour = wave)) + 
+  geom_line() + 
+  scale_x_continuous(breaks = c(0:13)) + 
+  labs(
+    x = "Number of adults in household", 
+    y = "Number of households with this number of adults", 
+    title = "Number of households with different number of adults by wave",
+    subtitle = "Using variable numadult, which appears only applies to waves a-d"
+  )
+```
+
+This suggests the `numadult` variable only covers waves a-d.
+
+But over these waves was there a change in the mean number of adults in households?
+
+```{r}
+hh_long_slimmed_datalist %>% 
+  filter(variable == "numadult") %>% 
+  group_by(wave, value) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  rename(numadults = value) %>% 
+  group_by(wave) %>% 
+  mutate(share_hh = n / sum(n)) %>% 
+  mutate(tmp = numadults * share_hh) %>% 
+  summarise(mean_hhsize = sum(tmp))
+```
+
+This suggests a mean stubbornly close to 2 for all waves, possibly increasing. This could be in part because of selection effects, with larger and/or more stable households being more likely to repeatedly respond from wave to wave. Or it could simply be random variation. Or it could be that hh sizes genuinely increased over this period of time.
+
+I think perhaps `hhsize` will be more consistent across waves ?
+
+```{r}
+
+hh_long_slimmed_datalist %>% 
+  filter(variable == "hhsize") %>% 
+  rename(hhsize = value) %>% 
+  ggplot(aes(x=hhsize, y = ..count.., fill = wave)) + 
+  geom_histogram(position = "dodge") 
+```
+
+This is telling us more about the amount of drop-off from wave to wave by household size. Perhaps that's what can be plotted next?
+
+```{r}
+hh_long_slimmed_datalist %>% 
+  filter(variable == "hhsize") %>% 
+  rename(hhsize = value) %>% 
+  select(-variable) %>% 
+  group_by(wave, hhsize) %>% 
+  tally() %>% 
+  arrange(hhsize, wave) %>% 
+  filter(hhsize <= 8) %>% 
+  group_by(hhsize)  %>% 
+  mutate(relative_prop = n / n[wave == 'a']) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = wave, y = relative_prop, group = factor(hhsize), colour = factor(hhsize))) +
+  geom_point() + geom_line() + 
+  labs(
+    x = "wave", 
+    y = "Number of households of this size relative to size in first wave",
+    title = "Rate of decline in number of households of different sizes"
+  )
+
+
+```
+
+The main declines initially appear to be in larger households, though it appears overally that the smaller the household, the lower the rate of decline over the whole period.
+
+The household size should be strongly correlated with the oecd equaliisation correction factor. Let's check this
+
+```{r}
+
+hh_long_slimmed_datalist %>% 
+  filter(variable %in% c("hhsize", "ieqmoecd_dv")) %>% 
+  pivot_wider(names_from = variable, values_from = value) %>% 
+  mutate(ieqmoecd_dv = ifelse(ieqmoecd_dv < 0, NA, ieqmoecd_dv)) %>% 
+  ggplot(aes(hhsize, ieqmoecd_dv)) + 
+  geom_jitter(alpha = 0.1) + 
+  labs(x = "Household size", y= "OECD income equivalisation factor",
+       title = "Association between household size and OECD income equivalisation factor")
+
+
+```
+
+Yes. That appears to be the case. Which is reassuring
+
+## Understanding composition of incomes and expenditure
+
+Difference in equivalised income by household type?
+
+```{r}
+
+income_costs_by_hhtype <- 
+  hh_long_slimmed_datalist %>% 
+    filter(variable %in% c("hhtype_dv", "fihhmnnet1_dv", "houscost1_dv", "ieqmoecd_dv")) %>% 
+    pivot_wider(names_from = variable, values_from = value) %>% 
+    mutate(hhtype_dv = as_factor(hhtype_dv) %>% as.character(.)) %>% 
+  rename(
+    hh_type = hhtype_dv, 
+    income_net = fihhmnnet1_dv, 
+    cost_housing = houscost1_dv, 
+    eq_factor = ieqmoecd_dv
+  ) %>% 
+  select(wave, hidp, hh_type, everything())
+
+income_costs_by_hhtype
+  
+# fihhmnnet1_dv net income 
+# ieqmoecd_dv : modified OECD equivalence scale
+# houscost1_dv : monthly housing costs including mortgage principal payments
+
+```
+
+What's the distribution of incomes over the whole sample of households?
+
+```{r}
+income_costs_by_hhtype %>% 
+  mutate(equivalised_income_net = income_net / eq_factor) %>% 
+  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
+  mutate(in_poverty = equivalised_income_net < pov_line) %>% 
+  ggplot(aes(x = equivalised_income_net, fill = in_poverty)) + 
+  geom_histogram(bins = 200) + 
+  geom_vline(color = "blue", linetype = "dashed", aes(xintercept = median_equivalised_income_net)) +
+  scale_x_log10(
+    limits = c(50, 50000),
+    breaks = c(
+      1e1, 2e1, 5e1, 
+      1e2, 2e2, 5e2, 
+      1e3, 2e3, 5e3, 
+      1e4, 2e4, 5e4, 
+      1e5, 2e5, 5e5
+    ), 
+    labels = c(
+      "10", "20", "50",
+      "100", "200", "500",
+      "1k", "2k", "5k",
+      "10k", "20k", "50k",
+      "100k", "200k", "500k"
+    )
+  ) + 
+  scale_fill_manual(
+    values = c("darkgrey", "darkred")
+  ) + 
+  guides(fill = "none") + 
+  labs(
+    x = "Net monthly income in £ (log scale)",
+    y = "Number of observations",
+    title = "Distribution of equivalised net monthly household incomes in UKHLS",
+    subtitle = "Equivalised using OECD equivalisation factor",
+    caption = "Dashed blue line indicates median income. Red coloured sections are households below 60% of median income"
+  )
+
+```
+
+let's do the same but for a number of specific waves
+
+```{r}
+income_costs_by_hhtype %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  mutate(equivalised_income_net = income_net / eq_factor) %>% 
+  group_by(wave) %>% 
+  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  ungroup() %>% 
+  mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
+  mutate(in_poverty = equivalised_income_net < pov_line) %>% 
+  ggplot(aes(x = equivalised_income_net, fill = in_poverty)) + 
+  geom_histogram(bins = 200) +
+  facet_wrap(~wave, ncol = 1) + 
+  geom_vline(color = "blue", linetype = "dashed", aes(xintercept = median_equivalised_income_net)) +
+  scale_x_log10(
+    limits = c(50, 50000),
+    breaks = c(
+      1e1, 2e1, 5e1, 
+      1e2, 2e2, 5e2, 
+      1e3, 2e3, 5e3, 
+      1e4, 2e4, 5e4, 
+      1e5, 2e5, 5e5
+    ), 
+    labels = c(
+      "10", "20", "50",
+      "100", "200", "500",
+      "1k", "2k", "5k",
+      "10k", "20k", "50k",
+      "100k", "200k", "500k"
+    )
+  ) + 
+  scale_fill_manual(
+    values = c("darkgrey", "darkred")
+  ) + 
+  guides(fill = "none") + 
+  labs(
+    x = "Net monthly income in £ (log scale)",
+    y = "Number of observations",
+    title = "Distribution of equivalised net monthly household incomes in UKHLS",
+    subtitle = "Equivalised using OECD equivalisation factor",
+    caption = "Dashed blue line indicates median income. Red coloured sections are households below 60% of median income"
+  )
+
+```
+
+Let's now do the same but by household type as well.
+
+Perhaps there are too many hh type categories, so we should just pick (say) three or four hh types of most interest?
+
+```{r}
+income_costs_by_hhtype$hh_type %>% unique()
+
+
+simplified_household_lookup <- tribble(
+  ~original, ~recoded, ~has_children, ~has_pensioners, ~has_couple,
+   "1 adult under pensionable age, no children",  "Single Adult", FALSE, FALSE, FALSE,                         
+ "Couple with 2 children", "Family with 1-2 Children",  TRUE, FALSE, TRUE,                                            
+ "1 female, age 60+, no children", "Single Pensioner",  FALSE, TRUE, FALSE,                                    
+ "3 or more adults, no children, incl. at least one couple", "Other Households", FALSE, NA, TRUE,             
+ "Couple both under pensionable age, no children", "Small Adult", FALSE, FALSE, TRUE,                       
+ "2 adults, not a couple, both under pensionable age, no children", "Other Households", FALSE, FALSE, FALSE,      
+ "1 adult, 2 or more children", "Single Parent",  TRUE, FALSE, FALSE,                                       
+ "Couple with 1 child", "Family with 1-2 Children", TRUE, FALSE, TRUE,                                                 
+ "Couple with 3 or more children", "Family with 3 or more Children",  TRUE, FALSE, TRUE,                                  "1 adult, 1 child", "Single Parent", TRUE, FALSE, FALSE,                                                    
+"1 male, aged 65+, no children", "Single Pensioner", FALSE, TRUE, FALSE,                                        
+"Couple 1 or more over pensionable age,no children", "Pensioner Couple", FALSE, TRUE, TRUE,                    
+"2 adults, not a couple, one or more over pensionable age, no children", "Other Households", FALSE, TRUE, FALSE,
+"3 or more adults, 1-2 children, incl. at least one couple", "Other Households", TRUE, FALSE, TRUE,            
+"2 adults, not a couple, 1 or more children", "Other Households",  TRUE, FALSE, FALSE,                         
+"3 or more adults, 1 or more children, excl. any couples", "Other Households", TRUE, FALSE, FALSE,              
+"3 or more adults, no children, excl. any couples", "Other Households",  FALSE, FALSE, FALSE,                   
+"3 or more adults, >2 children, incl. at least one couple", "Other Households", TRUE, FALSE, TRUE,           
+"missing", NA, NA, NA, NA
+)
+
+
+
+```
+
+Before deciding if the above is too coarse or granular, let's look at the cumulative share by household type using the original categories
+
+```{r}
+income_costs_by_hhtype %>% 
+  filter(wave == 'a') %>% 
+  group_by(hh_type) %>% 
+  count() %>% 
+  ungroup() %>% 
+  arrange(desc(n)) %>% 
+  mutate(cum_n = cumsum(n)) %>% 
+  mutate(share = n / sum(n)) %>% 
+  mutate(cumulative_share = cumsum(share))
+```
+
+We've decided to look at a series of flags - children, pensioner, couple - as other attributes should mainly be controlled for by using the OECD equivalisation factor.
+
+```{r}
+income_costs_by_hhtype %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
+  mutate(equivalised_income_net = income_net / eq_factor) %>% 
+  group_by(wave) %>% 
+  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  ungroup() %>% 
+  mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
+  mutate(in_poverty = equivalised_income_net < pov_line) %>% 
+  ggplot(aes(x = equivalised_income_net, fill = in_poverty)) + 
+  geom_histogram(bins = 200) +
+  facet_grid(wave ~ has_children) + 
+  geom_vline(color = "blue", linetype = "dashed", aes(xintercept = median_equivalised_income_net)) +
+  scale_x_log10(
+    limits = c(50, 50000),
+    breaks = c(
+      1e1, 2e1, 5e1, 
+      1e2, 2e2, 5e2, 
+      1e3, 2e3, 5e3, 
+      1e4, 2e4, 5e4, 
+      1e5, 2e5, 5e5
+    ), 
+    labels = c(
+      "10", "20", "50",
+      "100", "200", "500",
+      "1k", "2k", "5k",
+      "10k", "20k", "50k",
+      "100k", "200k", "500k"
+    )
+  ) + 
+  scale_fill_manual(
+    values = c("darkgrey", "darkred")
+  ) + 
+  guides(fill = "none") + 
+  labs(
+    x = "Net monthly income in £ (log scale)",
+    y = "Number of observations",
+    title = "Distribution of equivalised net monthly household incomes in UKHLS",
+    subtitle = "Equivalised using OECD equivalisation factor",
+    caption = "Dashed blue line indicates median income. Red coloured sections are households below 60% of median income"
+  )
+```
+
+Let's try to summarise the income distribution and proportion in poverty by whether households include children
+
+```{r}
+income_costs_by_hhtype %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
+  mutate(equivalised_income_net = income_net / eq_factor) %>% 
+  group_by(wave) %>% 
+  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  ungroup() %>% 
+  mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
+  mutate(in_poverty = equivalised_income_net < pov_line) %>% 
+  group_by(wave, has_children) %>% 
+  summarise(
+    share_in_poverty = sum(in_poverty) / length(in_poverty)
+  )
+```
+
+```{r}
+income_costs_by_hhtype %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
+  mutate(equivalised_income_net = income_net / eq_factor) %>% 
+  group_by(wave) %>% 
+  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  ungroup() %>% 
+  mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
+  mutate(in_poverty = equivalised_income_net < pov_line) %>% 
+  group_by(wave, has_couple) %>% 
+  summarise(
+    share_in_poverty = sum(in_poverty) / length(in_poverty)
+  )
+```
+
+The differences between couple households and non-couple households are very large for the share in poverty, with around twice the proportion in poverty in non-couple households as couple households, in all waves.
+
+Let's complete the 1-factor comparisons by looking at pensioner and non-pensioner households
+
+```{r}
+income_costs_by_hhtype %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
+  mutate(equivalised_income_net = income_net / eq_factor) %>% 
+  group_by(wave) %>% 
+  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  ungroup() %>% 
+  mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
+  mutate(in_poverty = equivalised_income_net < pov_line) %>% 
+  filter(!is.na(has_pensioners)) %>% 
+  group_by(wave, has_pensioners) %>% 
+  summarise(
+    share_in_poverty = sum(in_poverty) / length(in_poverty)
+  )
+```
+
+So it appears the gap exists, and favours non-pensioners, but fell between waves a and e. It may also be increasing again by wave j
+
+Let's now look at two factor groupings, in particular the combination of has_couple and has_children which will be able to identify single-parent households
+
+```{r}
+income_costs_by_hhtype %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
+  mutate(equivalised_income_net = income_net / eq_factor) %>% 
+  group_by(wave) %>% 
+  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  ungroup() %>% 
+  mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
+  mutate(in_poverty = equivalised_income_net < pov_line) %>% 
+  filter(!is.na(has_pensioners)) %>% 
+  group_by(wave, has_children, has_couple) %>% 
+  summarise(
+    share_in_poverty = sum(in_poverty) / length(in_poverty)
+  )
+```
+
+## What-if interventions
+
+So, I think we should consider an intervention which increases the income from benefits by £25 per child (PER WEEK) for all families receiving \>£0 in social security
+
+Approximately £25/week implies £100/month but we can do this properly
+
+Let's consider 100 and 110 to cover the range
+
+```{r}
+
+child_ben_uplift_scenario <- 
+  hh_long_slimmed_datalist %>% 
+    filter(variable %in% c("nkids_dv", "hhtype_dv", "fihhmnnet1_dv", "houscost1_dv", "ieqmoecd_dv","fihhmnsben_dv" )) %>% 
+    pivot_wider(names_from = variable, values_from = value) %>% 
+    mutate(hh_type = as_factor(hhtype_dv) %>% as.character()) %>% 
+    select(wave, hidp, hh_type, everything()) %>% 
+    select(-hhtype_dv) %>% 
+    # A household is eligible if they receive any social benefits AND they have at least one child
+    mutate(
+      is_eligible = fihhmnsben_dv > 0 & nkids_dv > 0,
+      amount_eligible_lower = ifelse(is_eligible, 100 * nkids_dv, NA)
+    ) %>% 
+    mutate(
+      implied_sben_uplifted_amount = fihhmnsben_dv + amount_eligible_lower,
+      implied_total_uplifted_amount = fihhmnnet1_dv + amount_eligible_lower
+    ) %>% 
+    filter(is_eligible) %>% 
+  rename(
+    income_net = fihhmnnet1_dv,
+    income_socben = fihhmnsben_dv,
+    costs_house = houscost1_dv,
+    eq_factor = ieqmoecd_dv
+  )
+
+  # hh_long_slimmed_datalist %>% 
+  #   filter(variable %in% c("hhtype_dv", "fihhmnnet1_dv", "houscost1_dv", "ieqmoecd_dv")) %>% 
+  #   pivot_wider(names_from = variable, values_from = value) %>% 
+child_ben_uplift_scenario %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  mutate(share_income_soc_baseline = income_socben / income_net) %>% 
+  mutate(share_income_soc_counterfactual = implied_sben_uplifted_amount / implied_total_uplifted_amount) %>% 
+  mutate(
+    income_total_eq_baseline = income_net / eq_factor,
+    income_total_eq_counterfactual = implied_total_uplifted_amount / eq_factor
+  ) %>% 
+  # select(income_total_eq_baseline, income_total_eq_counterfactual) %>% 
+  # mutate(eq_uplift = income_total_eq_counterfactual - income_total_eq_baseline)
+  filter(income_total_eq_baseline > 0 & income_total_eq_counterfactual > 0) %>% 
+  ggplot(aes(x = income_total_eq_baseline, y = income_total_eq_counterfactual)) +
+  geom_point(alpha = 0.1) + 
+  geom_abline(slope = 1, intercept = 0) + 
+  facet_wrap(~wave) + 
+  coord_fixed() + 
+  scale_y_log10() + 
+  scale_x_log10() + 
+  stat_smooth(se = FALSE, colour = "darkgreen") + 
+  labs(
+    x = "Equivalised HH income without child benefit uplift in £ / month (Log scale)",
+    y = "Equivalised HH income with child benefit uplift in £ / month (Log scale)",
+    title = "Comparison between observed equivalised household incomes and those with a £100/child/month social benefit uplift",
+    subtitle = "Selected waves of UKHLS. Households eligible for benefits only. Diagonal line indicates parity."
+       )
+
+
+```
+
+This shows that the uplifts appear to have been added to households correctly. The amounts uplifted will, of course, be a higher proportion of pre-uplift income for poorer than richer households, leading to the bowed pattern shown for each of these years.
+
+### Estimating effects on poverty rates
+
+We need the full sample of households to estimate the median income for all households, and so the poverty rate, at 60% of median income.
+
+We are interested in knowing, for those groups who are eligible for the child benefit uplift:
+
+1.  How the distribution of incomes has changed as a result of the uplift
+2.  How the proportion of eligible households in poverty has changed.
+
+We will do this for each of the three waves shown above.
+
+```{r}
+all_hh_baseline_counterfactual_net_income <- 
+  income_costs_by_hhtype %>% 
+    select(wave, hidp, income_net, eq_factor) %>% 
+    left_join(
+      child_ben_uplift_scenario %>% 
+        select(wave, hidp, income_total_counterfactual = implied_total_uplifted_amount),
+      by = c("wave", "hidp")
+    ) %>% 
+    rename(
+      income_total_baseline = income_net
+    ) %>% 
+    mutate(income_total_counterfactual = ifelse(is.na(income_total_counterfactual), income_total_baseline, income_total_counterfactual)) %>% 
+    select(wave, hidp, eq_factor, income_total_baseline, income_total_counterfactual)
+
+
+```
+
+Now let's get the median income and so poverty rate from the baseline
+
+```{r}
+poverty_levels_by_wave <- 
+  all_hh_baseline_counterfactual_net_income %>% 
+    group_by(wave) %>% 
+    summarise(median_income_baseline = median(income_total_baseline)) %>% 
+    ungroup() %>% 
+    mutate(poverty_level = 0.6 * median_income_baseline)
+
+```
+
+Let's now apply these baseline levels to the targetted households
+
+```{r}
+child_ben_uplift_scenario %>% 
+  select(wave, income_total_baseline = income_net, income_total_counterfactual = implied_total_uplifted_amount) %>% 
+  left_join(
+    poverty_levels_by_wave 
+  ) %>% 
+  pivot_longer(cols = c(income_total_baseline,income_total_counterfactual), names_to = "scenario", values_to = "hh_income") %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  mutate(in_poverty = hh_income < poverty_level) %>% 
+  ggplot(aes(x = hh_income, fill = in_poverty)) + 
+  geom_histogram(bins = 200) + 
+  facet_wrap(scenario ~ wave) +
+  geom_vline(color = "blue", linetype = "dashed", aes(xintercept = median_income_baseline)) +
+  scale_x_log10(
+    limits = c(50, 50000),
+    breaks = c(
+      1e1, 2e1, 5e1, 
+      1e2, 2e2, 5e2, 
+      1e3, 2e3, 5e3, 
+      1e4, 2e4, 5e4, 
+      1e5, 2e5, 5e5
+    ), 
+    labels = c(
+      "10", "20", "50",
+      "100", "200", "500",
+      "1k", "2k", "5k",
+      "10k", "20k", "50k",
+      "100k", "200k", "500k"
+    )
+  ) +
+  scale_fill_manual(
+    values = c("darkgrey", "darkred")
+  ) + 
+  guides(fill = "none")  + 
+  labs(
+    x = "Equivalised household income in £ (Log scale)",
+    y = "Count of households",
+    title = "Estimated effect of child benefit uplift on total household income on eligible households",
+    subtitle = "Red indicates HH in poverty. Counterfactual on bottom row. Dashed line indicates overall HH median income"
+  )
+```
+
+We can see some differences but are fundamentally interested in the change in the proportion of eligible households in poverty in the two scenarios
+
+```{r}
+child_ben_uplift_scenario %>% 
+  select(wave, income_total_baseline = income_net, income_total_counterfactual = implied_total_uplifted_amount) %>% 
+  left_join(
+    poverty_levels_by_wave 
+  ) %>% 
+  pivot_longer(cols = c(income_total_baseline,income_total_counterfactual), names_to = "scenario", values_to = "hh_income") %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  mutate(in_poverty = hh_income < poverty_level) %>% 
+  group_by(wave, scenario, in_poverty) %>% 
+  count() %>% 
+  group_by(wave, scenario) %>% 
+  summarise(share_in_poverty = n[in_poverty] / sum(n)) %>% 
+  ungroup() %>% 
+  mutate(scenario = str_remove(scenario, "income_total_")) %>% 
+  pivot_wider(names_from = scenario, values_from = share_in_poverty) %>% 
+  mutate(relative_fall_in_poverty_share = (baseline - counterfactual) / baseline)
+```
+
+This suggests that, for all eligible households, the share of households in poverty would fall by between around a quarter and a third for all three waves considered.
+
+We are now interested in looking at how these relative and absolute differences in poverty shares differ by different subgroups of eligible household types, especially those with lone parents
+
+```{r}
+
+child_ben_uplift_scenario %>% 
+  select(
+    wave, hh_type, hidp, 
+    income_total_baseline = income_net, 
+    income_total_counterfactual = implied_total_uplifted_amount
+  ) %>% 
+  left_join(
+    poverty_levels_by_wave 
+  ) %>% 
+  left_join(
+    simplified_household_lookup, 
+    by = c("hh_type" = "original")
+  ) %>%
+  pivot_longer(cols = c(income_total_baseline,income_total_counterfactual), names_to = "scenario", values_to = "hh_income") %>%
+  filter(wave %in% c("a", "e", "j")) %>%
+  mutate(in_poverty = hh_income < poverty_level) %>%
+  group_by(wave, scenario, has_couple, in_poverty) %>%
+  count() %>%
+  group_by(wave, scenario, has_couple) %>%
+  summarise(share_in_poverty = n[in_poverty] / sum(n)) %>%
+  ungroup() %>%
+  mutate(scenario = str_remove(scenario, "income_total_")) %>%
+  mutate(parenting_type = ifelse(has_couple, "couple", "lone_parent")) %>% 
+  mutate(combined = paste(scenario, parenting_type, sep = "__")) %>% 
+  select(-has_couple, -scenario, -parenting_type) %>% 
+  pivot_wider(names_from = combined, values_from = share_in_poverty) %>% 
+  select(wave, baseline__lone_parent, counterfactual__lone_parent, baseline__couple, counterfactual__couple)
 ```
