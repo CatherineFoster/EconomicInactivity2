@@ -3,6 +3,7 @@ title: "16_effect_of_benefits_on_state"
 author: "Jon Minton"
 format: html
 editor: visual
+df-print: kable
 ---
 
 # Introduction
@@ -258,7 +259,7 @@ The main declines initially appear to be in larger households, though it appears
 The household size should be strongly correlated with the oecd equaliisation correction factor. Let's check this
 
 ```{r}
-
+#| column: screen-inset-shaded
 hh_long_slimmed_datalist %>% 
   filter(variable %in% c("hhsize", "ieqmoecd_dv")) %>% 
   pivot_wider(names_from = variable, values_from = value) %>% 
@@ -281,7 +282,7 @@ Difference in equivalised income by household type?
 
 income_costs_by_hhtype <- 
   hh_long_slimmed_datalist %>% 
-    filter(variable %in% c("hhtype_dv", "fihhmnnet1_dv", "houscost1_dv", "ieqmoecd_dv")) %>% 
+    filter(variable %in% c("hhsize", "hhtype_dv", "fihhmnnet1_dv", "houscost1_dv", "ieqmoecd_dv")) %>% 
     pivot_wider(names_from = variable, values_from = value) %>% 
     mutate(hhtype_dv = as_factor(hhtype_dv) %>% as.character(.)) %>% 
   rename(
@@ -305,7 +306,8 @@ What's the distribution of incomes over the whole sample of households?
 ```{r}
 income_costs_by_hhtype %>% 
   mutate(equivalised_income_net = income_net / eq_factor) %>% 
-  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  mutate(median_equivalised_income_net = median(rep(equivalised_income_net, times = hhsize))) %>%
+  # mutate(median_equivalised_income_net = median(equivalised_income_net)) |> 
   mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
   mutate(in_poverty = equivalised_income_net < pov_line) %>% 
   ggplot(aes(x = equivalised_income_net, fill = in_poverty)) + 
@@ -335,10 +337,35 @@ income_costs_by_hhtype %>%
   labs(
     x = "Net monthly income in £ (log scale)",
     y = "Number of observations",
-    title = "Distribution of equivalised net monthly household incomes in UKHLS",
+    title = "Distribution of experienced equivalised net monthly household incomes in UKHLS",
     subtitle = "Equivalised using OECD equivalisation factor",
     caption = "Dashed blue line indicates median income. Red coloured sections are households below 60% of median income"
   )
+
+```
+
+## Note on going from equivalised net monthly household income to experienced equivalised net monthly household income
+
+Previously we used the household level data, which contained the equivalisation factor `ieqmoecd_dv`, which was reamed `eq_factor`. This allows the adjustment of a household's total income and expenditures to account for different household sizes. This value is not identical to the household size `hhsize` because it assumes, in particular, that children are less expensive than adults to meet the needs of.
+
+However, if we simply use the equivalised household income and expenditure, and calculate the median of these values, we get the equivalised value for the median household.
+
+But households do not experience being on higher or lower levels of equivalised income, or being in poverty, people do.
+
+In order to convert from these equivalised household incomes to what we're calling **experienced** equivalised household income, we must weight each individual in each household equally (unlike `eq_factor` which weights children below adults). To do this we make use of the `hhsize` variable to count the equivalised median household incomes for each household member.
+
+In practice this simply involves replacing the line
+
+```{r}
+#| eval: FALSE
+  mutate(median_equivalised_income_net = median(equivalised_income_net)) |> 
+```
+
+with
+
+```{r}
+#| eval: FALSE
+  mutate(median_equivalised_income_net = median(rep(equivalised_income_net, times = hhsize))) |> 
 
 ```
 
@@ -349,7 +376,7 @@ income_costs_by_hhtype %>%
   filter(wave %in% c("a", "e", "j")) %>% 
   mutate(equivalised_income_net = income_net / eq_factor) %>% 
   group_by(wave) %>% 
-  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  mutate(median_equivalised_income_net = median(rep(equivalised_income_net, times = hhsize))) |> 
   ungroup() %>% 
   mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
   mutate(in_poverty = equivalised_income_net < pov_line) %>% 
@@ -381,7 +408,7 @@ income_costs_by_hhtype %>%
   labs(
     x = "Net monthly income in £ (log scale)",
     y = "Number of observations",
-    title = "Distribution of equivalised net monthly household incomes in UKHLS",
+    title = "Distribution of experienced equivalised net monthly household incomes in UKHLS",
     subtitle = "Equivalised using OECD equivalisation factor",
     caption = "Dashed blue line indicates median income. Red coloured sections are households below 60% of median income"
   )
@@ -444,13 +471,16 @@ income_costs_by_hhtype %>%
   left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
   mutate(equivalised_income_net = income_net / eq_factor) %>% 
   group_by(wave) %>% 
-  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  mutate(median_equivalised_income_net = median(rep(equivalised_income_net, times = hhsize))) |> 
   ungroup() %>% 
   mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
   mutate(in_poverty = equivalised_income_net < pov_line) %>% 
+  mutate(
+    household_type = ifelse(has_children, "HH with Children", "HH without Children")
+  ) |> 
   ggplot(aes(x = equivalised_income_net, fill = in_poverty)) + 
   geom_histogram(bins = 200) +
-  facet_grid(wave ~ has_children) + 
+  facet_grid(wave ~ household_type) + 
   geom_vline(color = "blue", linetype = "dashed", aes(xintercept = median_equivalised_income_net)) +
   scale_x_log10(
     limits = c(50, 50000),
@@ -476,10 +506,45 @@ income_costs_by_hhtype %>%
   labs(
     x = "Net monthly income in £ (log scale)",
     y = "Number of observations",
-    title = "Distribution of equivalised net monthly household incomes in UKHLS",
+    title = "Distribution of experienced equivalised net monthly household incomes in UKHLS",
     subtitle = "Equivalised using OECD equivalisation factor",
     caption = "Dashed blue line indicates median income. Red coloured sections are households below 60% of median income"
   )
+```
+
+Because there are different numbers of households in both groups, to compare the distribution of incomes between the groups a different type of visualisation may be needed.
+
+```{r}
+income_costs_by_hhtype %>% 
+  filter(wave %in% c("a", "e", "j")) %>% 
+  left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
+  mutate(equivalised_income_net = income_net / eq_factor) %>% 
+  group_by(wave) %>% 
+  mutate(median_equivalised_income_net = median(rep(equivalised_income_net, times = hhsize))) |> 
+  ungroup() %>% 
+  mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
+  mutate(in_poverty = equivalised_income_net < pov_line) %>% 
+  mutate(
+    household_type = ifelse(has_children, "HH with Children", "HH without Children")
+  ) |> 
+  select(wave, household_type, equivalised_income_net) |> 
+  group_by(household_type, wave) %>%
+  arrange(household_type, wave, equivalised_income_net) |> 
+  mutate(rank = rank(equivalised_income_net)) |> 
+  mutate(rank_prop = rank / max(rank)) |> 
+  ggplot(aes(y = rank_prop, x = equivalised_income_net, group = household_type, colour = household_type)) + 
+  geom_line() +
+  facet_grid(wave ~ .) +
+  scale_x_log10(limits = c(200, 5000)) + 
+  labs(
+    x = "Equivalised household income in £ (log scale)",
+    y = "cumulative proportion of households of this type with this household income level or lower",
+    title = "Household cumulative distribution plot by households with and without children",
+    subtitle = "Households without children tend to have higher incomes than those with children",
+    caption = "Rows indicate UKHLS waves",
+    
+  )
+
 ```
 
 Let's try to summarise the income distribution and proportion in poverty by whether households include children
@@ -490,7 +555,7 @@ income_costs_by_hhtype %>%
   left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
   mutate(equivalised_income_net = income_net / eq_factor) %>% 
   group_by(wave) %>% 
-  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  mutate(median_equivalised_income_net = median(rep(equivalised_income_net, times = hhsize))) |> 
   ungroup() %>% 
   mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
   mutate(in_poverty = equivalised_income_net < pov_line) %>% 
@@ -506,7 +571,7 @@ income_costs_by_hhtype %>%
   left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
   mutate(equivalised_income_net = income_net / eq_factor) %>% 
   group_by(wave) %>% 
-  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  mutate(median_equivalised_income_net = median(rep(equivalised_income_net, times = hhsize))) |> 
   ungroup() %>% 
   mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
   mutate(in_poverty = equivalised_income_net < pov_line) %>% 
@@ -526,7 +591,7 @@ income_costs_by_hhtype %>%
   left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
   mutate(equivalised_income_net = income_net / eq_factor) %>% 
   group_by(wave) %>% 
-  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  mutate(median_equivalised_income_net = median(rep(equivalised_income_net, times = hhsize))) |> 
   ungroup() %>% 
   mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
   mutate(in_poverty = equivalised_income_net < pov_line) %>% 
@@ -547,7 +612,7 @@ income_costs_by_hhtype %>%
   left_join(simplified_household_lookup, by = c("hh_type" = "original")) %>% 
   mutate(equivalised_income_net = income_net / eq_factor) %>% 
   group_by(wave) %>% 
-  mutate(median_equivalised_income_net = median(equivalised_income_net)) %>% 
+  mutate(median_equivalised_income_net = median(rep(equivalised_income_net, times = hhsize))) |> 
   ungroup() %>% 
   mutate(pov_line = 0.60 * median_equivalised_income_net) %>% 
   mutate(in_poverty = equivalised_income_net < pov_line) %>% 
@@ -661,6 +726,7 @@ Now let's get the median income and so poverty rate from the baseline
 poverty_levels_by_wave <- 
   all_hh_baseline_counterfactual_net_income %>% 
     group_by(wave) %>% 
+   # NOTE: The following calculates median income for households, not median income experienced by household members
     summarise(median_income_baseline = median(income_total_baseline)) %>% 
     ungroup() %>% 
     mutate(poverty_level = 0.6 * median_income_baseline)
@@ -737,7 +803,9 @@ This suggests that, for all eligible households, the share of households in pove
 We are now interested in looking at how these relative and absolute differences in poverty shares differ by different subgroups of eligible household types, especially those with lone parents
 
 ```{r}
-
+#| tbl-cap-location: bottom
+#| tbl-cap: "Effect of intervention"
+#| df-print: kable
 child_ben_uplift_scenario %>% 
   select(
     wave, hh_type, hidp, 
@@ -761,8 +829,18 @@ child_ben_uplift_scenario %>%
   ungroup() %>%
   mutate(scenario = str_remove(scenario, "income_total_")) %>%
   mutate(parenting_type = ifelse(has_couple, "couple", "lone_parent")) %>% 
-  mutate(combined = paste(scenario, parenting_type, sep = "__")) %>% 
-  select(-has_couple, -scenario, -parenting_type) %>% 
-  pivot_wider(names_from = combined, values_from = share_in_poverty) %>% 
-  select(wave, baseline__lone_parent, counterfactual__lone_parent, baseline__couple, counterfactual__couple)
+  select(-has_couple) %>% 
+  pivot_wider(names_from = scenario, values_from = share_in_poverty) %>% 
+  mutate(
+    abs_diff = counterfactual - baseline, 
+    rel_diff = abs_diff / baseline
+  )
 ```
+
+**Next steps**
+
+There seem to be a few priorities:
+
+1.  We need to make sure the median income levels, and thus poverty rates, are based on the median experience of different income levels and poverty, not the median household.
+    1.  This is mostly done, but some of the later code chunks need to be updated to take into account the change in the median estimation to use hhsize as well.
+2.  We need to come up with a plausible modelling strategy for estimating the effects that different levels of state and total income have on transitions into and out of employment (in particular), taking into account household and demographic characteristics.

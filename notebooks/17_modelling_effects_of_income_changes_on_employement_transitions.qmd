@@ -1,0 +1,284 @@
+---
+title: "17_modelling_effects_of_income_changes_on_employment_transitions"
+author: "Jon Minton"
+format: html
+editor: visual
+df-print: kable
+---
+
+# Introduction
+
+The aim of this notebook is to model the differences in employment transitions that are observed between different equivalised household income levels, taking into account other important factors relating both to individual demographics and household characteristics. 
+
+The reason to do this is to then estimate the effect that changing total household income level, especially via targetted changes to benefits income, may have on the probabilities of cohorts initially employed, of remaining employed into the next wave. 
+
+This modelling strategy can then also be used to look at different prior economic statuses, such as those initially unemployed.
+
+# Household Variables
+
+There are quite a lot of variables to consider, all within the \_hhresp files
+
+**Demographics**
+
+-   `numadult` : number of adults in hh
+-   `hhsize` : size of household
+-   `nkids_dv` : number of children in hh
+
+**Income and Expenditure**
+
+-   `fihhmngrs_dv`: total gross monthly household income - month before interview
+-   `fihhmnlabgrs_dv`: total gross household labour income - month before interview
+-   `fihhmnnet1_dv` : total household net income - no deductions
+-   `fihhmnlabnet_dv` : total net household labour income - month before interview
+-   `fihhmnmisc_dv` : total household misc income - month before interview
+-   `fihhmnprben_dv` : total household private benefit income - month before interview
+-   `fihhmninv_dv`: total household investment income - month before interview
+-   `fihhmnpen_dv` : total household pension income - month before interview
+-   `fihhmnsben_dv`: total household social benefit income - month before interview
+-   `houscost1_dv` : monthly housing costs including mortgage principal payments
+-   `ieqmoecd_dv` : modified OECD equivalence scale
+-   `fihhmngrs_if` : share of imputed HH total income
+
+# Preparation
+
+```{r}
+
+
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+
+devtools::load_all(here('R'))
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+
+# Individual level characteristics 
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels"
+  )
+
+overall_start_time = Sys.time()
+
+long_slimmed_datalist <- lapply(indresp_files, 
+       read_and_slim_data, 
+       varnames = varnames, 
+       extract_what = extract_what, 
+       verbose = TRUE
+)
+
+long_slimmed_data <- bind_rows(long_slimmed_datalist)
+
+overall_end_time = Sys.time()
+
+print(paste(
+  "Overall process took",
+  difftime(overall_end_time, overall_start_time, units = "mins"),
+  "minutes"
+))
+rm(long_slimmed_datalist)
+long_slimmed_data
+
+
+# household level characteristics 
+
+vars_types_hh <- tribble(
+  ~var_name, ~var_type, 
+  "numadult", "values",
+  "numchild", "values",
+  "hhsize", "values",
+  "fihhmngrs_dv", "values",
+  "fihhmnlabgrs_dv", "values",
+  "fihhmnnet1_dv", "values",
+  "fihhmnlabnet_dv", "values",
+  "fihhmnmisc_dv", "values",
+  "fihhmnprben_dv", "values",
+  "fihhmninv_dv", "values",
+  "fihhmnpen_dv", "values",
+  "fihhmnsben_dv", "values",
+  "houscost1_dv", "values",
+  "ncouple_dv", "values",
+  "nonepar_dv", "values",
+  "nkids_dv", "values",
+  "agechy_dv", "values",
+  "npens_dv",  "values",
+  "nemp_dv", "values", 
+  "nuw_dv", "values",
+  "nwage_dv", "values",
+  "ieqmoecd_dv", "values",
+  "fihhmngrs_if", "values",
+  "hhtype_dv", "labels"
+)
+
+
+hhresp_files <- dir(here(base_dir_location), pattern = "[a-z]_hhresp.dta", full.names = TRUE)
+
+hh_long_slimmed_datalist <- lapply(hhresp_files, 
+       read_and_slim_data, 
+       varnames = vars_types_hh$var_name, 
+       extract_what = vars_types_hh$var_type, 
+       verbose = TRUE,
+       level = "household"
+)
+
+hh_long_slimmed_datalist <- bind_rows(hh_long_slimmed_datalist)
+
+hh_long_slimmed_datalist
+
+# I think we also need the lookup between pidp and hidp
+
+pid_hid_lookups <- lapply(
+  indresp_files,
+  extract_pid_with_hid_and_wave
+) %>% 
+  bind_rows()
+
+# Finally, we need the lookups to econ status 
+
+econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_categories.xlsx"), sheet = 'categories') %>% 
+  janitor::clean_names()
+
+
+```
+We also want to be able to turn the household type `hhtype_dv` variable into a series of flags. We can do this with a lookup table we've made
+
+```{r}
+simplified_household_lookup <- tribble(
+  ~original, ~recoded, ~has_children, ~has_pensioners, ~has_couple,
+   "1 adult under pensionable age, no children",  "Single Adult", FALSE, FALSE, FALSE,                         
+ "Couple with 2 children", "Family with 1-2 Children",  TRUE, FALSE, TRUE,                                            
+ "1 female, age 60+, no children", "Single Pensioner",  FALSE, TRUE, FALSE,                                    
+ "3 or more adults, no children, incl. at least one couple", "Other Households", FALSE, NA, TRUE,             
+ "Couple both under pensionable age, no children", "Small Adult", FALSE, FALSE, TRUE,                       
+ "2 adults, not a couple, both under pensionable age, no children", "Other Households", FALSE, FALSE, FALSE,      
+ "1 adult, 2 or more children", "Single Parent",  TRUE, FALSE, FALSE,                                       
+ "Couple with 1 child", "Family with 1-2 Children", TRUE, FALSE, TRUE,                                                 
+ "Couple with 3 or more children", "Family with 3 or more Children",  TRUE, FALSE, TRUE,                                  "1 adult, 1 child", "Single Parent", TRUE, FALSE, FALSE,                                                    
+"1 male, aged 65+, no children", "Single Pensioner", FALSE, TRUE, FALSE,                                        
+"Couple 1 or more over pensionable age,no children", "Pensioner Couple", FALSE, TRUE, TRUE,                    
+"2 adults, not a couple, one or more over pensionable age, no children", "Other Households", FALSE, TRUE, FALSE,
+"3 or more adults, 1-2 children, incl. at least one couple", "Other Households", TRUE, FALSE, TRUE,            
+"2 adults, not a couple, 1 or more children", "Other Households",  TRUE, FALSE, FALSE,                         
+"3 or more adults, 1 or more children, excl. any couples", "Other Households", TRUE, FALSE, FALSE,              
+"3 or more adults, no children, excl. any couples", "Other Households",  FALSE, FALSE, FALSE,                   
+"3 or more adults, >2 children, incl. at least one couple", "Other Households", TRUE, FALSE, TRUE,           
+"missing", NA, NA, NA, NA
+)
+```
+
+
+
+
+# Modelling 
+
+We'll start by redoing the base model, with individual characteristics only. Then we'll start joining household level charactersitics, and seeing how this affects model fit. 
+
+
+
+```{r}
+ind_level_data <- 
+  long_slimmed_data |> 
+    pivot_wider(names_from = variable, values_from = value) |> 
+    left_join(econ_act_groups |> select(original, econ_act_status = level_3), 
+              by = c("jbstat"= 'original')) |> 
+    select(-jbstat) |> 
+    mutate(age = as.numeric(dvage)) |> 
+    select(-dvage) |> 
+    filter(between(age, 16, 64)) |> 
+    mutate(wavenumber = match(wave, letters[1:26])) 
+
+```
+Now we need a model with last_status as well as current_status
+
+```{r}
+ind_level_transition_data <- 
+  ind_level_data |> 
+    rename(this_status = econ_act_status) |> 
+    left_join(
+      ind_level_data |> 
+        select(pidp, last_status = econ_act_status, wavenumber) |> 
+        mutate(next_wavenumber = wavenumber + 1) |> 
+        select(-wavenumber),
+      by = c('pidp' = 'pidp', 'wavenumber' = 'next_wavenumber')
+    )
+
+```
+
+Let's build the basic model again
+
+```{r}
+mod_01 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = ind_level_transition_data
+)
+
+```
+
+Let's widen the household level data to make joins easier
+
+```{r}
+
+hh_simplified_and_sanitised_data <- 
+  hh_long_slimmed_datalist |> 
+    pivot_wider(names_from = variable, values_from = value) |> 
+    rename(
+      hh_type = hhtype_dv, 
+      income_net = fihhmnnet1_dv, 
+      income_socben = fihhmnsben_dv,
+      income_labour = fihhmnlabnet_dv,
+      income_misc = fihhmnmisc_dv,
+      income_invest = fihhmninv_dv,
+      income_pension = fihhmnpen_dv, 
+      cost_housing = houscost1_dv, 
+      eq_factor = ieqmoecd_dv
+    ) |> 
+    mutate(hh_type = as_factor(hh_type) |> as.character()) |> 
+    left_join(
+      simplified_household_lookup,
+      by = c("hh_type" = "original")
+    ) |> 
+    select(wave, hidp, hh_size = hhsize, hh_type, contains("income"), contains("cost"), eq_factor, simple_hh_type = recoded, contains("has"))
+
+# -   `fihhmnnet1_dv` : total household net income - no deductions
+# -   `fihhmnlabnet_dv` : total net household labour income - month before interview
+# -   `fihhmnmisc_dv` : total household misc income - month before interview
+# -   `fihhmnprben_dv` : total household private benefit income - month before interview
+# -   `fihhmninv_dv`: total household investment income - month before interview
+# -   `fihhmnpen_dv` : total household pension income - month before interview
+# -   `fihhmnsben_dv`: total household social benefit income - month before interview
+# -   `houscost1_dv` : monthly housing costs including mortgage principal payments
+# -   `ieqmoecd_dv` : modified OECD equivalence scale
+# -   `fihhmngrs_if` : share of imputed HH total income
+
+```
+
+Now we need to add the hidp variable to the above, to allow linking with household attributes.
+And then, we need to link to the household level data, with both wave and hidp as keys
+
+```{r}
+linked_ind_hh_data <- 
+  ind_level_transition_data |> 
+    left_join(
+      pid_hid_lookups
+    ) |> 
+    left_join(
+      hh_simplified_and_sanitised_data
+    )
+
+linked_ind_hh_data
+
+
+```
+
+We now have the data we can use to extend the standard model to incorporate household level attributes
+
+We are especially interested in the relationship between household income and probability of those employed remaining employed. 
+
+(n.b I (JM) suspect there may be an interaction between hh income and gender)
+
+n.b. we can also imagine removing social benefits from the sample to see how much the distribution of incomes observed would change and thus how progressive/protective the existing social security system is for persons in the sample.
