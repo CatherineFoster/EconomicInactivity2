@@ -193,31 +193,7 @@ ind_level_data <-
     mutate(wavenumber = match(wave, letters[1:26])) 
 
 ```
-Now we need a model with last_status as well as current_status
 
-```{r}
-ind_level_transition_data <- 
-  ind_level_data |> 
-    rename(this_status = econ_act_status) |> 
-    left_join(
-      ind_level_data |> 
-        select(pidp, last_status = econ_act_status, wavenumber) |> 
-        mutate(next_wavenumber = wavenumber + 1) |> 
-        select(-wavenumber),
-      by = c('pidp' = 'pidp', 'wavenumber' = 'next_wavenumber')
-    )
-
-```
-
-Let's build the basic model again
-
-```{r}
-mod_01 <- multinom( 
-  this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
-  data = ind_level_transition_data
-)
-
-```
 
 Let's widen the household level data to make joins easier
 
@@ -257,6 +233,32 @@ hh_simplified_and_sanitised_data <-
 
 ```
 
+
+Now we need a model with last_status as well as current_status
+
+```{r}
+ind_level_transition_data <- 
+  ind_level_data |> 
+    rename(this_status = econ_act_status) |> 
+    left_join(
+      ind_level_data |> 
+        select(pidp, last_status = econ_act_status, wavenumber) |> 
+        mutate(next_wavenumber = wavenumber + 1) |> 
+        select(-wavenumber),
+      by = c('pidp' = 'pidp', 'wavenumber' = 'next_wavenumber')
+    )
+
+```
+
+Let's build the basic model again
+
+```{r}
+mod_01 <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = ind_level_transition_data
+)
+
+```
 Now we need to add the hidp variable to the above, to allow linking with household attributes.
 And then, we need to link to the household level data, with both wave and hidp as keys
 
@@ -282,3 +284,185 @@ We are especially interested in the relationship between household income and pr
 (n.b I (JM) suspect there may be an interaction between hh income and gender)
 
 n.b. we can also imagine removing social benefits from the sample to see how much the distribution of incomes observed would change and thus how progressive/protective the existing social security system is for persons in the sample.
+
+*definitions*
+
+- Income: equivalised, before housing costs 
+
+Let's start by comparing, for observations for which income_net is available, the following specs:
+
+- Base spec (slightly different as not all observations will be included)
+- income as linear 
+- log income
+- quantiles of incomes within waves 
+
+
+
+```{r}
+
+
+#
+mod_01a <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5), #b-splines with 5 dfs
+  data = linked_ind_hh_data |> 
+    filter(!is.na(income_net))
+)
+
+mod_02a <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + income_net_eq, #b-splines with 5 dfs
+  data = linked_ind_hh_data |> 
+    mutate(income_net_eq = income_net / eq_factor)
+)
+
+mod_02b <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + cond_log_income_eq, #b-splines with 5 dfs
+  data = linked_ind_hh_data |> 
+    mutate(income_net_eq = income_net / eq_factor) |> 
+    mutate(cond_log_income_eq = log(income_net_eq + 0.5)) |> 
+    filter(!is.nan(cond_log_income_eq)) |> 
+    filter(!is.na(cond_log_income_eq))
+)
+
+mod_02c <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + poly(cond_log_income_eq, 2), #b-splines with 5 dfs
+  data = linked_ind_hh_data |> 
+    mutate(income_net_eq = income_net / eq_factor) |> 
+    mutate(cond_log_income_eq = log(income_net_eq + 0.5)) |> 
+    filter(!is.nan(cond_log_income_eq)) |> 
+    filter(!is.na(cond_log_income_eq))
+)
+
+mod_02d <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + splines::bs(cond_log_income_eq, df = 5), #b-splines with 5 dfs
+  data = linked_ind_hh_data |> 
+    mutate(income_net_eq = income_net / eq_factor) |> 
+    mutate(cond_log_income_eq = log(income_net_eq + 0.5)) |> 
+    filter(!is.nan(cond_log_income_eq)) |> 
+    filter(!is.na(cond_log_income_eq))
+)
+
+mod_02e <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + splines::bs(cond_log_income_eq, df = 3), #b-splines with 5 dfs
+  data = linked_ind_hh_data |> 
+    mutate(income_net_eq = income_net / eq_factor) |> 
+    mutate(cond_log_income_eq = log(income_net_eq + 0.5)) |> 
+    filter(!is.nan(cond_log_income_eq)) |> 
+    filter(!is.na(cond_log_income_eq))
+)
+
+mod_02f <- multinom( 
+  this_status ~ last_status * sex + splines::bs(age, df = 5) + splines::bs(cond_log_income_eq, df = 7), #b-splines with 5 dfs
+  data = linked_ind_hh_data |> 
+    mutate(income_net_eq = income_net / eq_factor) |> 
+    mutate(cond_log_income_eq = log(income_net_eq + 0.5)) |> 
+    filter(!is.nan(cond_log_income_eq)) |> 
+    filter(!is.na(cond_log_income_eq))
+)
+
+```
+
+
+Comparing models 
+```{r}
+
+BIC(
+  mod_01a,
+  mod_02a,
+  mod_02b,
+  mod_02c,
+  mod_02d,
+  mod_02e,
+  mod_02f
+)
+
+AIC(
+  mod_01a,
+  mod_02a,
+  mod_02b, 
+  mod_02c,
+  mod_02d,
+  mod_02e,
+  mod_02f
+)
+
+
+```
+
+From the above it appears the model spec of 02d is superior to other model specs. 
+This uses a spine function with five degrees of freedom (just like the age effect). 
+
+Let's now see what this would predict for different hypothetical types of individual 
+
+First we need some idea of what contitutes a low or high income household. 
+We can do this by taking a particular wave, say j, and finding the quantiles 
+
+```{r}
+linked_ind_hh_data |> 
+  mutate(
+    income_net_eq = income_net / eq_factor
+  ) |> 
+  filter(wave == 'j') |> 
+  filter(!is.na(income_net_eq)) |> 
+  group_by(this_status) |> 
+  summarise(
+    inc_eq_lower = quantile(income_net_eq, 0.2),
+    inc_eq_median = quantile(income_net_eq, 0.5),
+    inc_eq_upper = quantile(income_net_eq, 0.8)
+  )
+```
+Let's try to represent these (except Missing) as distributions 
+
+```{r}
+linked_ind_hh_data |> 
+  mutate(
+    income_net_eq = income_net / eq_factor
+  ) |> 
+  filter(wave == 'j') |> 
+  filter(this_status != "Missing") |> 
+  filter(!is.na(income_net_eq)) |> 
+  ggplot(aes(x = income_net_eq, group = this_status, colour = this_status)) + 
+  geom_density() + 
+  scale_x_log10()
+```
+
+
+```{r}
+
+vignettes <- expand_grid(
+  sex = c("female", "male"),
+  age = c(16:64),
+  last_status = c("Employed"),
+  income_net_eq = seq(1200, 2800, by = 100)
+) |> 
+  mutate(cond_log_income_eq = log(income_net_eq + 0.5))  
+```
+
+
+```{r}
+predictions <- predict(mod_02d,
+        newdata = vignettes,
+        type = "probs"
+    )
+
+predictors_predictions <- bind_cols(
+  vignettes, predictions
+) |> 
+  pivot_longer(cols = Employed:Unemployed, 
+               names_to = "econ_act_status",
+               values_to = "probability"
+  )
+
+predictors_predictions
+```
+
+So now we can interrogate the effect that income has on conditional probability of remaining employed, for a few age and gender combinations 
+
+```{r}
+predictors_predictions |> 
+  filter(econ_act_status %in% c("Employed", "Unemployed", "Inactive retired")) |> 
+  filter(age %in% c(25, 35, 55)) |> 
+  ggplot(aes(x = income_net_eq, y = probability, group = sex, colour = sex)) + 
+  geom_line()  +
+  facet_grid(econ_act_status~age, scales= "free_y")
+```
+
