@@ -126,7 +126,7 @@ extract_vars_and_make_long <- function(dta, varnames, extract_what = 'labels', l
   out
 }
 
-#' Read individual level file and extract variables
+#' Read individual and household level file and extract variables
 #'
 #' @param file_location string. the name of the file
 #' @param varnames string vector of length K. The names of the variables (except pidp which is implicit)
@@ -140,7 +140,7 @@ extract_vars_and_make_long <- function(dta, varnames, extract_what = 'labels', l
 #' @export
 #'
 #' @examples
-read_and_slim_data <- function(file_location, varnames, extract_what, verbose = TRUE, level = "individual"){
+read_and_slim_data <- function(file_location, varnames, extract_what, verbose = FALSE, level = "individual"){
 
   stopifnot("level is not individual or household" = level %in% c("individual", "household"))
 
@@ -159,14 +159,16 @@ read_and_slim_data <- function(file_location, varnames, extract_what, verbose = 
 
   num_variables_found <- ncol(full_data) - 1
 
-  if (num_variables_found != length(varnames)) {
-    print(
-      paste("WARNING! Only", num_variables_found,
-            "of the", length(varnames), "requested have been found"
+  if (verbose) {
+    if (num_variables_found != length(varnames)) {
+      print(
+        paste("WARNING! Only", num_variables_found,
+              "of the", length(varnames), "requested have been found"
+        )
       )
-    )
-  } else {
-    print("All variables requested found")
+    } else {
+      print("All variables requested found")
+    }
   }
 
 
@@ -265,7 +267,7 @@ extract_pid_with_hid_and_wave <- function(file_location){
     )
   )
 
-  # now want to know the wave prefex for a_hidp
+  # now want to know the wave prefix for a_hidp
 
   jj <- names(ind_data)[stringr::str_detect(names(ind_data), "_hidp$")]
   wave_letter <- stringr::str_extract(jj, "^[a-z]{1}")

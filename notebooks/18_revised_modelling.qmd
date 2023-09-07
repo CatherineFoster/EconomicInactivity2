@@ -1,0 +1,95 @@
+---
+title: "17_modelling_effects_of_income_changes_on_employment_transitions"
+author: "Jon Minton"
+format: html
+editor: visual
+df-print: kable
+---
+
+# Introduction
+
+The aim of this notebook is to use newly developed package functions to repeat previous analyses, consistently regression status(T+1) on status(T) + X(T), rather than status(T) on status(T-1) and X(T).
+
+```{r}
+
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv" #, "ethn_dv"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "values", "values" #, "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_mhph_standardised <- 
+  df_ind |> 
+    mutate(across(dvage:sf12pcs_dv, function(x) ifelse(x < 0, NA, x))) %>% 
+    filter(complete.cases(.)) |> 
+    rename(age = dvage) |> 
+    group_by(wave) |> 
+    mutate(z_mh = standardise_scores(sf12mcs_dv),
+           z_ph = standardise_scores(sf12pcs_dv)
+    ) |> 
+    ungroup() |> 
+    select(-sf12mcs_dv, -sf12pcs_dv)
+
+```
+
+Build the model
+
+```{r}
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_mhph_standardised
+  )
+
+mod_01 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_mh,
+    data = df_ind_mhph_standardised
+  )
+
+mod_02 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_ph,
+    data = df_ind_mhph_standardised
+  )
+
+mod_03 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_mh + z_ph,
+    data = df_ind_mhph_standardised
+  )
+
+mod_04 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_mh * z_ph,
+    data = df_ind_mhph_standardised
+  )
+
+```
+
+Compare penalised fit
+
+```{r}
+BIC(mod_00, mod_01, mod_02, mod_03, mod_04)
+AIC(mod_00, mod_01, mod_02, mod_03, mod_04)
+```
+
+Using status(T+1) regressed on status(T), the non-interacting joint model now has the lowest BIC and AIC.
+
+```{r}
+
+```

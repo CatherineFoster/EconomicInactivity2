@@ -8,9 +8,9 @@ df-print: kable
 
 # Introduction
 
-The aim of this notebook is to model the differences in employment transitions that are observed between different equivalised household income levels, taking into account other important factors relating both to individual demographics and household characteristics. 
+The aim of this notebook is to model the differences in employment transitions that are observed between different equivalised household income levels, taking into account other important factors relating both to individual demographics and household characteristics.
 
-The reason to do this is to then estimate the effect that changing total household income level, especially via targetted changes to benefits income, may have on the probabilities of cohorts initially employed, of remaining employed into the next wave. 
+The reason to do this is to then estimate the effect that changing total household income level, especially via targetted changes to benefits income, may have on the probabilities of cohorts initially employed, of remaining employed into the next wave.
 
 This modelling strategy can then also be used to look at different prior economic statuses, such as those initially unemployed.
 
@@ -145,6 +145,7 @@ econ_act_groups <- readxl::read_excel(path = here("data/economic_activities_cate
 
 
 ```
+
 We also want to be able to turn the household type `hhtype_dv` variable into a series of flags. We can do this with a lookup table we've made
 
 ```{r}
@@ -171,14 +172,9 @@ simplified_household_lookup <- tribble(
 )
 ```
 
+# Modelling
 
-
-
-# Modelling 
-
-We'll start by redoing the base model, with individual characteristics only. Then we'll start joining household level charactersitics, and seeing how this affects model fit. 
-
-
+We'll start by redoing the base model, with individual characteristics only. Then we'll start joining household level charactersitics, and seeing how this affects model fit.
 
 ```{r}
 ind_level_data <- 
@@ -193,7 +189,6 @@ ind_level_data <-
     mutate(wavenumber = match(wave, letters[1:26])) 
 
 ```
-
 
 Let's widen the household level data to make joins easier
 
@@ -233,7 +228,6 @@ hh_simplified_and_sanitised_data <-
 
 ```
 
-
 Now we need a model with last_status as well as current_status
 
 ```{r}
@@ -259,8 +253,8 @@ mod_01 <- multinom(
 )
 
 ```
-Now we need to add the hidp variable to the above, to allow linking with household attributes.
-And then, we need to link to the household level data, with both wave and hidp as keys
+
+Now we need to add the hidp variable to the above, to allow linking with household attributes. And then, we need to link to the household level data, with both wave and hidp as keys
 
 ```{r}
 linked_ind_hh_data <- 
@@ -279,7 +273,7 @@ linked_ind_hh_data
 
 We now have the data we can use to extend the standard model to incorporate household level attributes
 
-We are especially interested in the relationship between household income and probability of those employed remaining employed. 
+We are especially interested in the relationship between household income and probability of those employed remaining employed.
 
 (n.b I (JM) suspect there may be an interaction between hh income and gender)
 
@@ -287,16 +281,14 @@ n.b. we can also imagine removing social benefits from the sample to see how muc
 
 *definitions*
 
-- Income: equivalised, before housing costs 
+-   Income: equivalised, before housing costs
 
 Let's start by comparing, for observations for which income_net is available, the following specs:
 
-- Base spec (slightly different as not all observations will be included)
-- income as linear 
-- log income
-- quantiles of incomes within waves 
-
-
+-   Base spec (slightly different as not all observations will be included)
+-   income as linear
+-   log income
+-   quantiles of incomes within waves
 
 ```{r}
 
@@ -361,8 +353,8 @@ mod_02f <- multinom(
 
 ```
 
+Comparing models
 
-Comparing models 
 ```{r}
 
 BIC(
@@ -388,13 +380,11 @@ AIC(
 
 ```
 
-From the above it appears the model spec of 02d is superior to other model specs. 
-This uses a spine function with five degrees of freedom (just like the age effect). 
+From the above it appears the model spec of 02d is superior to other model specs. This uses a spine function with five degrees of freedom (just like the age effect).
 
-Let's now see what this would predict for different hypothetical types of individual 
+Let's now see what this would predict for different hypothetical types of individual
 
-First we need some idea of what contitutes a low or high income household. 
-We can do this by taking a particular wave, say j, and finding the quantiles 
+First we need some idea of what contitutes a low or high income household. We can do this by taking a particular wave, say j, and finding the quantiles
 
 ```{r}
 linked_ind_hh_data |> 
@@ -410,7 +400,8 @@ linked_ind_hh_data |>
     inc_eq_upper = quantile(income_net_eq, 0.8)
   )
 ```
-Let's try to represent these (except Missing) as distributions 
+
+Let's try to represent these (except Missing) as distributions
 
 ```{r}
 linked_ind_hh_data |> 
@@ -425,7 +416,6 @@ linked_ind_hh_data |>
   scale_x_log10()
 ```
 
-
 ```{r}
 
 vignettes <- expand_grid(
@@ -436,7 +426,6 @@ vignettes <- expand_grid(
 ) |> 
   mutate(cond_log_income_eq = log(income_net_eq + 0.5))  
 ```
-
 
 ```{r}
 predictions <- predict(mod_02d,
@@ -455,7 +444,7 @@ predictors_predictions <- bind_cols(
 predictors_predictions
 ```
 
-So now we can interrogate the effect that income has on conditional probability of remaining employed, for a few age and gender combinations 
+So now we can interrogate the effect that income has on conditional probability of remaining employed, for a few age and gender combinations
 
 ```{r}
 predictors_predictions |> 
@@ -465,4 +454,3 @@ predictors_predictions |>
   geom_line()  +
   facet_grid(econ_act_status~age, scales= "free_y")
 ```
-

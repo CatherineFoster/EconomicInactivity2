@@ -60,7 +60,6 @@ test_that("read_and_slim_data works as expected for ind level data", {
 
   # # One valid variable and label type
   df <- read_and_slim_data(indresp_files[1], "sex", "labels")
-  print(head(df))
   expect_equal(
     ncol(df),
     4
@@ -70,7 +69,6 @@ test_that("read_and_slim_data works as expected for ind level data", {
   # still be four columns
 
   df <- read_and_slim_data(indresp_files[1], c("sex", "dvage"), c("labels", "values"))
-  print(head(df))
   expect_equal(
     ncol(df),
     4
@@ -78,7 +76,6 @@ test_that("read_and_slim_data works as expected for ind level data", {
 
   # Being explicit in referring to level as individual does not break the above
   df <- read_and_slim_data(indresp_files[1], "sex", "labels", level = "individual")
-  print(head(df))
   expect_equal(
     ncol(df),
     4
