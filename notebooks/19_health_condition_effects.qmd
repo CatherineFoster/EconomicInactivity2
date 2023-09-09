@@ -1,0 +1,210 @@
+---
+title: "19_health_condition_effects"
+author: "Jon Minton"
+format: html
+editor: visual
+---
+
+# Aim 
+
+The aims of these analyses are:
+
+-   [ ] To look at the influence of health condition flags on the modelled propensities to move to/from economic states
+
+    -   [ ] To identify relevant health condition flags
+
+-   [ ] To look at the effect that demographics and modifiable exposures have on the probability of developing health conditions
+
+## Notes on variables
+
+[This page](https://www.understandingsociety.ac.uk/documentation/mainstage/dataset-documentation/wave/3/questionnaire-module/healthconditions_w3) shows the health condition variables. These appear to be two series of flags for 17 separate conditions, with the first set of flags being whether someone has every been diagnosed with a condition, and the second whether they still have the condition. There is then a third conditional set of variables asking, for those who have a condition, for how long they have it.
+
+The variables have the structure `hcond{k}` and `hconds{k}` for whether diagnosed, and if still has condition, respectively.
+
+Before jumping into individual conditions, we can start with the binary `health` variable as described in [this page](https://www.understandingsociety.ac.uk/documentation/mainstage/dataset-documentation/variable/health).
+
+# Preparation 
+
+```{r}
+
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "health"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_health_standardised <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) %>% 
+    filter(complete.cases(.)) |> 
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  |> 
+    mutate(
+      lt_condition = case_when(
+        health %in% c("No", "no") ~ FALSE,
+        health %in% c("Yes", "yes") ~ TRUE,
+        TRUE ~ NA_integer_
+      ) |> as.logical()
+    )
+
+```
+
+First we want to make health a binary flag, then we want to see if it substantially improves on the penalised model fit (I suspect it does, as does Martin).
+
+```{r}
+df_ind_health_standardised |> count(health, lt_condition)
+```
+
+Now let's build the baseline and lt_condition exposure models respectively, and see if the penalised fit is improved
+
+```{r}
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_health_standardised |> 
+      filter(!is.na(lt_condition)) 
+  )
+
+mod_01 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition,
+    data = df_ind_health_standardised
+  )
+```
+
+```{r}
+AIC(mod_00, mod_01)
+BIC(mod_00, mod_01)
+```
+
+Both AIC and BIC suggest improvements in the model fit from including the health variable, even after accounting for general relationships with age, sex, last_status and so on.
+
+Let's now estimate the following:
+
+-   Baseline: Everyone as observed
+
+-   Bad Counterfactual: Everyone as observed, but with lt_condition set to TRUE for everyone
+
+-   Good Counterfactual: everyone as observed, but with lt_condition set to FALSE for everyone
+
+As before, let's use wave j
+
+```{r}
+
+df_ind_ltcondition_wave_j_baseline <- 
+df_ind_health_standardised |> 
+  filter(!is.na(lt_condition)) |> 
+  filter(wave == 'j')
+
+df_ind_ltcondition_wave_j_bad_counterfactual <- 
+  df_ind_ltcondition_wave_j_baseline  |> 
+  mutate(lt_condition = TRUE)
+
+df_ind_ltcondition_wave_j_good_counterfactual <- 
+  df_ind_ltcondition_wave_j_baseline  |> 
+  mutate(lt_condition = FALSE)
+
+
+```
+
+Now the preds
+
+```{r}
+
+preds_baseline <- predict(mod_01, newdata = df_ind_ltcondition_wave_j_baseline, type = "probs")
+
+preds_bad_counterfactual <- predict(mod_01, newdata = df_ind_ltcondition_wave_j_bad_counterfactual, type = "probs")
+
+preds_good_counterfactual <- predict(mod_01, newdata = df_ind_ltcondition_wave_j_good_counterfactual, type = "probs")
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_baseline, 2, sum),
+  apply(preds_bad_counterfactual, 2, sum),
+  apply(preds_good_counterfactual, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("base", "bad_counter", "good_counter")
+predictions_summary_matrix
+
+```
+
+Now to make these relative to baseline
+
+```{r}
+sim_relative_change <- apply(
+    predictions_summary_matrix, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change
+```
+
+## Taking a step back
+
+Let's think about how the demographic controls in the model predicting economic activity status tend to affect whether someone has a long-term condition or not.
+
+We can start with some simple descriptive stats, looking at how age and gender are related to TRUE and FALSE status for long-term conditions
+
+Let's do this for a couple of waves, A and J:
+
+```{r}
+df_ind_health_standardised |> 
+  filter(!is.na(lt_condition)) |> 
+  filter(wave %in%  c('a', 'j')) |> 
+  group_by(wave, sex, age) |> 
+  count(lt_condition) |> 
+  pivot_wider(names_from = 'lt_condition', values_from = 'n') |> 
+  mutate(share = `TRUE`/ (`TRUE` + `FALSE`)) |> 
+  ggplot(aes(x=age, y = share, group = sex, colour = sex)) + 
+  facet_wrap(~wave) + 
+  geom_point() + 
+  stat_smooth() +
+  labs(
+    x = "Age", 
+    y = "Share with self-reported long-term condition",
+    title = "Relationship between age and share with long-term condition in working age",
+    subtitle = "Waves a and j. Nonlinear smoother added to illustrate trend"
+  ) +
+  scale_y_continuous(limits = c(0, 1))
+```
+
+These look strongly correlated, especially monotonic, so we would expect the age-condition correlation to be positive, and stronger if using Spearman than Pearson.
+
+```{r}
+
+df_ind_health_standardised |> 
+  filter(!is.na(lt_condition)) |> 
+  filter(wave %in%  c('a', 'j')) |> 
+  group_by(wave, sex, age) |> 
+  count(lt_condition) |> 
+  pivot_wider(names_from = 'lt_condition', values_from = 'n') |> 
+  mutate(share = `TRUE`/ (`TRUE` + `FALSE`)) |> 
+  select(-`FALSE`, -`TRUE`) |> 
+  ungroup() |> 
+  group_by(wave, sex) |>
+  nest() |> 
+  mutate(cor_pear = map(data, cor)) |> 
+  mutate(cor_spear = map(data, cor, method = "spearman")) |> 
+  mutate(cor_between_pear = map_dbl(cor_pear, function(x) x[2, 1])) |> 
+  mutate(cor_between_spear = map_dbl(cor_spear, function(x) x[2, 1])) 
+  
+
+```

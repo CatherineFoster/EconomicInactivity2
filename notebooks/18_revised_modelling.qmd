@@ -37,6 +37,7 @@ df_ind_mhph_standardised <-
     mutate(across(dvage:sf12pcs_dv, function(x) ifelse(x < 0, NA, x))) %>% 
     filter(complete.cases(.)) |> 
     rename(age = dvage) |> 
+    filter(between(age, 16, 64)) |> 
     group_by(wave) |> 
     mutate(z_mh = standardise_scores(sf12mcs_dv),
            z_ph = standardise_scores(sf12pcs_dv)
@@ -88,8 +89,548 @@ BIC(mod_00, mod_01, mod_02, mod_03, mod_04)
 AIC(mod_00, mod_01, mod_02, mod_03, mod_04)
 ```
 
-Using status(T+1) regressed on status(T), the non-interacting joint model now has the lowest BIC and AIC.
+Using status(T+1) regressed on status(T), and using the working age population only, the **interacting** joint model now has the lowest BIC and AIC.
+
+Of the single exposure models, the PH model has superior fit to the MH model.
+
+Let's now pick a wave. How about j again?
 
 ```{r}
 
+baseline_scenario <- df_ind_mhph_standardised |> 
+  filter(wave == 'j')
+
+counterfactual_mh <- baseline_scenario |> 
+  mutate(z_mh = z_mh + 1)
+
+counterfactual_ph <- baseline_scenario |> 
+  mutate(z_ph = z_ph + 1)
+
+counterfactual_mhph <- baseline_scenario |> 
+  mutate(z_mh = z_mh + 1, z_ph = z_ph + 1)
+
 ```
+
+Now to get predictions
+
+```{r}
+predictions_baseline <- predict(mod_04, newdata = baseline_scenario, type = "probs")
+predictions_counter_mh <- predict(mod_04, newdata = counterfactual_mh, type = "probs")
+predictions_counter_ph <- predict(mod_04, newdata = counterfactual_ph, type = "probs")
+predictions_counter_mhph <- predict(mod_04, newdata = counterfactual_mhph, type = "probs")
+
+
+```
+
+For each of these we can sum the rows to get the estimated next_status composition
+
+```{r}
+
+predictions_summary_matrix <-
+  
+  cbind(
+    # The number 2 indicates do the sum function for each column.
+    # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+    apply(predictions_baseline, 2, sum),
+    apply(predictions_counter_mh, 2, sum),
+    apply(predictions_counter_ph, 2, sum),
+    apply(predictions_counter_mhph, 2, sum)
+  )
+
+colnames(predictions_summary_matrix) <- c("base", "mh", "ph", "mh_ph")
+predictions_summary_matrix
+```
+
+We can make these relative to the baseline model
+
+```{r}
+sim_relative_change <- apply(
+    predictions_summary_matrix, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change
+```
+
+Let's try to visualise this
+
+```{r}
+sim_relative_change |> 
+  as_tibble(rownames = "state") |> 
+  pivot_longer(-state, names_to = "scenario", values_to = "relative_size") |> 
+  ggplot(aes(y = state, x = relative_size, shape = scenario, colour = scenario)) + 
+  geom_point() + 
+  ggrepel::geom_text_repel(aes(label = round(relative_size)), nudge_y = 0.2) + 
+  geom_vline(xintercept = 100, linetype = "dashed") + 
+  labs(
+    x = "Size of population in state relative to baseline (100)",
+    y = "Economic (in)activity state",
+    title = "Estimated effect of mitigating mental health and physical health",
+    subtitle = "Using wave J. SF-12 MH and PH instruments.",
+    caption = "Source: UKHLS. Mitigation scenario: Improve scores by 1 standard deviation"
+  )
+```
+
+What next? Another scenario?
+
+How about income?
+
+Before that, how about only looking at Scotland?
+
+```{r}
+varnames <-  c(
+   "jbstat", "gor_dv"
+  )
+
+vartypes <- c(
+  "labels", "labels"
+  )
+
+scot_identifiers <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11]) 
+
+scot_identifiers <- scot_identifiers |> 
+  select(pidp, wave, gor_dv)
+
+# Clean the data 
+df_ind_mhph_standardised_scotonly <-
+  df_ind_mhph_standardised |> 
+  left_join(scot_identifiers) |> 
+  filter(gor_dv == "scotland")
+
+df_ind_mhph_standardised_scotonly
+
+```
+
+Build the models again
+
+```{r}
+mod_00_scot <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_mhph_standardised_scotonly
+  )
+
+mod_01_scot <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_mh,
+    data = df_ind_mhph_standardised_scotonly
+  )
+
+mod_02_scot <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_ph,
+    data = df_ind_mhph_standardised_scotonly
+  )
+
+mod_03_scot <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_mh + z_ph,
+    data = df_ind_mhph_standardised_scotonly
+  )
+
+mod_04_scot <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_mh * z_ph,
+    data = df_ind_mhph_standardised_scotonly
+  )
+```
+
+Compare fit
+
+```{r}
+AIC(mod_00_scot, mod_01_scot, mod_02_scot, mod_03_scot, mod_04_scot)
+BIC(mod_00_scot, mod_01_scot, mod_02_scot, mod_03_scot, mod_04_scot)
+```
+
+For Scotland the full interactive model isn't preferred. But will still use this for reasons of consistency with the main analysis.
+
+We could also look at including Scotland as a fixed effect in the model?
+
+```{r}
+
+baseline_scenario <- df_ind_mhph_standardised_scotonly |> 
+  filter(wave == 'j')
+
+counterfactual_mh <- baseline_scenario |> 
+  mutate(z_mh = z_mh + 1)
+
+counterfactual_ph <- baseline_scenario |> 
+  mutate(z_ph = z_ph + 1)
+
+counterfactual_mhph <- baseline_scenario |> 
+  mutate(z_mh = z_mh + 1, z_ph = z_ph + 1)
+
+
+predictions_baseline <- predict(mod_04_scot, newdata = baseline_scenario, type = "probs")
+predictions_counter_mh <- predict(mod_04_scot, newdata = counterfactual_mh, type = "probs")
+predictions_counter_ph <- predict(mod_04_scot, newdata = counterfactual_ph, type = "probs")
+predictions_counter_mhph <- predict(mod_04_scot, newdata = counterfactual_mhph, type = "probs")
+
+
+```
+
+It appears there are too few data to fit the complex age function
+
+So the Scotland fixed effect might be better?
+
+```{r}
+df_ind_mhph_standardised_scotlonflag <-
+  df_ind_mhph_standardised |> 
+  left_join(scot_identifiers) |> 
+  mutate(is_scotland = gor_dv == "scotland") |> 
+  mutate(is_london = gor_dv == "london")
+  
+df_ind_mhph_standardised_scotlonflag
+
+```
+
+Now just to see if the flag adds information
+
+```{r}
+mod_05 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_mh * z_ph + is_scotland,
+    data = df_ind_mhph_standardised_scotlonflag
+  )
+
+mod_06 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_mh * z_ph + is_london,
+    data = df_ind_mhph_standardised_scotlonflag
+  )
+
+mod_07 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + z_mh * z_ph + is_scotland + is_london,
+    data = df_ind_mhph_standardised_scotlonflag
+  )
+
+ 
+```
+
+compare fit
+
+```{r}
+AIC(mod_04, mod_05, mod_06, mod_07)
+BIC(mod_04, mod_05, mod_06, mod_07)
+
+```
+
+According to both metrics, the Scotland flag adds information.
+
+The London flag (06) improved marginally over the baseline model, and the joint model (mod_07) has an even more marginal gain
+
+We can now imagine that the same Scottish effects apply to the whole of the sample
+
+```{r}
+baseline_scenario_ruk <- df_ind_mhph_standardised_scotlonflag |> 
+  filter(wave == 'j') |> 
+  mutate(is_scotland = FALSE)
+
+counterfactual_mh_ruk <- baseline_scenario_ruk |> 
+  mutate(z_mh = z_mh + 1)
+
+counterfactual_ph_ruk <- baseline_scenario_ruk |> 
+  mutate(z_ph = z_ph + 1)
+
+counterfactual_mhph_ruk <- baseline_scenario_ruk |> 
+  mutate(z_mh = z_mh + 1, z_ph = z_ph + 1)
+
+baseline_scenario_scot <- df_ind_mhph_standardised_scotflag |> 
+  filter(wave == 'j') |> 
+  mutate(is_scotland = TRUE)
+
+counterfactual_mh_scot <- baseline_scenario_scot |> 
+  mutate(z_mh = z_mh + 1)
+
+counterfactual_ph_scot <- baseline_scenario_scot |> 
+  mutate(z_ph = z_ph + 1)
+
+counterfactual_mhph_scot <- baseline_scenario_scot |> 
+  mutate(z_mh = z_mh + 1, z_ph = z_ph + 1)
+
+
+
+pred_baseline_ruk <- predict(mod_05, newdata = baseline_scenario_ruk, type = "probs")
+pred_counter_mh_ruk <- predict(mod_05, newdata = counterfactual_mh_ruk, type = "probs")
+pred_counter_ph_ruk <- predict(mod_05, newdata = counterfactual_ph_ruk, type = "probs")
+pred_counter_mhph_ruk <- predict(mod_05, newdata = counterfactual_mhph_ruk, type = "probs")
+
+pred_baseline_scot <- predict(mod_05, newdata = baseline_scenario_scot, type = "probs")
+pred_counter_mh_scot <- predict(mod_05, newdata = counterfactual_mh_scot, type = "probs")
+pred_counter_ph_scot <- predict(mod_05, newdata = counterfactual_ph_scot, type = "probs")
+pred_counter_mhph_scot <- predict(mod_05, newdata = counterfactual_mhph_scot, type = "probs")
+```
+
+Now to get the summary predictions for both ruk and scotland
+
+```{r}
+predictions_summary_matrix_ruk_scot <-
+  cbind(
+    apply(pred_baseline_ruk, 2, sum),
+    apply(pred_baseline_scot, 2, sum)
+  )
+
+colnames(predictions_summary_matrix_ruk_scot) <- c("ruk", "scot")
+predictions_summary_matrix_ruk_scot
+
+# And proportionate? 
+
+sim_relative_change_ruk_scot <- apply(
+    predictions_summary_matrix_ruk_scot, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change_ruk_scot
+
+```
+
+This suggests that, even if Scotland had the same demographics as the Rest of the UK, the propensity for the working age population to be employed is around 3% lower, to be inactive - long term sick around 10% higher, and to be unemployed around 26% higher.
+
+**Note: Consider a London effect too**
+
+```{r}
+baseline_scenario_ruk <- df_ind_mhph_standardised_scotlonflag |> 
+  filter(wave == 'j') |> 
+  mutate(is_london = FALSE)
+
+
+baseline_scenario_lon <- df_ind_mhph_standardised_scotlonflag |> 
+  filter(wave == 'j') |> 
+  mutate(is_london = TRUE)
+
+
+
+pred_baseline_ruk <- predict(mod_06, newdata = baseline_scenario_ruk, type = "probs")
+pred_baseline_lon <- predict(mod_06, newdata = baseline_scenario_lon, type = "probs")
+
+predictions_summary_matrix_ruk_lon <-
+  cbind(
+    apply(pred_baseline_ruk, 2, sum),
+    apply(pred_baseline_lon, 2, sum)
+  )
+
+colnames(predictions_summary_matrix_ruk_lon) <- c("ruk", "lon")
+predictions_summary_matrix_ruk_lon
+
+# And proportionate? 
+
+sim_relative_change_ruk_lon <- apply(
+    predictions_summary_matrix_ruk_lon, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change_ruk_lon
+
+```
+
+Interestingly the London effect suggests higher propensity towards unemployment, and especially being a student. Long-term sickness is slightly lower; carer is higher. Employment is somewhat lower...
+
+I think without controlling for the demographics, the patterns will be very different:
+
+```{r}
+df_ind_mhph_standardised_scotlonflag |> 
+  filter(wave == 'j') |> 
+  group_by(gor_dv, next_status) |> 
+  count() |> 
+  group_by(gor_dv) |> 
+  mutate(share = n / sum(n)) |> 
+  ungroup() |> 
+  select(-n) |> 
+  mutate(share = round(share, 2)) |> 
+  pivot_wider(names_from = gor_dv, values_from = share)
+```
+
+Northern Ireland have the lowest Employment and highest retired shares. London has the highest student shares.
+
+Northern Ireland and Scotland have the highest Inactive- long-term sick shares.
+
+Let's finish this subsection off by looking at the demographics of each region
+
+```{r}
+df_ind_mhph_standardised_scotlonflag |> 
+  filter(wave == 'j') |> 
+  group_by(gor_dv) |> 
+  mutate(mean_age = mean(age), 
+         median_age = median(age)) |> 
+  ungroup() |> 
+  filter(gor_dv != "missing") |> 
+  ggplot(aes(x = age)) + 
+  geom_histogram(bins = 49) + 
+  geom_vline(aes(xintercept = mean_age), colour = "red") + 
+  geom_vline(aes(xintercept = median_age), colour = "blue", linetype = "dashed") + 
+  facet_wrap(~gor_dv, scales = "free_y") + 
+  labs(
+    y = "Number of observations",
+    x = "Age in years", 
+    title = "Distribution of ages by UK region/nation. UKHLS, wave J",
+    caption = "Ages within the working age age group, 16-64 year",
+    subtitle = "Mean age: red line; Median age: dashed blue line"
+  )
+```
+
+I suspect the bias in which households keep responding has a substantial effect, giving the impression London's average age is higher than it is. If this is the case then I should expect a lower average age, and more difference between regions, by looking at the first wave
+
+```{r}
+df_ind_mhph_standardised_scotlonflag |> 
+  filter(wave == 'a') |> 
+  group_by(gor_dv) |> 
+  mutate(mean_age = mean(age), 
+         median_age = median(age)) |> 
+  ungroup() |> 
+  filter(gor_dv != "missing") |> 
+  ggplot(aes(x = age)) + 
+  geom_histogram(bins = 49) + 
+  geom_vline(aes(xintercept = mean_age), colour = "red") + 
+  geom_vline(aes(xintercept = median_age), colour = "blue", linetype = "dashed") + 
+  facet_wrap(~gor_dv, scales = "free_y") + 
+  labs(
+    y = "Number of observations",
+    x = "Age in years", 
+    title = "Distribution of ages by UK region/nation. UKHLS, wave a",
+    caption = "Ages within the working age age group, 16-64 year",
+    subtitle = "Mean age: red line; Median age: dashed blue line"
+  )
+```
+
+I'm now slightly reassured. There's a clear demographic bulge in London which had a modal age in the late 30s in wave A; then in wave J (about a decade later) there's a bulge observed in the late 40s. \
+But in London there's also quite a lot of younger working age populations appearing too.
+
+The observation of a consistent bulge in London suggests the net effects of attrition over panels isn't as bad as I'd feared. (Though this is quite a cursory exploration.)
+
+## Ethnicity effects 
+
+Let's see what the effects of being of different ethnicities, controlling for other factors, are on these expected distributions
+
+```{r}
+varnames <-  c(
+  "jbstat", "dvage", "sex", "ethn_dv"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+df_ind_eth <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Now get the groupings lookup
+
+eth_lookup <- readxl::read_excel(path = here::here("data/ethnicity_categories.xlsx"),
+                                  sheet = "regroupings")
+# Clean the data 
+df_ind_eth_standardised <- 
+  df_ind_eth |> 
+    mutate(dvage =ifelse(dvage < 0, NA, dvage)) %>% 
+    filter(complete.cases(.)) |> 
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64)) |> 
+    left_join(eth_lookup, by = c("ethn_dv" = "original")) |> 
+    rename(
+      eth_simplified = recoded
+    ) |> 
+  select(-ethn_dv)
+```
+
+Now to build the model with and without ethnicity flags
+
+```{r}
+mod_01_eth <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_eth_standardised
+  )
+
+mod_02_eth <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + eth_simplified,
+    data = df_ind_eth_standardised
+  )
+
+
+```
+
+```{r}
+AIC(mod_01_eth, mod_02_eth)
+BIC(mod_01_eth, mod_02_eth)
+
+
+```
+
+This suggests including all ethnicities leads to worse penalised fits than not.
+
+We can instead just look at a single flag
+
+```{r}
+mod_03_eth <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + is_non_brit,
+    data = df_ind_eth_standardised |> 
+      mutate(is_non_brit = eth_simplified != "British")
+  )
+
+```
+
+```{r}
+AIC(mod_01_eth, mod_02_eth, mod_03_eth)
+BIC(mod_01_eth, mod_02_eth, mod_03_eth)
+
+```
+
+This simplified specification is worse still.
+
+(This could be because there is too much heterogeneity in the non-British groups?)
+
+Let's look at ethnicity:gender interaction effects
+
+```{r}
+mod_04_eth <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + is_non_brit * sex,
+    data = df_ind_eth_standardised |> 
+      mutate(is_non_brit = eth_simplified != "British")
+  )
+```
+
+```{r}
+AIC(mod_01_eth, mod_02_eth, mod_03_eth, mod_04_eth)
+BIC(mod_01_eth, mod_02_eth, mod_03_eth, mod_04_eth)
+```
+
+This appears to worsen the penalised fit further.
+
+Is this because there's not enough data, or because other factors are more important?
+
+We can maybe get a sense of this by looking at the age distributions by ethnic group. If they're very different then the demographic controls may be enough
+
+```{r}
+df_ind_eth_standardised |> 
+  filter(wave == 'j') |> 
+  group_by(eth_simplified) |> 
+  mutate(mean_age = mean(age), 
+         median_age = median(age)) |> 
+  ungroup() |> 
+  filter(eth_simplified != "Missing") |> 
+  ggplot(aes(x = age)) + 
+  geom_histogram(bins = 49) + 
+  geom_vline(aes(xintercept = mean_age), colour = "red") + 
+  geom_vline(aes(xintercept = median_age), colour = "blue", linetype = "dashed") + 
+  facet_wrap(~eth_simplified, scales = "free_y") + 
+  labs(
+    y = "Number of observations",
+    x = "Age in years", 
+    title = "Distribution of ages by ethnic category. UKHLS, wave J",
+    caption = "Ages within the working age age group, 16-64 year",
+    subtitle = "Mean age: red line; Median age: dashed blue line"
+  )
+```
+
+Let's calculate the mean age within each ethnic group
+
+```{r}
+df_ind_eth_standardised |> 
+  filter(wave == 'j') |> 
+  group_by(eth_simplified) |> 
+  summarise(mean_age = mean(age),
+            median_age = median(age), 
+            q1_age = quantile(age, 0.25),
+            q3_age = quantile(age, 0.75)
+            ) |> 
+  ungroup() |> 
+  arrange(desc(mean_age))
+```
+
+There are clear differences in the mean and median age, and quartiles of age, between ethnic groups, with the highest mean and median age for Caribbean populations, and the lowest for Bangladeshi and Pakistani population.
