@@ -1,0 +1,124 @@
+---
+title: "parenting_effects"
+format: html
+editor: visual
+---
+
+## Aim
+
+The aim of this notebook is to investigate the estimated impact that having a child in the household has on labour market engagement, in particular the effect that having a first child has on the probability of those in employment leave employment.
+
+After doing this, the notebook will look at the effect that different levels of equivalised household income has on remaining employed.
+
+## Preparation
+
+We need to do the following:
+
+-   Get individual basic info from indresp files
+
+-   Attach hh level attributes allowing the following to be derived
+
+    -   Equivalised income
+
+    -   Household type
+
+        -   Whether has partner
+
+        -   Whether has child
+
+Here are the variables in hhresp identified previously:
+
+There are quite a lot of variables to consider, all within the \_hhresp files
+
+**Demographics**
+
+-   `numadult` : number of adults in hh
+-   `numchild` : number of children (0-15) in hh
+-   `nunder10` : number of children under 10 in hh
+-   `hhsize` : size of household
+-   `ncouple_dv` : number of couples in hh
+-   `nonepar_dv` : number of lone parents in hh
+-   `nkids_dv` : number of children in hh
+-   `nch02_dv` : number of children 0-2 years old in hh
+-   `nch34_dv` : number of children 3-4 years old in hh
+-   `nch511_dv` : number of children 5-11 years old in hh
+-   `nch1215_dv` : number of children 12-15 years old in hh
+-   `agechy_dv`: age of youngest child in HH
+-   `npens_dv` : number of people over pensionable age in hh
+-   `nemp_dv` : number employed in hh
+-   `nuw_dv` : number not in paid employment in hh
+-   `nwage_dv` : number working age in hh
+-   `hhtype_dv`
+
+**Income and Expenditure**
+
+-   `fihhmngrs_dv`: total gross monthly household income - month before interview
+
+-   `fihhmnlabgrs_dv`: total gross household labour income - month before interview
+
+-   `fihhmnnet1_dv` : total household net income - no deductions
+
+-   `fihhmnlabnet_dv` : total net household labour income - month before interview
+
+-   `fihhmnmisc_dv` : total household misc income - month before interview
+
+-   `fihhmnprben_dv` : total household private benefit income - month before interview
+
+-   `fihhmninv_dv`: total household investment income - month before interview
+
+-   `fihhmnpen_dv` : total household pension income - month before interview
+
+-   `fihhmnsben_dv`: total household social benefit income - month before interview
+
+-   `houscost1_dv` : monthly housing costs including mortgage principal payments
+
+-   `ieqmoecd_dv` : modified OECD equivalence scale
+
+-   `fihhmngrs_if` : share of imputed HH total income
+
+```{r}
+
+
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) %>% 
+    filter(complete.cases(.)) |> 
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  
+
+df_joined <- 
+  add_hh_variables(
+    df = df_ind,
+    varnames = c(
+      "hhtype_dv"
+    ), 
+    vartypes = c(
+      "labels"
+    )
+  )
+df_joined
+```
+
+Below is the code we developed

@@ -5,7 +5,7 @@ format: html
 editor: visual
 ---
 
-# Aim 
+# Aim
 
 The aims of these analyses are:
 
@@ -23,7 +23,7 @@ The variables have the structure `hcond{k}` and `hconds{k}` for whether diagnose
 
 Before jumping into individual conditions, we can start with the binary `health` variable as described in [this page](https://www.understandingsociety.ac.uk/documentation/mainstage/dataset-documentation/variable/health).
 
-# Preparation 
+# Preparation
 
 ```{r}
 
@@ -208,3 +208,404 @@ df_ind_health_standardised |>
   
 
 ```
+
+This indicates that, no matter which wave we look at, or whether using Spearman or Pearson correlation, the correlation between age and probability of having a long-term health condition is very strong. This suggests that in a sense including LT health status is a bit like including the linear effect of age in the model twice, both as the linear component of the age polynomial, and as the highly correlated LT variable. However, for every age, is is plausible to imagine an individual both having or not having an LT condition, and this variable is binary not continuous. We also have first principles reasons for considering LT condition as likely to have an independent effect on labour market engagement.
+
+However we may have to think about the effects of including this model on the extent to which variables are correlated, model fit, and so on...
+
+## SF-12 effects
+
+We have looked previously at the effects of improving SF-12 MH and PH components. However we did not do this using the new convenience functions, and predicting the status at T+1 on status at T, rather than status at time T on status at time T-1.
+
+Let's do this now. (It should be much more straightforward with the new functions...)
+
+```{r}
+
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_sf12_standardised <-
+  df_ind |>
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(c(dvage, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    filter(complete.cases(.)) |>
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  # This renames dvage to age
+    rename(age = dvage) |>
+    filter(between(age, 16, 64))  
+
+```
+
+Now we can do the modelling
+
+```{r}
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_sf12_standardised
+  )
+
+mod_mh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12mcs_dv,
+    data = df_ind_sf12_standardised  
+  )
+
+mod_ph <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv,
+    data = df_ind_sf12_standardised
+  )
+
+mod_ph_mh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv + sf12mcs_dv,
+    data = df_ind_sf12_standardised
+  )
+
+mod_phmh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
+    data = df_ind_sf12_standardised
+)
+
+
+
+  
+```
+
+```{r}
+AIC(
+  mod_00, mod_mh, mod_ph, mod_ph_mh, mod_phmh
+)
+BIC(
+  mod_00, mod_mh, mod_ph, mod_ph_mh, mod_phmh
+)
+
+```
+
+This suggests the best model includes the interaction between mental health and physical health as well as independent effects.
+
+Because it seems difficult to imagine a scenario where there is an intervention that substantially improves MH without improving PH, or vice versa, and the best model is one that takes into account interactions between the terms, we can imagine improving 'health' by a substantial amount, where health is made up equally of both mental health and physical health.
+
+Previously we looked at the effect of changing MH by 1 standard unit without moving PH, or vice versa. \
+Instead we want to move this imagined quantity 'health' by 1 standard unit.
+
+A bit of painfully remembered Pythagoras' Theorem tells us that, if we increase the PH and MH standardised scores by 1/ sqrt(2) units, then we will have increased this third 'health' variable by 1 standardised unit.
+
+So, that will be our counterfactual scenario... :)
+
+As before, let's pick wave j
+
+```{r}
+
+df_baseline <- df_ind_sf12_standardised |> 
+  filter(wave == 'j')
+
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 2^-0.5,
+    sf12pcs_dv = sf12pcs_dv + 2^-0.5
+  )
+
+```
+
+Now to run the predictions under these two scenarios
+
+```{r}
+preds_df_baseline <- 
+  predict(mod_phmh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_phmh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, sum),
+  apply(preds_df_counterfactual, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+predictions_summary_matrix
+
+```
+
+Now relative difference
+
+```{r}
+sim_relative_change <- apply(
+    predictions_summary_matrix, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change
+```
+
+We can also imagine scenarios where the overall health effect is the same, but more of it is realised either through improvements in MH OR PH.
+
+Some more Pythagoras suggests we can use 1/ sqrt(5) for the less effective intervention and 2 / sqrt(5) for the more effective intervention (I THINK....)
+
+```{r}
+df_counterfactual_ph_bias <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 * 5^-0.5,
+    sf12pcs_dv = sf12pcs_dv + 2 * 5^-0.5
+  )
+
+df_counterfactual_mh_bias <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 2 * 5^-0.5,
+    sf12pcs_dv = sf12pcs_dv + 1 * 5^-0.5
+  )
+
+preds_df_counterfactual_ph_bias <- 
+  predict(mod_phmh, newdata = df_counterfactual_ph_bias, type = "probs")
+
+preds_df_counterfactual_mh_bias <- 
+  predict(mod_phmh, newdata = df_counterfactual_mh_bias, type = "probs")
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, sum),
+  apply(preds_df_counterfactual, 2, sum),
+  apply(preds_df_counterfactual_ph_bias, 2, sum),
+  apply(preds_df_counterfactual_mh_bias, 2, sum)
+  
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual_equal", "counterfactual_ph_bias", "counterfactual_mh_bias")
+predictions_summary_matrix
+
+```
+
+Now to make relative again
+
+```{r}
+sim_relative_change <- apply(
+    predictions_summary_matrix, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change
+
+```
+
+Subject to the algebra being correct, this shows the effect of a unit change on health, either biased towards MH or PH. It suggests that generally PH interventions seem to have slightly more impact than MH conditions for LT sick.
+
+## Specific health conditions 
+
+Let's now look at some specific health conditions, and the effects of 'curing' people of these conditions on economic status
+
+These are the variables `{w}hcond{kk}` and `{w}_hconds{kk}` where w is wave, kk is the number of the health condition, and s seems to suggest 'still'. i.e. hcond is whether ever diagnosed, and hconds is whether still has. 
+
+Let's pick 3 variables of particular interest
+
+- 17 - clinical depression
+- 16 - high blood pressure
+- 14 - diabetes
+
+```{r}
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "hcond14", "hcond16", "hcond17"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels", "labels", "labels"
+  )
+
+df_ind_hconds <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+df_ind_hconds_tidied <- 
+  df_ind_hconds |> 
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+    mutate(across(hcond14:hcond17, 
+      function(x) {
+        case_when(
+          x == 'Mentioned' ~ TRUE,
+          x == 'not mentioned' ~ FALSE,
+          TRUE ~ NA
+        )
+      }
+      )
+    ) |> 
+    rename(
+      has_diabetes  =  hcond14,
+      has_highbloodpressure = hcond16, 
+      has_clinicaldepression = hcond17,
+      age = dvage
+    ) %>%
+    filter(complete.cases(.)) 
+  
+```
+
+Now to run a series of models on this
+
+```{r}
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_hconds_tidied
+  )
+
+mod_diabetes <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + has_diabetes,
+    data = df_ind_hconds_tidied
+  )
+
+mod_depression <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + has_clinicaldepression,
+    data = df_ind_hconds_tidied
+  )
+
+mod_highbloodpressure <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + has_highbloodpressure,
+    data = df_ind_hconds_tidied
+  )
+
+
+
+```
+
+
+```{r}
+BIC(mod_00, mod_diabetes, mod_depression, mod_highbloodpressure)
+AIC(mod_00, mod_diabetes, mod_depression, mod_highbloodpressure)
+```
+
+This suggests the depression variable leads to improvements in the model efficiency over the base model whether using the AIC or more stringent BIC criterion. This suggests for now we should perhaps focus on modelling with this outcome, then looking at the other variables.
+
+Our last complete wave with these variables is i, not j as with earlier examples, but the principles are the same. 
+
+Before running the model, however, perhaps we should look at the estimated effects of having depression over not having depression on either remaining employed or entering inactive - long-term sick status 
+
+
+
+```{r}
+predict(
+  mod_depression, newdata = tibble(
+    age = 50, sex = "male", this_status = "Employed", has_clinicaldepression = TRUE
+  ), 
+  type = "probs"
+)
+
+predict(
+  mod_depression, newdata = tibble(
+    age = 50, sex = "male", this_status = "Employed", has_clinicaldepression = FALSE
+  ), 
+  type = "probs"
+)
+
+
+```
+
+This suggests that the depression variable has the expected direction of effects on someone employed ceasing to be employed, becoming long-term sick, becoming unemployed etc. 
+
+It would be good to know what proportion of the sample has clinical depression in the last wave, wave i.
+
+Correction: because of hte complete.cases criterion the last wave with reasonable numbers is wave f...
+
+```{r}
+
+df_ind_hconds_tidied |> 
+  filter(wave == 'a') |> 
+  count(has_clinicaldepression) |> 
+  mutate(
+    share = n / sum(n)
+  )
+```
+Perhaps the first wave, a, would be better to use as it looks more representative of the prevalence of depression in the general population (around 7% not 3%)
+
+```{r}
+df_baseline <-
+  df_ind_hconds_tidied |> 
+  filter(wave == 'a')
+
+df_counterfactual_depressaway <-
+  df_baseline |> 
+  mutate(has_clinicaldepression = FALSE)
+
+preds_df_baseline <- 
+  predict(mod_depression, newdata = df_baseline, type = "probs")
+
+preds_df_counter <- 
+  predict(mod_depression, newdata = df_counterfactual_depressaway, type = "probs")
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, sum),
+  apply(preds_df_counter, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+predictions_summary_matrix
+
+
+```
+Now relative terms 
+
+```{r}
+sim_relative_change <- apply(
+    predictions_summary_matrix, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change
+```
+
+This suggests that, if everyone who reported clinical depression in wave a (the wave where it was asked of most of the sample(?)), instead did not have this diagnosis, then the long-term sickness population would reduce by around 10%. Given the proportion reporting a clinical depression diagnosis in the first wave was around 7%, this indicates over-representation of those with clinical depression in the long-term sick inactive subpopulation, and that within this group treating ('curing'/'de-diagnosing') the depression would have a very large impact. 
+
+Let's briefly look at the proportions with clinical depression in this first wave by economic status 
+```{r}
+ df_ind_hconds_tidied |> 
+  filter(wave == 'a') |> 
+  count(this_status, has_clinicaldepression) |> 
+  group_by(this_status) |> 
+  mutate(
+    share = n / sum(n)
+  ) |> 
+  filter(has_clinicaldepression == TRUE)
+
+```
+Let's compare with a physical illness that is highly prevalent, such as diabetes
+
+```{r}
+ df_ind_hconds_tidied |> 
+  filter(wave == 'a') |> 
+  count(this_status, has_diabetes) |> 
+  group_by(this_status) |> 
+  mutate(
+    share = n / sum(n)
+  ) |> 
+  filter(has_diabetes == TRUE)
+
+```
+

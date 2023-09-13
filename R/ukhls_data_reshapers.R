@@ -479,7 +479,7 @@ add_hh_variables <- function(df, varnames, vartypes, verbose = FALSE){
   for (i in seq_along(varnames)) {
 
     if (vartypes[i] == 'labels') {
-      all_hh_wide[[varnames[[i]]]] <- haven::as_factor(all_hh_wide[[varnames[[i]]]]) |> as.character(.)
+      all_hh_wide[[varnames[[i]]]] <- haven::as_factor(all_hh_wide[[varnames[[i]]]]) %>% as.character(.)
     } else if (vartypes[i] == 'values') {
       all_hh_wide[[varnames[[i]]]] <- haven::zap_labels(all_hh_wide[[varnames[[i]]]])
     } else {
