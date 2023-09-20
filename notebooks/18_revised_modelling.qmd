@@ -491,12 +491,12 @@ df_ind_mhph_standardised_scotlonflag |>
   )
 ```
 
-I'm now slightly reassured. There's a clear demographic bulge in London which had a modal age in the late 30s in wave A; then in wave J (about a decade later) there's a bulge observed in the late 40s. \
+I'm now slightly reassured. There's a clear demographic bulge in London which had a modal age in the late 30s in wave A; then in wave J (about a decade later) there's a bulge observed in the late 40s.\
 But in London there's also quite a lot of younger working age populations appearing too.
 
 The observation of a consistent bulge in London suggests the net effects of attrition over panels isn't as bad as I'd feared. (Though this is quite a cursory exploration.)
 
-## Ethnicity effects 
+## Ethnicity effects
 
 Let's see what the effects of being of different ethnicities, controlling for other factors, are on these expected distributions
 

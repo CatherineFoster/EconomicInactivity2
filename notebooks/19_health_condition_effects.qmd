@@ -10,9 +10,7 @@ editor: visual
 The aims of these analyses are:
 
 -   [ ] To look at the influence of health condition flags on the modelled propensities to move to/from economic states
-
-    -   [ ] To identify relevant health condition flags
-
+    - [ ] To identify relevant health condition flags
 -   [ ] To look at the effect that demographics and modifiable exposures have on the probability of developing health conditions
 
 ## Notes on variables
@@ -50,8 +48,7 @@ df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = 
 df_ind_health_standardised <- 
   df_ind |> 
   # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
-    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) %>% 
-    filter(complete.cases(.)) |> 
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
   # This renames dvage to age
     rename(age = dvage) |> 
     filter(between(age, 16, 64))  |> 
@@ -61,7 +58,8 @@ df_ind_health_standardised <-
         health %in% c("Yes", "yes") ~ TRUE,
         TRUE ~ NA_integer_
       ) |> as.logical()
-    )
+    ) %>% 
+    filter(complete.cases(.)) 
 
 ```
 
@@ -499,6 +497,7 @@ mod_highbloodpressure <-
 BIC(mod_00, mod_diabetes, mod_depression, mod_highbloodpressure)
 AIC(mod_00, mod_diabetes, mod_depression, mod_highbloodpressure)
 ```
+### Clinical Depression
 
 This suggests the depression variable leads to improvements in the model efficiency over the base model whether using the AIC or more stringent BIC criterion. This suggests for now we should perhaps focus on modelling with this outcome, then looking at the other variables.
 
@@ -595,6 +594,8 @@ Let's briefly look at the proportions with clinical depression in this first wav
   filter(has_clinicaldepression == TRUE)
 
 ```
+### Diabetes
+
 Let's compare with a physical illness that is highly prevalent, such as diabetes
 
 ```{r}
@@ -608,4 +609,91 @@ Let's compare with a physical illness that is highly prevalent, such as diabetes
   filter(has_diabetes == TRUE)
 
 ```
+What about the estimated effects of diabetes given the equivalent wave a composition: 
+
+```{r}
+df_baseline <-
+  df_ind_hconds_tidied |> 
+  filter(wave == 'a')
+
+df_counterfactual_diabetesaway <-
+  df_baseline |> 
+  mutate(has_diabetes = FALSE)
+
+preds_df_baseline <- 
+  predict(mod_diabetes, newdata = df_baseline, type = "probs")
+
+preds_df_counter <- 
+  predict(mod_diabetes, newdata = df_counterfactual_diabetesaway, type = "probs")
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, sum),
+  apply(preds_df_counter, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+predictions_summary_matrix
+
+
+```
+
+And in relative terms 
+
+```{r}
+sim_relative_change <- apply(
+    predictions_summary_matrix, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change
+
+
+```
+
+This suggests the complete mitigation of Diabetes would have some effects on working age economic participation, but these would be modest as compared with fully mitigating clinical depression. 
+
+
+
+### High blood pressure
+
+Unlike the other flags, high blood pressure is associated with a reduction in penalised model fit. However we might want to look at this in any case
+
+```{r}
+df_baseline <-
+  df_ind_hconds_tidied |> 
+  filter(wave == 'a')
+
+df_counterfactual_tensesaway <-
+  df_baseline |> 
+  mutate(has_highbloodpressure = FALSE)
+
+preds_df_baseline <- 
+  predict(mod_diabetes, newdata = df_baseline, type = "probs")
+
+preds_df_counter <- 
+  predict(mod_diabetes, newdata = df_counterfactual_diabetesaway, type = "probs")
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, sum),
+  apply(preds_df_counter, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+predictions_summary_matrix
+
+sim_relative_change <- apply(
+    predictions_summary_matrix, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change
+
+
+```
+
+So, this might lead to a slight fall in inactivity due to long-term sickness, but not a substantial change.
 
