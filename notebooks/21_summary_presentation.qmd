@@ -1,0 +1,35 @@
+---
+title: "Education, Qualification and Health Effects Summary"
+author: "Jon Minton"
+format: pptx
+editor: visual
+---
+
+## Modelling the effect of health on labour market engagement
+
+We use three types of approach:
+
+1.  Using **reported long-term illness** as a binary variable
+2.  Using **scores on SF-12**, mental and health sub-domain, as a continuous variable
+3.  Using reported presence or absence of **specific clinically diagnosed medical conditions** as a series of binary variables
+
+We will now consider these three approaches in turn
+
+## General approach (as a reminder)
+
+The general approach taken is:
+
+1.  We decide on the variables to consider including as exposures
+2.  We fit a series of models with and without exposures to see if including the exposures adds to the quality of the model (Using the AIC/BIC criteria)
+    1.  If a model with the exposure is preferred we use this for running baseline-counterfactual scenarios
+    2.  Even if a model with exposure does not outcompete the foundational (no-exposure) specification we *may* still run it if there are sound clinical/epidemiological reasons to do so
+3.  We decide on a representative dataset to pass to the best exposure model to estimate the effects on economic (in)activity composition in the next wave under a do-nothing (**baseline**) scenario
+    1.  This has usually been wave J of UKHLS
+4.  We modify the baseline dataset to allow the estimated effects of the exposure on economic (in)activity to be estimated. This produces one or more **counterfactual** scenarios
+5.  We compare the **baseline** and **counterfactual** scenarios' estimated economic (in)activity compositions in absolute and relative terms:
+    1.  Absolute differences: how many more/fewer people are (say) unemployed in the counterfactual scenario than the baseline scenario?
+    2.  Relative differences: how many % higher/lower are the numbers (say) unemployed in the counterfactual scenario than the baseline scenario?
+
+## Modelling based on reported long-term illness
+
+Long-term illness is a binary variable: present/absent
