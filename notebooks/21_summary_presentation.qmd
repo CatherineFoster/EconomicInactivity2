@@ -1,7 +1,14 @@
 ---
-title: "Education, Qualification and Health Effects Summary"
+title: "Education/Qualification and Health Effects Summary"
 author: "Jon Minton"
-format: pptx
+execute:
+  echo: false
+  warning: false
+  message: false
+format: 
+  pptx:
+    code-fold: true
+    df-print: kable
 editor: visual
 ---
 
@@ -33,3 +40,235 @@ The general approach taken is:
 ## Modelling based on reported long-term illness
 
 Long-term illness is a binary variable: present/absent
+
+## Jointly modelling education changes and health changes
+
+Let's define this in PICO structure:
+
+-   **Population** Representative adults aged 25-60 years
+
+-   **Intervention:**
+
+    -   Education: Everyone up one level (up to degree)
+
+    -   Health: 1 SD unit change, equal through MH and PH path
+
+-   **Comparator:** No change in health or qualifications
+
+-   **Outcome:** Change in absolute and relative distribution of persons in EI/EA states, focusing on change in EI: LT sick
+
+## Step 1: Get data
+
+```{r}
+
+devtools::load_all(here::here('R'))
+
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+library(tidyverse)
+library(nnet)
+
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", 'hiqual_dv', "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "labels", "values", "values"
+  )
+
+ind_data <- get_ind_level_vars_for_selected_waves(
+  varnames = varnames, vartypes = extract_what
+)
+
+ind_data_standardised <- 
+  ind_data |> 
+  mutate(
+    qual_group = case_when(
+      hiqual_dv %in% c("No qual", "No qualification") ~ "None",
+      hiqual_dv %in% c("GCSE etc", "A level etc", "A-level etc", "Other qual", "Other qualification", "Other higher") ~ "Some", 
+      hiqual_dv %in% c("Degree", "Other higher degree") ~ "Degree",
+      TRUE ~ NA_character_
+    )
+  ) |> 
+  mutate(
+    qual_group = ordered(qual_group, levels = c("None", "Some", "Degree"))
+  ) |> 
+  rename(age = dvage) |> 
+  mutate(across(c(age, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  filter(between(age, 25, 60)) %>%  #As highest qualification starting at 25 not 16 years of age  |> 
+  filter(complete.cases(.))
+
+
+```
+
+## Modelling 
+
+```{r}
+
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = ind_data_standardised
+  )
+
+mod_hlth <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
+    data = ind_data_standardised
+  )
+
+mod_qual <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + qual_group,
+    data = ind_data_standardised
+  )
+
+mod_full <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv + qual_group,
+    data = ind_data_standardised
+  )
+  
+  
+```
+
+## Model comparison 
+
+```{r}
+aics <- AIC(mod_00, mod_hlth, mod_qual, mod_full)$AIC
+bics <- BIC(mod_00, mod_hlth, mod_qual, mod_full)$BIC
+
+summary_output <- tibble(
+  model_name = c("Foundational", "Health", "Qualifications", "Both"),
+  aic = aics,
+  bic = bics
+)
+
+summary_output |> 
+  arrange(bic) |> 
+  mutate(
+    aic_rank = rank(aic),
+    bic_rank = rank(bic)
+  )
+
+```
+
+Lower BIC and AIC scores are better. The models are arranged from lowest to highest, and ranks shown as `aic_rank` and `bic_rank`.
+
+This shows that the Qualifications model is preferred to the other three model specifications, then the Health model. The Foundation model is third, and the model with both appears too complex and is not preferred to the Foundational model.
+
+There is no difference in the rank ordering of models preferred by the AIC and BIC metrics.
+
+## Dilemma
+
+-   The models with the best penalised fit are those considering **Qualifications** and **Health** separately
+
+-   The model with the worst penalised fit is that with both **Qualifications** *and* **Health**.
+
+-   But we are interested in something like *ceteris paribus* effects of intervening on one variable but not the other
+
+We will present results from the Both model even though it has the poorest performance by these measures
+
+## Representative data 
+
+-   Select wave J from UKHLS as it's comparatively recent (and/but pre-pandemic)
+
+```{r}
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+
+df_counter_hlth <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 2^-0.5,
+    sf12pcs_dv = sf12pcs_dv + 2^-0.5
+  )
+
+df_counter_hlth <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 2^-0.5,
+    sf12pcs_dv = sf12pcs_dv + 2^-0.5
+  )
+
+df_counter_qual <- 
+  df_baseline |> 
+    mutate(qual_group = as.character(qual_group)) |> 
+    mutate(qual_group = ifelse(qual_group == "Some", "Degree", qual_group)) |>
+    mutate(qual_group = ifelse(qual_group == "None", "Some", qual_group)) |> 
+    mutate(qual_group = ordered(qual_group, levels = c("None", "Some", "Degree")))
+
+df_counter_both <- 
+  df_baseline |> 
+    mutate(qual_group = as.character(qual_group)) |> 
+    mutate(qual_group = ifelse(qual_group == "Some", "Degree", qual_group)) |>
+    mutate(qual_group = ifelse(qual_group == "None", "Some", qual_group)) |> 
+    mutate(qual_group = ordered(qual_group, levels = c("None", "Some", "Degree"))) |> 
+    mutate(
+      sf12mcs_dv = sf12mcs_dv + 2^-0.5,
+      sf12pcs_dv = sf12pcs_dv + 2^-0.5
+    )
+
+  
+```
+
+Now let's calculate the scenarios
+
+```{r}
+scen_base_hlth <- calculate_baseline_counterfactual_distribution(
+  mod_full, d_base = df_baseline, d_counter = df_counter_hlth
+)
+
+scen_base_qual <- calculate_baseline_counterfactual_distribution(
+  mod_full, d_base = df_baseline, d_counter = df_counter_qual
+)
+
+scen_base_both <- calculate_baseline_counterfactual_distribution(
+  mod_full, d_base = df_baseline, d_counter = df_counter_both
+)
+
+scens_combined <- 
+  scen_base_hlth |> 
+    mutate(scenario = ifelse(scenario == "counterfactual", "counter_health", scenario)) |> 
+    bind_rows(
+      scen_base_qual |> 
+    mutate(scenario = ifelse(scenario == "counterfactual", "counter_quals", scenario))
+    ) |> 
+    bind_rows(
+      scen_base_both |> 
+        mutate(scenario = ifelse(scenario == "counterfactual", "counter_both", scenario))
+    )
+  
+```
+
+## Relative change, plotted 
+
+Now let's at least visualise this
+
+```{r}
+scens_combined |>
+  filter(scenario != "baseline") |> 
+  filter(output == "relative") |> 
+  ggplot(aes(x = value, y = state, colour = scenario, shape = scenario)) + 
+    geom_point() + 
+  geom_vline(xintercept = 1)
+  
+```
+## Relative change, as a table
+
+
+```{r}
+scens_combined |>
+  filter(scenario != "baseline") |> 
+  filter(output == "relative") |> 
+  mutate(value = 100 * value) |> 
+  mutate(value = round(value, 1)) |> 
+  pivot_wider(names_from = scenario, values_from = value) |> 
+  mutate(
+    state = ordered(state, levels = c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other"))
+  ) |> 
+  arrange(state)
+```
+
