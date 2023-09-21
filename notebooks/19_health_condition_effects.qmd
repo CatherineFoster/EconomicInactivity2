@@ -1,7 +1,12 @@
 ---
 title: "19_health_condition_effects"
 author: "Jon Minton"
-format: html
+format: 
+  html:
+    code-fold: true
+  docx: 
+    code-fold: true
+prefer-html: true
 editor: visual
 ---
 
@@ -10,7 +15,7 @@ editor: visual
 The aims of these analyses are:
 
 -   [ ] To look at the influence of health condition flags on the modelled propensities to move to/from economic states
-    - [ ] To identify relevant health condition flags
+    -   [ ] To identify relevant health condition flags
 -   [ ] To look at the effect that demographics and modifiable exposures have on the probability of developing health conditions
 
 ## Notes on variables
@@ -24,7 +29,7 @@ Before jumping into individual conditions, we can start with the binary `health`
 # Preparation
 
 ```{r}
-
+devtools::load_all(here::here('R'))
 library(tidyverse)
 # library(haven)
 # library(here)
@@ -303,7 +308,7 @@ This suggests the best model includes the interaction between mental health and 
 
 Because it seems difficult to imagine a scenario where there is an intervention that substantially improves MH without improving PH, or vice versa, and the best model is one that takes into account interactions between the terms, we can imagine improving 'health' by a substantial amount, where health is made up equally of both mental health and physical health.
 
-Previously we looked at the effect of changing MH by 1 standard unit without moving PH, or vice versa. \
+Previously we looked at the effect of changing MH by 1 standard unit without moving PH, or vice versa.\
 Instead we want to move this imagined quantity 'health' by 1 standard unit.
 
 A bit of painfully remembered Pythagoras' Theorem tells us that, if we increase the PH and MH standardised scores by 1/ sqrt(2) units, then we will have increased this third 'health' variable by 1 standardised unit.
@@ -414,17 +419,17 @@ sim_relative_change
 
 Subject to the algebra being correct, this shows the effect of a unit change on health, either biased towards MH or PH. It suggests that generally PH interventions seem to have slightly more impact than MH conditions for LT sick.
 
-## Specific health conditions 
+## Specific health conditions
 
 Let's now look at some specific health conditions, and the effects of 'curing' people of these conditions on economic status
 
-These are the variables `{w}hcond{kk}` and `{w}_hconds{kk}` where w is wave, kk is the number of the health condition, and s seems to suggest 'still'. i.e. hcond is whether ever diagnosed, and hconds is whether still has. 
+These are the variables `{w}hcond{kk}` and `{w}_hconds{kk}` where w is wave, kk is the number of the health condition, and s seems to suggest 'still'. i.e. hcond is whether ever diagnosed, and hconds is whether still has.
 
 Let's pick 3 variables of particular interest
 
-- 17 - clinical depression
-- 16 - high blood pressure
-- 14 - diabetes
+-   17 - clinical depression
+-   16 - high blood pressure
+-   14 - diabetes
 
 ```{r}
 
@@ -492,20 +497,18 @@ mod_highbloodpressure <-
 
 ```
 
-
 ```{r}
 BIC(mod_00, mod_diabetes, mod_depression, mod_highbloodpressure)
 AIC(mod_00, mod_diabetes, mod_depression, mod_highbloodpressure)
 ```
+
 ### Clinical Depression
 
 This suggests the depression variable leads to improvements in the model efficiency over the base model whether using the AIC or more stringent BIC criterion. This suggests for now we should perhaps focus on modelling with this outcome, then looking at the other variables.
 
-Our last complete wave with these variables is i, not j as with earlier examples, but the principles are the same. 
+Our last complete wave with these variables is i, not j as with earlier examples, but the principles are the same.
 
-Before running the model, however, perhaps we should look at the estimated effects of having depression over not having depression on either remaining employed or entering inactive - long-term sick status 
-
-
+Before running the model, however, perhaps we should look at the estimated effects of having depression over not having depression on either remaining employed or entering inactive - long-term sick status
 
 ```{r}
 predict(
@@ -525,7 +528,7 @@ predict(
 
 ```
 
-This suggests that the depression variable has the expected direction of effects on someone employed ceasing to be employed, becoming long-term sick, becoming unemployed etc. 
+This suggests that the depression variable has the expected direction of effects on someone employed ceasing to be employed, becoming long-term sick, becoming unemployed etc.
 
 It would be good to know what proportion of the sample has clinical depression in the last wave, wave i.
 
@@ -540,6 +543,7 @@ df_ind_hconds_tidied |>
     share = n / sum(n)
   )
 ```
+
 Perhaps the first wave, a, would be better to use as it looks more representative of the prevalence of depression in the general population (around 7% not 3%)
 
 ```{r}
@@ -569,7 +573,8 @@ predictions_summary_matrix
 
 
 ```
-Now relative terms 
+
+Now relative terms
 
 ```{r}
 sim_relative_change <- apply(
@@ -580,9 +585,10 @@ sim_relative_change <- apply(
 sim_relative_change
 ```
 
-This suggests that, if everyone who reported clinical depression in wave a (the wave where it was asked of most of the sample(?)), instead did not have this diagnosis, then the long-term sickness population would reduce by around 10%. Given the proportion reporting a clinical depression diagnosis in the first wave was around 7%, this indicates over-representation of those with clinical depression in the long-term sick inactive subpopulation, and that within this group treating ('curing'/'de-diagnosing') the depression would have a very large impact. 
+This suggests that, if everyone who reported clinical depression in wave a (the wave where it was asked of most of the sample(?)), instead did not have this diagnosis, then the long-term sickness population would reduce by around 10%. Given the proportion reporting a clinical depression diagnosis in the first wave was around 7%, this indicates over-representation of those with clinical depression in the long-term sick inactive subpopulation, and that within this group treating ('curing'/'de-diagnosing') the depression would have a very large impact.
 
-Let's briefly look at the proportions with clinical depression in this first wave by economic status 
+Let's briefly look at the proportions with clinical depression in this first wave by economic status
+
 ```{r}
  df_ind_hconds_tidied |> 
   filter(wave == 'a') |> 
@@ -594,6 +600,7 @@ Let's briefly look at the proportions with clinical depression in this first wav
   filter(has_clinicaldepression == TRUE)
 
 ```
+
 ### Diabetes
 
 Let's compare with a physical illness that is highly prevalent, such as diabetes
@@ -609,7 +616,8 @@ Let's compare with a physical illness that is highly prevalent, such as diabetes
   filter(has_diabetes == TRUE)
 
 ```
-What about the estimated effects of diabetes given the equivalent wave a composition: 
+
+What about the estimated effects of diabetes given the equivalent wave a composition:
 
 ```{r}
 df_baseline <-
@@ -639,7 +647,7 @@ predictions_summary_matrix
 
 ```
 
-And in relative terms 
+And in relative terms
 
 ```{r}
 sim_relative_change <- apply(
@@ -652,9 +660,7 @@ sim_relative_change
 
 ```
 
-This suggests the complete mitigation of Diabetes would have some effects on working age economic participation, but these would be modest as compared with fully mitigating clinical depression. 
-
-
+This suggests the complete mitigation of Diabetes would have some effects on working age economic participation, but these would be modest as compared with fully mitigating clinical depression.
 
 ### High blood pressure
 
@@ -696,4 +702,3 @@ sim_relative_change
 ```
 
 So, this might lead to a slight fall in inactivity due to long-term sickness, but not a substantial change.
-

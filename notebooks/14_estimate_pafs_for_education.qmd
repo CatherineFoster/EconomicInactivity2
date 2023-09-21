@@ -1,7 +1,12 @@
 ---
-title: "11_estimating_pafs_on_mh_and_ph"
+title: "14_estimating_pafs_for_education"
 author: "Jon Minton"
-format: html
+format: 
+  html:
+    code-fold: true
+  docx: 
+    code-fold: true
+prefer-html: true
 editor: visual
 ---
 
@@ -29,9 +34,11 @@ Variables to consider:
 ## Data loading and prep
 
 ```{r}
+
+devtools::load_all(here::here('R'))
+
 base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
 library(tidyverse)
-
 library(nnet)
 
 

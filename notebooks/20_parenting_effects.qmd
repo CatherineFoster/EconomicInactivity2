@@ -121,4 +121,168 @@ df_joined <-
 df_joined
 ```
 
-Below is the code we developed
+We can now turn the hhtype_dv variable into something that flags whether the hh includes children or not
+
+```{r}
+df_joined |> 
+  left_join(
+    simplified_household_lookup, 
+    by = c('hhtype_dv' = 'original')
+  )
+
+```
+
+We really want to identify those individuals whose `has_children` flag was `FALSE` in wave T and `TRUE` in wave T+1.
+
+```{r}
+temp <- 
+  df_joined |> 
+    left_join(
+      simplified_household_lookup, 
+      by = c('hhtype_dv' = 'original')
+    ) |> select(pidp, wave, has_children) |> 
+    mutate(
+      wavenum = purrr::map_dbl(
+        wave, 
+        function(x) which(letters %in% x)
+      )
+    ) 
+
+child_status_change_inds <- 
+  temp |> 
+    left_join(
+      temp |> 
+        select(-wave) |> 
+        rename(get_children = has_children) |> 
+        mutate(
+          next_wavenum = wavenum + 1
+        ) |> 
+        select(-wavenum)
+      , 
+      by = c("pidp" = "pidp", "wavenum" = "next_wavenum")
+      )
+
+
+```
+
+Now let's find those individuals where `had_children` is `FALSE` and `has_children` is `TRUE`:
+
+```{r}
+new_child_personwaves <- 
+  child_status_change_inds |> 
+    filter(!has_children & get_children) |> 
+    select(pidp, wave) |> 
+    mutate(new_children = TRUE)
+```
+
+Now this needs to be used to create a flag
+
+```{r}
+df_joined_get_children <- 
+  df_joined |> 
+    left_join(new_child_personwaves) |> 
+    mutate(new_children = ifelse(is.na(new_children), FALSE, TRUE))
+```
+
+We can not start to model the effects of a new child on economic (in)activity transitions.
+
+As before we can build up the model specification complexity and see where the sweet spot is
+
+```{r}
+# baseline specification: does not include new_children
+mod_00 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) ,
+    data = df_joined_get_children
+  )
+
+# first specification: new_children as simple indicator
+mod_01 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + new_children,
+    data = df_joined_get_children
+  )
+
+# second specification: new_children affects males and females differently
+mod_02 <- nnet::multinom(
+  next_status ~ this_status * sex + splines::bs(age, 5) + new_children * sex, 
+  data = df_joined_get_children
+)
+
+
+
+```
+
+```{r}
+AIC(mod_00, mod_01, mod_02)
+BIC(mod_00, mod_01, mod_02)
+
+
+```
+
+Nope. Either model does not outperform the baseline model.
+
+This is likely because the important variable is has_children, not get_children, i.e. a status flag rather than a status change flag.
+
+Let's look at the status flag
+
+```{r}
+df_joined_hhchars <- 
+  df_joined |> 
+    left_join(
+      simplified_household_lookup, 
+      by = c('hhtype_dv' = 'original')
+    )
+
+  
+```
+
+```{r}
+# baseline specification: does not include new_children
+mod_00 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) ,
+    data = df_joined_hhchars |> 
+      filter(!is.na(has_children))
+  )
+
+# first specification: has_children as simple indicator
+mod_01 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + has_children,
+    data = df_joined_hhchars
+  )
+
+# second specification: has_children affects males and females differently
+mod_02 <- nnet::multinom(
+  next_status ~ this_status * sex + splines::bs(age, 5) + has_children * sex, 
+  data = df_joined_hhchars
+)
+
+```
+
+```{r}
+AIC(mod_00, mod_01, mod_02)
+BIC(mod_00, mod_01, mod_02)
+
+
+```
+
+Now the model including the term and interactions with sex outperforms the others.
+
+Let's see what this model implies for, say, a 30 year old female compared with a 30 year old male
+
+```{r}
+vignettes <- expand_grid(
+  age = 30, 
+  sex = c("male", "female"),
+  this_status = c("Employed"),
+  has_children = c(FALSE, TRUE)
+)
+
+predictions <- predict(mod_02, newdata = vignettes, type = "probs")
+
+
+predictions_predictors <- 
+  bind_cols(
+    vignettes, predictions
+  )
+
+predictions_predictors
+```

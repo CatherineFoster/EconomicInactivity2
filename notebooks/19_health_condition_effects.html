@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.353">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Jon Minton">
+
+<title>19_health_condition_effects</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="19_health_condition_effects_files/libs/clipboard/clipboard.min.js"></script>
+<script src="19_health_condition_effects_files/libs/quarto-html/quarto.js"></script>
+<script src="19_health_condition_effects_files/libs/quarto-html/popper.min.js"></script>
+<script src="19_health_condition_effects_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="19_health_condition_effects_files/libs/quarto-html/anchor.min.js"></script>
+<link href="19_health_condition_effects_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="19_health_condition_effects_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="19_health_condition_effects_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="19_health_condition_effects_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="19_health_condition_effects_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="19_health_condition_effects.docx"><i class="bi bi-file-word"></i>MS Word</a></li></ul></div></div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">19_health_condition_effects</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Jon Minton </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="aim" class="level1">
+<h1>Aim</h1>
+<p>The aims of these analyses are:</p>
+<ul class="task-list">
+<li><input type="checkbox">To look at the influence of health condition flags on the modelled propensities to move to/from economic states
+<ul class="task-list">
+<li><input type="checkbox">To identify relevant health condition flags</li>
+</ul></li>
+<li><input type="checkbox">To look at the effect that demographics and modifiable exposures have on the probability of developing health conditions</li>
+</ul>
+<section id="notes-on-variables" class="level2">
+<h2 class="anchored" data-anchor-id="notes-on-variables">Notes on variables</h2>
+<p><a href="https://www.understandingsociety.ac.uk/documentation/mainstage/dataset-documentation/wave/3/questionnaire-module/healthconditions_w3">This page</a> shows the health condition variables. These appear to be two series of flags for 17 separate conditions, with the first set of flags being whether someone has every been diagnosed with a condition, and the second whether they still have the condition. There is then a third conditional set of variables asking, for those who have a condition, for how long they have it.</p>
+<p>The variables have the structure <code>hcond{k}</code> and <code>hconds{k}</code> for whether diagnosed, and if still has condition, respectively.</p>
+<p>Before jumping into individual conditions, we can start with the binary <code>health</code> variable as described in <a href="https://www.understandingsociety.ac.uk/documentation/mainstage/dataset-documentation/variable/health">this page</a>.</p>
+</section>
+</section>
+<section id="preparation" class="level1">
+<h1>Preparation</h1>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">load_all</span>(here<span class="sc">::</span><span class="fu">here</span>(<span class="st">'R'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stderr">
+<pre><code>ℹ Loading economic_inactivity</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.1.3     ✔ readr     2.1.4
+✔ forcats   1.0.0     ✔ stringr   1.5.0
+✔ ggplot2   3.4.2     ✔ tibble    3.2.1
+✔ lubridate 1.9.2     ✔ tidyr     1.3.0
+✔ purrr     1.0.2     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ readr::edition_get()   masks testthat::edition_get()
+✖ dplyr::filter()        masks stats::filter()
+✖ purrr::is_null()       masks testthat::is_null()
+✖ dplyr::lag()           masks stats::lag()
+✖ readr::local_edition() masks testthat::local_edition()
+✖ dplyr::matches()       masks tidyr::matches(), testthat::matches()
+ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># library(haven)</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co"># library(here)</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(nnet)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># devtools::load_all(here('R'))</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># base_dir_location &lt;- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co"># indresp_files &lt;- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>varnames <span class="ot">&lt;-</span>  <span class="fu">c</span>(</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">"jbstat"</span>, <span class="st">"dvage"</span>, <span class="st">"sex"</span>, <span class="st">"health"</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>vartypes <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">"labels"</span>, <span class="st">"values"</span>, <span class="st">"labels"</span>, <span class="st">"labels"</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>df_ind <span class="ot">&lt;-</span> <span class="fu">get_ind_level_vars_for_selected_waves</span>(<span class="at">varnames =</span> varnames, <span class="at">vartypes =</span> vartypes, <span class="at">waves =</span> letters[<span class="dv">1</span><span class="sc">:</span><span class="dv">11</span>])</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Clean the data </span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>df_ind_health_standardised <span class="ot">&lt;-</span> </span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>  df_ind <span class="sc">|&gt;</span> </span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>  <span class="co"># dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="fu">across</span>(dvage, <span class="cf">function</span>(x) <span class="fu">ifelse</span>(x <span class="sc">&lt;</span> <span class="dv">0</span>, <span class="cn">NA</span>, x))) <span class="sc">|&gt;</span> </span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>  <span class="co"># This renames dvage to age</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rename</span>(<span class="at">age =</span> dvage) <span class="sc">|&gt;</span> </span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(<span class="fu">between</span>(age, <span class="dv">16</span>, <span class="dv">64</span>))  <span class="sc">|&gt;</span> </span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>      <span class="at">lt_condition =</span> <span class="fu">case_when</span>(</span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>        health <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"No"</span>, <span class="st">"no"</span>) <span class="sc">~</span> <span class="cn">FALSE</span>,</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>        health <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Yes"</span>, <span class="st">"yes"</span>) <span class="sc">~</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>        <span class="cn">TRUE</span> <span class="sc">~</span> <span class="cn">NA_integer_</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> <span class="fu">as.logical</span>()</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(<span class="fu">complete.cases</span>(.)) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>First we want to make health a binary flag, then we want to see if it substantially improves on the penalised model fit (I suspect it does, as does Martin).</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>df_ind_health_standardised <span class="sc">|&gt;</span> <span class="fu">count</span>(health, lt_condition)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 3
+  health lt_condition      n
+  &lt;chr&gt;  &lt;lgl&gt;         &lt;int&gt;
+1 No     FALSE         82108
+2 Yes    TRUE          33400
+3 no     FALSE        134812
+4 yes    TRUE          54658</code></pre>
+</div>
+</div>
+<p>Now let’s build the baseline and lt_condition exposure models respectively, and see if the penalised fit is improved</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>mod_00 <span class="ot">&lt;-</span> </span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>),</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_health_standardised <span class="sc">|&gt;</span> </span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(lt_condition)) </span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  238 (198 variable)
+initial  value 593459.785440 
+iter  10 value 217065.229935
+iter  20 value 181835.205003
+iter  30 value 176173.701928
+iter  40 value 169054.073365
+iter  50 value 162622.177139
+iter  60 value 158455.088600
+iter  70 value 154995.077286
+iter  80 value 153202.192527
+iter  90 value 150817.463737
+iter 100 value 147188.232683
+final  value 147188.232683 
+stopped after 100 iterations</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>mod_01 <span class="ot">&lt;-</span> </span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>) <span class="sc">+</span> lt_condition,</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_health_standardised</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  245 (204 variable)
+initial  value 593459.785440 
+iter  10 value 191760.039731
+iter  20 value 184082.812596
+iter  30 value 178733.279863
+iter  40 value 158204.780390
+iter  50 value 152963.660689
+iter  60 value 150905.271984
+iter  70 value 145439.304192
+iter  80 value 143925.206548
+iter  90 value 143354.046183
+iter 100 value 142852.336483
+final  value 142852.336483 
+stopped after 100 iterations</code></pre>
+</div>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_00, mod_01)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        df      AIC
+mod_00 126 294628.5
+mod_01 132 285968.7</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(mod_00, mod_01)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        df      BIC
+mod_00 126 295967.6
+mod_01 132 287371.6</code></pre>
+</div>
+</div>
+<p>Both AIC and BIC suggest improvements in the model fit from including the health variable, even after accounting for general relationships with age, sex, last_status and so on.</p>
+<p>Let’s now estimate the following:</p>
+<ul>
+<li><p>Baseline: Everyone as observed</p></li>
+<li><p>Bad Counterfactual: Everyone as observed, but with lt_condition set to TRUE for everyone</p></li>
+<li><p>Good Counterfactual: everyone as observed, but with lt_condition set to FALSE for everyone</p></li>
+</ul>
+<p>As before, let’s use wave j</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>df_ind_ltcondition_wave_j_baseline <span class="ot">&lt;-</span> </span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>df_ind_health_standardised <span class="sc">|&gt;</span> </span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(lt_condition)) <span class="sc">|&gt;</span> </span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">'j'</span>)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>df_ind_ltcondition_wave_j_bad_counterfactual <span class="ot">&lt;-</span> </span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  df_ind_ltcondition_wave_j_baseline  <span class="sc">|&gt;</span> </span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">lt_condition =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>df_ind_ltcondition_wave_j_good_counterfactual <span class="ot">&lt;-</span> </span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>  df_ind_ltcondition_wave_j_baseline  <span class="sc">|&gt;</span> </span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">lt_condition =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now the preds</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>preds_baseline <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_01, <span class="at">newdata =</span> df_ind_ltcondition_wave_j_baseline, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>preds_bad_counterfactual <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_01, <span class="at">newdata =</span> df_ind_ltcondition_wave_j_bad_counterfactual, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>preds_good_counterfactual <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod_01, <span class="at">newdata =</span> df_ind_ltcondition_wave_j_good_counterfactual, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_baseline, <span class="dv">2</span>, sum),</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_bad_counterfactual, <span class="dv">2</span>, sum),</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_good_counterfactual, <span class="dv">2</span>, sum)</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"bad_counter"</span>, <span class="st">"good_counter"</span>)</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                              base bad_counter good_counter
+Employed                15433.4470  14906.9439   15711.7132
+Inactive care            1118.1323   1097.9184    1206.4523
+Inactive long term sick   939.9568   1247.9731     399.6194
+Inactive other            132.0335    143.0457     135.9464
+Inactive retired         1468.1179   1498.7436    1569.7351
+Inactive student         1266.1211   1300.9934    1266.5607
+Unemployed               1017.1914   1179.3818    1084.9730</code></pre>
+</div>
+</div>
+<p>Now to make these relative to baseline</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>sim_relative_change <span class="ot">&lt;-</span> <span class="fu">apply</span>(</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    predictions_summary_matrix, <span class="dv">1</span>, <span class="cf">function</span>(x) (<span class="dv">100</span> <span class="sc">*</span> x <span class="sc">/</span> x[<span class="dv">1</span>])</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">t</span>()</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>sim_relative_change</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                        base bad_counter good_counter
+Employed                 100    96.58856    101.80301
+Inactive care            100    98.19217    107.89889
+Inactive long term sick  100   132.76920     42.51465
+Inactive other           100   108.34049    102.96357
+Inactive retired         100   102.08605    106.92159
+Inactive student         100   102.75426    100.03472
+Unemployed               100   115.94493    106.66361</code></pre>
+</div>
+</div>
+<section id="taking-a-step-back" class="level2">
+<h2 class="anchored" data-anchor-id="taking-a-step-back">Taking a step back</h2>
+<p>Let’s think about how the demographic controls in the model predicting economic activity status tend to affect whether someone has a long-term condition or not.</p>
+<p>We can start with some simple descriptive stats, looking at how age and gender are related to TRUE and FALSE status for long-term conditions</p>
+<p>Let’s do this for a couple of waves, A and J:</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>df_ind_health_standardised <span class="sc">|&gt;</span> </span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(lt_condition)) <span class="sc">|&gt;</span> </span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">%in%</span>  <span class="fu">c</span>(<span class="st">'a'</span>, <span class="st">'j'</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(wave, sex, age) <span class="sc">|&gt;</span> </span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(lt_condition) <span class="sc">|&gt;</span> </span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> <span class="st">'lt_condition'</span>, <span class="at">values_from =</span> <span class="st">'n'</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">share =</span> <span class="st">`</span><span class="at">TRUE</span><span class="st">`</span><span class="sc">/</span> (<span class="st">`</span><span class="at">TRUE</span><span class="st">`</span> <span class="sc">+</span> <span class="st">`</span><span class="at">FALSE</span><span class="st">`</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x=</span>age, <span class="at">y =</span> share, <span class="at">group =</span> sex, <span class="at">colour =</span> sex)) <span class="sc">+</span> </span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>wave) <span class="sc">+</span> </span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span> </span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stat_smooth</span>() <span class="sc">+</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Age"</span>, </span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Share with self-reported long-term condition"</span>,</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Relationship between age and share with long-term condition in working age"</span>,</span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Waves a and j. Nonlinear smoother added to illustrate trend"</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using method = 'loess' and formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output-display">
+<p><img src="19_health_condition_effects_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>These look strongly correlated, especially monotonic, so we would expect the age-condition correlation to be positive, and stronger if using Spearman than Pearson.</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>df_ind_health_standardised <span class="sc">|&gt;</span> </span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(lt_condition)) <span class="sc">|&gt;</span> </span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">%in%</span>  <span class="fu">c</span>(<span class="st">'a'</span>, <span class="st">'j'</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(wave, sex, age) <span class="sc">|&gt;</span> </span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(lt_condition) <span class="sc">|&gt;</span> </span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> <span class="st">'lt_condition'</span>, <span class="at">values_from =</span> <span class="st">'n'</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">share =</span> <span class="st">`</span><span class="at">TRUE</span><span class="st">`</span><span class="sc">/</span> (<span class="st">`</span><span class="at">TRUE</span><span class="st">`</span> <span class="sc">+</span> <span class="st">`</span><span class="at">FALSE</span><span class="st">`</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="st">`</span><span class="at">FALSE</span><span class="st">`</span>, <span class="sc">-</span><span class="st">`</span><span class="at">TRUE</span><span class="st">`</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(wave, sex) <span class="sc">|&gt;</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">nest</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">cor_pear =</span> <span class="fu">map</span>(data, cor)) <span class="sc">|&gt;</span> </span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">cor_spear =</span> <span class="fu">map</span>(data, cor, <span class="at">method =</span> <span class="st">"spearman"</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">cor_between_pear =</span> <span class="fu">map_dbl</span>(cor_pear, <span class="cf">function</span>(x) x[<span class="dv">2</span>, <span class="dv">1</span>])) <span class="sc">|&gt;</span> </span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">cor_between_spear =</span> <span class="fu">map_dbl</span>(cor_spear, <span class="cf">function</span>(x) x[<span class="dv">2</span>, <span class="dv">1</span>])) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 7
+# Groups:   wave, sex [4]
+  wave  sex    data     cor_pear cor_spear cor_between_pear cor_between_spear
+  &lt;chr&gt; &lt;chr&gt;  &lt;list&gt;   &lt;list&gt;   &lt;list&gt;               &lt;dbl&gt;             &lt;dbl&gt;
+1 a     female &lt;tibble&gt; &lt;dbl[…]&gt; &lt;dbl[…]&gt;             0.969             0.966
+2 a     male   &lt;tibble&gt; &lt;dbl[…]&gt; &lt;dbl[…]&gt;             0.956             0.968
+3 j     female &lt;tibble&gt; &lt;dbl[…]&gt; &lt;dbl[…]&gt;             0.930             0.938
+4 j     male   &lt;tibble&gt; &lt;dbl[…]&gt; &lt;dbl[…]&gt;             0.927             0.931</code></pre>
+</div>
+</div>
+<p>This indicates that, no matter which wave we look at, or whether using Spearman or Pearson correlation, the correlation between age and probability of having a long-term health condition is very strong. This suggests that in a sense including LT health status is a bit like including the linear effect of age in the model twice, both as the linear component of the age polynomial, and as the highly correlated LT variable. However, for every age, is is plausible to imagine an individual both having or not having an LT condition, and this variable is binary not continuous. We also have first principles reasons for considering LT condition as likely to have an independent effect on labour market engagement.</p>
+<p>However we may have to think about the effects of including this model on the extent to which variables are correlated, model fit, and so on…</p>
+</section>
+<section id="sf-12-effects" class="level2">
+<h2 class="anchored" data-anchor-id="sf-12-effects">SF-12 effects</h2>
+<p>We have looked previously at the effects of improving SF-12 MH and PH components. However we did not do this using the new convenience functions, and predicting the status at T+1 on status at T, rather than status at time T on status at time T-1.</p>
+<p>Let’s do this now. (It should be much more straightforward with the new functions…)</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="co"># library(haven)</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="co"># library(here)</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(nnet)</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="co"># devtools::load_all(here('R'))</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a><span class="co"># base_dir_location &lt;- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a><span class="co"># indresp_files &lt;- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)</span></span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>varnames <span class="ot">&lt;-</span>  <span class="fu">c</span>(</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">"jbstat"</span>, <span class="st">"dvage"</span>, <span class="st">"sex"</span>, <span class="st">"sf12mcs_dv"</span>, <span class="st">"sf12pcs_dv"</span></span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a>vartypes <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>  <span class="st">"labels"</span>, <span class="st">"values"</span>, <span class="st">"labels"</span>, <span class="st">"values"</span>, <span class="st">"values"</span></span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-18"><a href="#cb25-18" aria-hidden="true" tabindex="-1"></a>df_ind <span class="ot">&lt;-</span> <span class="fu">get_ind_level_vars_for_selected_waves</span>(<span class="at">varnames =</span> varnames, <span class="at">vartypes =</span> vartypes, <span class="at">waves =</span> letters[<span class="dv">1</span><span class="sc">:</span><span class="dv">11</span>])</span>
+<span id="cb25-19"><a href="#cb25-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-20"><a href="#cb25-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Clean the data </span></span>
+<span id="cb25-21"><a href="#cb25-21" aria-hidden="true" tabindex="-1"></a>df_ind_sf12_standardised <span class="ot">&lt;-</span></span>
+<span id="cb25-22"><a href="#cb25-22" aria-hidden="true" tabindex="-1"></a>  df_ind <span class="sc">|&gt;</span></span>
+<span id="cb25-23"><a href="#cb25-23" aria-hidden="true" tabindex="-1"></a>  <span class="co"># dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values</span></span>
+<span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(dvage, sf12mcs_dv, sf12pcs_dv), <span class="cf">function</span>(x) <span class="fu">ifelse</span>(x <span class="sc">&lt;</span> <span class="dv">0</span>, <span class="cn">NA</span>, x))) <span class="sc">%&gt;%</span></span>
+<span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(<span class="fu">complete.cases</span>(.)) <span class="sc">|&gt;</span></span>
+<span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(sf12mcs_dv, sf12pcs_dv), standardise_scores)) <span class="sc">|&gt;</span> </span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>  <span class="co"># This renames dvage to age</span></span>
+<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rename</span>(<span class="at">age =</span> dvage) <span class="sc">|&gt;</span></span>
+<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(<span class="fu">between</span>(age, <span class="dv">16</span>, <span class="dv">64</span>))  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now we can do the modelling</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>mod_00 <span class="ot">&lt;-</span> </span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>),</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_sf12_standardised</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  238 (198 variable)
+initial  value 524979.315476 
+iter  10 value 192658.313860
+iter  20 value 176857.990038
+iter  30 value 169692.163769
+iter  40 value 151958.454105
+iter  50 value 144648.651059
+iter  60 value 138954.343056
+iter  70 value 134503.216911
+iter  80 value 131857.626953
+iter  90 value 129284.963603
+iter 100 value 126220.997935
+final  value 126220.997935 
+stopped after 100 iterations</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>mod_mh <span class="ot">&lt;-</span> </span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>) <span class="sc">+</span> sf12mcs_dv,</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_sf12_standardised  </span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  245 (204 variable)
+initial  value 524979.315476 
+iter  10 value 227651.498409
+iter  20 value 187964.127957
+iter  30 value 164909.851423
+iter  40 value 150589.133542
+iter  50 value 142051.692389
+iter  60 value 136317.379751
+iter  70 value 131696.791621
+iter  80 value 128730.374098
+iter  90 value 126660.827293
+iter 100 value 125872.284470
+final  value 125872.284470 
+stopped after 100 iterations</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>mod_ph <span class="ot">&lt;-</span> </span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>) <span class="sc">+</span> sf12pcs_dv,</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_sf12_standardised</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  245 (204 variable)
+initial  value 524979.315476 
+iter  10 value 295522.478952
+iter  20 value 251311.802727
+iter  30 value 229054.783763
+iter  40 value 203614.854579
+iter  50 value 180298.618876
+iter  60 value 167006.990297
+iter  70 value 151670.014083
+iter  80 value 143737.662233
+iter  90 value 134333.562627
+iter 100 value 130437.994491
+final  value 130437.994491 
+stopped after 100 iterations</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>mod_ph_mh <span class="ot">&lt;-</span> </span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>) <span class="sc">+</span> sf12pcs_dv <span class="sc">+</span> sf12mcs_dv,</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_sf12_standardised</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  252 (210 variable)
+initial  value 524979.315476 
+iter  10 value 292391.984113
+iter  20 value 249302.781087
+iter  30 value 224934.975540
+iter  40 value 206381.001816
+iter  50 value 180657.026049
+iter  60 value 166457.563661
+iter  70 value 150747.803670
+iter  80 value 141084.355957
+iter  90 value 133039.105700
+iter 100 value 126789.558225
+final  value 126789.558225 
+stopped after 100 iterations</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>mod_phmh <span class="ot">&lt;-</span> </span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>) <span class="sc">+</span> sf12pcs_dv<span class="sc">*</span>sf12mcs_dv,</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_sf12_standardised</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  259 (216 variable)
+initial  value 524979.315476 
+iter  10 value 169237.735483
+iter  20 value 158166.391355
+iter  30 value 154285.852770
+iter  40 value 150824.298753
+iter  50 value 140256.611829
+iter  60 value 131423.803331
+iter  70 value 127521.865768
+iter  80 value 124025.663244
+iter  90 value 122890.570793
+iter 100 value 122398.796020
+final  value 122398.796020 
+stopped after 100 iterations</code></pre>
+</div>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>  mod_00, mod_mh, mod_ph, mod_ph_mh, mod_phmh</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>           df      AIC
+mod_00    126 252694.0
+mod_mh    132 252008.6
+mod_ph    132 261140.0
+mod_ph_mh 138 253855.1
+mod_phmh  144 245085.6</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>  mod_00, mod_mh, mod_ph, mod_ph_mh, mod_phmh</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>           df      BIC
+mod_00    126 254017.7
+mod_mh    132 253395.3
+mod_ph    132 262526.7
+mod_ph_mh 138 255304.9
+mod_phmh  144 246598.4</code></pre>
+</div>
+</div>
+<p>This suggests the best model includes the interaction between mental health and physical health as well as independent effects.</p>
+<p>Because it seems difficult to imagine a scenario where there is an intervention that substantially improves MH without improving PH, or vice versa, and the best model is one that takes into account interactions between the terms, we can imagine improving ‘health’ by a substantial amount, where health is made up equally of both mental health and physical health.</p>
+<p>Previously we looked at the effect of changing MH by 1 standard unit without moving PH, or vice versa.<br>
+Instead we want to move this imagined quantity ‘health’ by 1 standard unit.</p>
+<p>A bit of painfully remembered Pythagoras’ Theorem tells us that, if we increase the PH and MH standardised scores by 1/ sqrt(2) units, then we will have increased this third ‘health’ variable by 1 standardised unit.</p>
+<p>So, that will be our counterfactual scenario… :)</p>
+<p>As before, let’s pick wave j</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>df_baseline <span class="ot">&lt;-</span> df_ind_sf12_standardised <span class="sc">|&gt;</span> </span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">'j'</span>)</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>df_counterfactual <span class="ot">&lt;-</span> </span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>  df_baseline <span class="sc">|&gt;</span> </span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">2</span><span class="sc">^-</span><span class="fl">0.5</span>,</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span><span class="sc">^-</span><span class="fl">0.5</span></span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now to run the predictions under these two scenarios</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>preds_df_baseline <span class="ot">&lt;-</span> </span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_phmh, <span class="at">newdata =</span> df_baseline, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>preds_df_counterfactual <span class="ot">&lt;-</span> </span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_phmh, <span class="at">newdata =</span> df_counterfactual, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_baseline, <span class="dv">2</span>, sum),</span>
+<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counterfactual, <span class="dv">2</span>, sum)</span>
+<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                              base counterfactual
+Employed                14668.7035     15031.3382
+Inactive care             999.8574       993.8456
+Inactive long term sick   858.4176       610.3561
+Inactive other            179.3380       169.2517
+Inactive retired         1419.6410      1446.5763
+Inactive student         1200.1157      1231.6557
+Unemployed                967.9269       810.9766</code></pre>
+</div>
+</div>
+<p>Now relative difference</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>sim_relative_change <span class="ot">&lt;-</span> <span class="fu">apply</span>(</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>    predictions_summary_matrix, <span class="dv">1</span>, <span class="cf">function</span>(x) (<span class="dv">100</span> <span class="sc">*</span> x <span class="sc">/</span> x[<span class="dv">1</span>])</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">t</span>()</span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>sim_relative_change</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                        base counterfactual
+Employed                 100      102.47217
+Inactive care            100       99.39873
+Inactive long term sick  100       71.10247
+Inactive other           100       94.37581
+Inactive retired         100      101.89733
+Inactive student         100      102.62808
+Unemployed               100       83.78490</code></pre>
+</div>
+</div>
+<p>We can also imagine scenarios where the overall health effect is the same, but more of it is realised either through improvements in MH OR PH.</p>
+<p>Some more Pythagoras suggests we can use 1/ sqrt(5) for the less effective intervention and 2 / sqrt(5) for the more effective intervention (I THINK….)</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>df_counterfactual_ph_bias <span class="ot">&lt;-</span> </span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>  df_baseline <span class="sc">|&gt;</span> </span>
+<span id="cb45-3"><a href="#cb45-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb45-4"><a href="#cb45-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">*</span> <span class="dv">5</span><span class="sc">^-</span><span class="fl">0.5</span>,</span>
+<span id="cb45-5"><a href="#cb45-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> <span class="dv">5</span><span class="sc">^-</span><span class="fl">0.5</span></span>
+<span id="cb45-6"><a href="#cb45-6" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb45-7"><a href="#cb45-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-8"><a href="#cb45-8" aria-hidden="true" tabindex="-1"></a>df_counterfactual_mh_bias <span class="ot">&lt;-</span> </span>
+<span id="cb45-9"><a href="#cb45-9" aria-hidden="true" tabindex="-1"></a>  df_baseline <span class="sc">|&gt;</span> </span>
+<span id="cb45-10"><a href="#cb45-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb45-11"><a href="#cb45-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> <span class="dv">5</span><span class="sc">^-</span><span class="fl">0.5</span>,</span>
+<span id="cb45-12"><a href="#cb45-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">*</span> <span class="dv">5</span><span class="sc">^-</span><span class="fl">0.5</span></span>
+<span id="cb45-13"><a href="#cb45-13" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb45-14"><a href="#cb45-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-15"><a href="#cb45-15" aria-hidden="true" tabindex="-1"></a>preds_df_counterfactual_ph_bias <span class="ot">&lt;-</span> </span>
+<span id="cb45-16"><a href="#cb45-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_phmh, <span class="at">newdata =</span> df_counterfactual_ph_bias, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb45-17"><a href="#cb45-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-18"><a href="#cb45-18" aria-hidden="true" tabindex="-1"></a>preds_df_counterfactual_mh_bias <span class="ot">&lt;-</span> </span>
+<span id="cb45-19"><a href="#cb45-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_phmh, <span class="at">newdata =</span> df_counterfactual_mh_bias, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb45-20"><a href="#cb45-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-21"><a href="#cb45-21" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb45-22"><a href="#cb45-22" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb45-23"><a href="#cb45-23" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb45-24"><a href="#cb45-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_baseline, <span class="dv">2</span>, sum),</span>
+<span id="cb45-25"><a href="#cb45-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counterfactual, <span class="dv">2</span>, sum),</span>
+<span id="cb45-26"><a href="#cb45-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counterfactual_ph_bias, <span class="dv">2</span>, sum),</span>
+<span id="cb45-27"><a href="#cb45-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counterfactual_mh_bias, <span class="dv">2</span>, sum)</span>
+<span id="cb45-28"><a href="#cb45-28" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb45-29"><a href="#cb45-29" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb45-30"><a href="#cb45-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb45-31"><a href="#cb45-31" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual_equal"</span>, <span class="st">"counterfactual_ph_bias"</span>, <span class="st">"counterfactual_mh_bias"</span>)</span>
+<span id="cb45-32"><a href="#cb45-32" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                              base counterfactual_equal counterfactual_ph_bias
+Employed                14668.7035           15031.3382             15043.2782
+Inactive care             999.8574             993.8456               982.4895
+Inactive long term sick   858.4176             610.3561               606.4441
+Inactive other            179.3380             169.2517               172.8057
+Inactive retired         1419.6410            1446.5763              1443.2559
+Inactive student         1200.1157            1231.6557              1234.5751
+Unemployed                967.9269             810.9766               811.1515
+                        counterfactual_mh_bias
+Employed                            14991.6734
+Inactive care                        1004.5392
+Inactive long term sick               637.6822
+Inactive other                        166.7759
+Inactive retired                     1446.9707
+Inactive student                     1219.9473
+Unemployed                            826.4115</code></pre>
+</div>
+</div>
+<p>Now to make relative again</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>sim_relative_change <span class="ot">&lt;-</span> <span class="fu">apply</span>(</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>    predictions_summary_matrix, <span class="dv">1</span>, <span class="cf">function</span>(x) (<span class="dv">100</span> <span class="sc">*</span> x <span class="sc">/</span> x[<span class="dv">1</span>])</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">t</span>()</span>
+<span id="cb47-5"><a href="#cb47-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-6"><a href="#cb47-6" aria-hidden="true" tabindex="-1"></a>sim_relative_change</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                        base counterfactual_equal counterfactual_ph_bias
+Employed                 100            102.47217              102.55356
+Inactive care            100             99.39873               98.26296
+Inactive long term sick  100             71.10247               70.64675
+Inactive other           100             94.37581               96.35754
+Inactive retired         100            101.89733              101.66344
+Inactive student         100            102.62808              102.87134
+Unemployed               100             83.78490               83.80298
+                        counterfactual_mh_bias
+Employed                             102.20176
+Inactive care                        100.46824
+Inactive long term sick               74.28578
+Inactive other                        92.99528
+Inactive retired                     101.92511
+Inactive student                     101.65248
+Unemployed                            85.37953</code></pre>
+</div>
+</div>
+<p>Subject to the algebra being correct, this shows the effect of a unit change on health, either biased towards MH or PH. It suggests that generally PH interventions seem to have slightly more impact than MH conditions for LT sick.</p>
+</section>
+<section id="specific-health-conditions" class="level2">
+<h2 class="anchored" data-anchor-id="specific-health-conditions">Specific health conditions</h2>
+<p>Let’s now look at some specific health conditions, and the effects of ‘curing’ people of these conditions on economic status</p>
+<p>These are the variables <code>{w}hcond{kk}</code> and <code>{w}_hconds{kk}</code> where w is wave, kk is the number of the health condition, and s seems to suggest ‘still’. i.e.&nbsp;hcond is whether ever diagnosed, and hconds is whether still has.</p>
+<p>Let’s pick 3 variables of particular interest</p>
+<ul>
+<li>17 - clinical depression</li>
+<li>16 - high blood pressure</li>
+<li>14 - diabetes</li>
+</ul>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>varnames <span class="ot">&lt;-</span>  <span class="fu">c</span>(</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"jbstat"</span>, <span class="st">"dvage"</span>, <span class="st">"sex"</span>, <span class="st">"hcond14"</span>, <span class="st">"hcond16"</span>, <span class="st">"hcond17"</span></span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a>vartypes <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>  <span class="st">"labels"</span>, <span class="st">"values"</span>, <span class="st">"labels"</span>, <span class="st">"labels"</span>, <span class="st">"labels"</span>, <span class="st">"labels"</span></span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-9"><a href="#cb49-9" aria-hidden="true" tabindex="-1"></a>df_ind_hconds <span class="ot">&lt;-</span> <span class="fu">get_ind_level_vars_for_selected_waves</span>(<span class="at">varnames =</span> varnames, <span class="at">vartypes =</span> vartypes, <span class="at">waves =</span> letters[<span class="dv">1</span><span class="sc">:</span><span class="dv">11</span>])</span>
+<span id="cb49-10"><a href="#cb49-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-11"><a href="#cb49-11" aria-hidden="true" tabindex="-1"></a>df_ind_hconds_tidied <span class="ot">&lt;-</span> </span>
+<span id="cb49-12"><a href="#cb49-12" aria-hidden="true" tabindex="-1"></a>  df_ind_hconds <span class="sc">|&gt;</span> </span>
+<span id="cb49-13"><a href="#cb49-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="fu">across</span>(dvage, <span class="cf">function</span>(x) <span class="fu">ifelse</span>(x <span class="sc">&lt;</span> <span class="dv">0</span>, <span class="cn">NA</span>, x))) <span class="sc">|&gt;</span> </span>
+<span id="cb49-14"><a href="#cb49-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="fu">across</span>(hcond14<span class="sc">:</span>hcond17, </span>
+<span id="cb49-15"><a href="#cb49-15" aria-hidden="true" tabindex="-1"></a>      <span class="cf">function</span>(x) {</span>
+<span id="cb49-16"><a href="#cb49-16" aria-hidden="true" tabindex="-1"></a>        <span class="fu">case_when</span>(</span>
+<span id="cb49-17"><a href="#cb49-17" aria-hidden="true" tabindex="-1"></a>          x <span class="sc">==</span> <span class="st">'Mentioned'</span> <span class="sc">~</span> <span class="cn">TRUE</span>,</span>
+<span id="cb49-18"><a href="#cb49-18" aria-hidden="true" tabindex="-1"></a>          x <span class="sc">==</span> <span class="st">'not mentioned'</span> <span class="sc">~</span> <span class="cn">FALSE</span>,</span>
+<span id="cb49-19"><a href="#cb49-19" aria-hidden="true" tabindex="-1"></a>          <span class="cn">TRUE</span> <span class="sc">~</span> <span class="cn">NA</span></span>
+<span id="cb49-20"><a href="#cb49-20" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb49-21"><a href="#cb49-21" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb49-22"><a href="#cb49-22" aria-hidden="true" tabindex="-1"></a>      )</span>
+<span id="cb49-23"><a href="#cb49-23" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb49-24"><a href="#cb49-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rename</span>(</span>
+<span id="cb49-25"><a href="#cb49-25" aria-hidden="true" tabindex="-1"></a>      <span class="at">has_diabetes  =</span>  hcond14,</span>
+<span id="cb49-26"><a href="#cb49-26" aria-hidden="true" tabindex="-1"></a>      <span class="at">has_highbloodpressure =</span> hcond16, </span>
+<span id="cb49-27"><a href="#cb49-27" aria-hidden="true" tabindex="-1"></a>      <span class="at">has_clinicaldepression =</span> hcond17,</span>
+<span id="cb49-28"><a href="#cb49-28" aria-hidden="true" tabindex="-1"></a>      <span class="at">age =</span> dvage</span>
+<span id="cb49-29"><a href="#cb49-29" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
+<span id="cb49-30"><a href="#cb49-30" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(<span class="fu">complete.cases</span>(.)) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now to run a series of models on this</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a>mod_00 <span class="ot">&lt;-</span> </span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>),</span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_hconds_tidied</span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  140 (114 variable)
+initial  value 87894.815523 
+iter  10 value 27778.212177
+iter  20 value 24611.456725
+iter  30 value 22616.014768
+iter  40 value 22236.173988
+iter  50 value 22118.540101
+iter  60 value 22093.846544
+iter  70 value 22085.133308
+iter  80 value 22059.984536
+iter  90 value 22020.453109
+iter 100 value 22013.526811
+final  value 22013.526811 
+stopped after 100 iterations</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>mod_diabetes <span class="ot">&lt;-</span> </span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>) <span class="sc">+</span> has_diabetes,</span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_hconds_tidied</span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  147 (120 variable)
+initial  value 87894.815523 
+iter  10 value 27860.326299
+iter  20 value 24660.233634
+iter  30 value 22674.840205
+iter  40 value 22363.914689
+iter  50 value 22119.270076
+iter  60 value 22080.053994
+iter  70 value 22068.419707
+iter  80 value 22055.988862
+iter  90 value 22006.920614
+iter 100 value 21996.952461
+final  value 21996.952461 
+stopped after 100 iterations</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>mod_depression <span class="ot">&lt;-</span> </span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>) <span class="sc">+</span> has_clinicaldepression,</span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_hconds_tidied</span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  147 (120 variable)
+initial  value 87894.815523 
+iter  10 value 28081.795772
+iter  20 value 25349.269957
+iter  30 value 22916.990253
+iter  40 value 22289.734322
+iter  50 value 22046.739443
+iter  60 value 22004.079197
+iter  70 value 21992.644137
+iter  80 value 21982.668212
+iter  90 value 21940.342487
+iter 100 value 21923.345128
+final  value 21923.345128 
+stopped after 100 iterations</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>mod_highbloodpressure <span class="ot">&lt;-</span> </span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a>  nnet<span class="sc">::</span><span class="fu">multinom</span>(</span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>    next_status <span class="sc">~</span> this_status <span class="sc">*</span> sex <span class="sc">+</span> splines<span class="sc">::</span><span class="fu">bs</span>(age, <span class="dv">5</span>) <span class="sc">+</span> has_highbloodpressure,</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">data =</span> df_ind_hconds_tidied</span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># weights:  147 (120 variable)
+initial  value 87894.815523 
+iter  10 value 27445.837110
+iter  20 value 25227.080322
+iter  30 value 23009.006453
+iter  40 value 22525.693540
+iter  50 value 22169.591097
+iter  60 value 22106.961183
+iter  70 value 22089.369689
+iter  80 value 22079.208647
+iter  90 value 22030.553144
+iter 100 value 22005.022973
+final  value 22005.022973 
+stopped after 100 iterations</code></pre>
+</div>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="fu">BIC</span>(mod_00, mod_diabetes, mod_depression, mod_highbloodpressure)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                       df      BIC
+mod_00                114 45248.92
+mod_diabetes          120 45280.08
+mod_depression        120 45132.87
+mod_highbloodpressure 120 45296.23</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AIC</span>(mod_00, mod_diabetes, mod_depression, mod_highbloodpressure)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                       df      AIC
+mod_00                114 44255.05
+mod_diabetes          120 44233.90
+mod_depression        120 44086.69
+mod_highbloodpressure 120 44250.05</code></pre>
+</div>
+</div>
+<section id="clinical-depression" class="level3">
+<h3 class="anchored" data-anchor-id="clinical-depression">Clinical Depression</h3>
+<p>This suggests the depression variable leads to improvements in the model efficiency over the base model whether using the AIC or more stringent BIC criterion. This suggests for now we should perhaps focus on modelling with this outcome, then looking at the other variables.</p>
+<p>Our last complete wave with these variables is i, not j as with earlier examples, but the principles are the same.</p>
+<p>Before running the model, however, perhaps we should look at the estimated effects of having depression over not having depression on either remaining employed or entering inactive - long-term sick status</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(</span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>  mod_depression, <span class="at">newdata =</span> <span class="fu">tibble</span>(</span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">age =</span> <span class="dv">50</span>, <span class="at">sex =</span> <span class="st">"male"</span>, <span class="at">this_status =</span> <span class="st">"Employed"</span>, <span class="at">has_clinicaldepression =</span> <span class="cn">TRUE</span></span>
+<span id="cb62-4"><a href="#cb62-4" aria-hidden="true" tabindex="-1"></a>  ), </span>
+<span id="cb62-5"><a href="#cb62-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">type =</span> <span class="st">"probs"</span></span>
+<span id="cb62-6"><a href="#cb62-6" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>               Employed           Inactive care Inactive long term sick 
+            0.898088234             0.001196977             0.028840122 
+         Inactive other        Inactive retired        Inactive student 
+            0.004096986             0.006706303             0.004203328 
+             Unemployed 
+            0.056868051 </code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="fu">predict</span>(</span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>  mod_depression, <span class="at">newdata =</span> <span class="fu">tibble</span>(</span>
+<span id="cb64-3"><a href="#cb64-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">age =</span> <span class="dv">50</span>, <span class="at">sex =</span> <span class="st">"male"</span>, <span class="at">this_status =</span> <span class="st">"Employed"</span>, <span class="at">has_clinicaldepression =</span> <span class="cn">FALSE</span></span>
+<span id="cb64-4"><a href="#cb64-4" aria-hidden="true" tabindex="-1"></a>  ), </span>
+<span id="cb64-5"><a href="#cb64-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">type =</span> <span class="st">"probs"</span></span>
+<span id="cb64-6"><a href="#cb64-6" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>               Employed           Inactive care Inactive long term sick 
+            0.949209074             0.001059819             0.007542763 
+         Inactive other        Inactive retired        Inactive student 
+            0.002028545             0.004590161             0.002445336 
+             Unemployed 
+            0.033124301 </code></pre>
+</div>
+</div>
+<p>This suggests that the depression variable has the expected direction of effects on someone employed ceasing to be employed, becoming long-term sick, becoming unemployed etc.</p>
+<p>It would be good to know what proportion of the sample has clinical depression in the last wave, wave i.</p>
+<p>Correction: because of hte complete.cases criterion the last wave with reasonable numbers is wave f…</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a>df_ind_hconds_tidied <span class="sc">|&gt;</span> </span>
+<span id="cb66-2"><a href="#cb66-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">'a'</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb66-3"><a href="#cb66-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(has_clinicaldepression) <span class="sc">|&gt;</span> </span>
+<span id="cb66-4"><a href="#cb66-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb66-5"><a href="#cb66-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">share =</span> n <span class="sc">/</span> <span class="fu">sum</span>(n)</span>
+<span id="cb66-6"><a href="#cb66-6" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 3
+  has_clinicaldepression     n  share
+  &lt;lgl&gt;                  &lt;int&gt;  &lt;dbl&gt;
+1 FALSE                  33910 0.932 
+2 TRUE                    2493 0.0685</code></pre>
+</div>
+</div>
+<p>Perhaps the first wave, a, would be better to use as it looks more representative of the prevalence of depression in the general population (around 7% not 3%)</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a>df_baseline <span class="ot">&lt;-</span></span>
+<span id="cb68-2"><a href="#cb68-2" aria-hidden="true" tabindex="-1"></a>  df_ind_hconds_tidied <span class="sc">|&gt;</span> </span>
+<span id="cb68-3"><a href="#cb68-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">'a'</span>)</span>
+<span id="cb68-4"><a href="#cb68-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-5"><a href="#cb68-5" aria-hidden="true" tabindex="-1"></a>df_counterfactual_depressaway <span class="ot">&lt;-</span></span>
+<span id="cb68-6"><a href="#cb68-6" aria-hidden="true" tabindex="-1"></a>  df_baseline <span class="sc">|&gt;</span> </span>
+<span id="cb68-7"><a href="#cb68-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">has_clinicaldepression =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb68-8"><a href="#cb68-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-9"><a href="#cb68-9" aria-hidden="true" tabindex="-1"></a>preds_df_baseline <span class="ot">&lt;-</span> </span>
+<span id="cb68-10"><a href="#cb68-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_depression, <span class="at">newdata =</span> df_baseline, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb68-11"><a href="#cb68-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-12"><a href="#cb68-12" aria-hidden="true" tabindex="-1"></a>preds_df_counter <span class="ot">&lt;-</span> </span>
+<span id="cb68-13"><a href="#cb68-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_depression, <span class="at">newdata =</span> df_counterfactual_depressaway, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb68-14"><a href="#cb68-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-15"><a href="#cb68-15" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb68-16"><a href="#cb68-16" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb68-17"><a href="#cb68-17" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb68-18"><a href="#cb68-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_baseline, <span class="dv">2</span>, sum),</span>
+<span id="cb68-19"><a href="#cb68-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter, <span class="dv">2</span>, sum)</span>
+<span id="cb68-20"><a href="#cb68-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb68-21"><a href="#cb68-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb68-22"><a href="#cb68-22" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb68-23"><a href="#cb68-23" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                             base counterfactual
+Employed                19841.939     19958.9941
+Inactive care            2591.853      2638.2983
+Inactive long term sick  1449.307      1303.6008
+Inactive other            163.911       158.0371
+Inactive retired         8449.443      8464.0149
+Inactive student         1890.389      1879.3117
+Unemployed               2016.159      2000.7431</code></pre>
+</div>
+</div>
+<p>Now relative terms</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a>sim_relative_change <span class="ot">&lt;-</span> <span class="fu">apply</span>(</span>
+<span id="cb70-2"><a href="#cb70-2" aria-hidden="true" tabindex="-1"></a>    predictions_summary_matrix, <span class="dv">1</span>, <span class="cf">function</span>(x) (<span class="dv">100</span> <span class="sc">*</span> x <span class="sc">/</span> x[<span class="dv">1</span>])</span>
+<span id="cb70-3"><a href="#cb70-3" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb70-4"><a href="#cb70-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">t</span>()</span>
+<span id="cb70-5"><a href="#cb70-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb70-6"><a href="#cb70-6" aria-hidden="true" tabindex="-1"></a>sim_relative_change</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                        base counterfactual
+Employed                 100      100.58994
+Inactive care            100      101.79199
+Inactive long term sick  100       89.94649
+Inactive other           100       96.41640
+Inactive retired         100      100.17246
+Inactive student         100       99.41404
+Unemployed               100       99.23539</code></pre>
+</div>
+</div>
+<p>This suggests that, if everyone who reported clinical depression in wave a (the wave where it was asked of most of the sample(?)), instead did not have this diagnosis, then the long-term sickness population would reduce by around 10%. Given the proportion reporting a clinical depression diagnosis in the first wave was around 7%, this indicates over-representation of those with clinical depression in the long-term sick inactive subpopulation, and that within this group treating (‘curing’/‘de-diagnosing’) the depression would have a very large impact.</p>
+<p>Let’s briefly look at the proportions with clinical depression in this first wave by economic status</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb72"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a> df_ind_hconds_tidied <span class="sc">|&gt;</span> </span>
+<span id="cb72-2"><a href="#cb72-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">'a'</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb72-3"><a href="#cb72-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(this_status, has_clinicaldepression) <span class="sc">|&gt;</span> </span>
+<span id="cb72-4"><a href="#cb72-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(this_status) <span class="sc">|&gt;</span> </span>
+<span id="cb72-5"><a href="#cb72-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb72-6"><a href="#cb72-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">share =</span> n <span class="sc">/</span> <span class="fu">sum</span>(n)</span>
+<span id="cb72-7"><a href="#cb72-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb72-8"><a href="#cb72-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(has_clinicaldepression <span class="sc">==</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 7 × 4
+# Groups:   this_status [7]
+  this_status             has_clinicaldepression     n  share
+  &lt;chr&gt;                   &lt;lgl&gt;                  &lt;int&gt;  &lt;dbl&gt;
+1 Employed                TRUE                    1004 0.0508
+2 Inactive care           TRUE                     245 0.0926
+3 Inactive long term sick TRUE                     486 0.348 
+4 Inactive other          TRUE                      25 0.114 
+5 Inactive retired        TRUE                     427 0.0538
+6 Inactive student        TRUE                      65 0.0286
+7 Unemployed              TRUE                     241 0.111 </code></pre>
+</div>
+</div>
+</section>
+<section id="diabetes" class="level3">
+<h3 class="anchored" data-anchor-id="diabetes">Diabetes</h3>
+<p>Let’s compare with a physical illness that is highly prevalent, such as diabetes</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb74"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a> df_ind_hconds_tidied <span class="sc">|&gt;</span> </span>
+<span id="cb74-2"><a href="#cb74-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">'a'</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb74-3"><a href="#cb74-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(this_status, has_diabetes) <span class="sc">|&gt;</span> </span>
+<span id="cb74-4"><a href="#cb74-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(this_status) <span class="sc">|&gt;</span> </span>
+<span id="cb74-5"><a href="#cb74-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb74-6"><a href="#cb74-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">share =</span> n <span class="sc">/</span> <span class="fu">sum</span>(n)</span>
+<span id="cb74-7"><a href="#cb74-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb74-8"><a href="#cb74-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(has_diabetes <span class="sc">==</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 7 × 4
+# Groups:   this_status [7]
+  this_status             has_diabetes     n   share
+  &lt;chr&gt;                   &lt;lgl&gt;        &lt;int&gt;   &lt;dbl&gt;
+1 Employed                TRUE           652 0.0330 
+2 Inactive care           TRUE           156 0.0589 
+3 Inactive long term sick TRUE           235 0.168  
+4 Inactive other          TRUE            12 0.0545 
+5 Inactive retired        TRUE          1078 0.136  
+6 Inactive student        TRUE            20 0.00881
+7 Unemployed              TRUE           108 0.0496 </code></pre>
+</div>
+</div>
+<p>What about the estimated effects of diabetes given the equivalent wave a composition:</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb76"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a>df_baseline <span class="ot">&lt;-</span></span>
+<span id="cb76-2"><a href="#cb76-2" aria-hidden="true" tabindex="-1"></a>  df_ind_hconds_tidied <span class="sc">|&gt;</span> </span>
+<span id="cb76-3"><a href="#cb76-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">'a'</span>)</span>
+<span id="cb76-4"><a href="#cb76-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb76-5"><a href="#cb76-5" aria-hidden="true" tabindex="-1"></a>df_counterfactual_diabetesaway <span class="ot">&lt;-</span></span>
+<span id="cb76-6"><a href="#cb76-6" aria-hidden="true" tabindex="-1"></a>  df_baseline <span class="sc">|&gt;</span> </span>
+<span id="cb76-7"><a href="#cb76-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">has_diabetes =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb76-8"><a href="#cb76-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb76-9"><a href="#cb76-9" aria-hidden="true" tabindex="-1"></a>preds_df_baseline <span class="ot">&lt;-</span> </span>
+<span id="cb76-10"><a href="#cb76-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_diabetes, <span class="at">newdata =</span> df_baseline, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb76-11"><a href="#cb76-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb76-12"><a href="#cb76-12" aria-hidden="true" tabindex="-1"></a>preds_df_counter <span class="ot">&lt;-</span> </span>
+<span id="cb76-13"><a href="#cb76-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_diabetes, <span class="at">newdata =</span> df_counterfactual_diabetesaway, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb76-14"><a href="#cb76-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb76-15"><a href="#cb76-15" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb76-16"><a href="#cb76-16" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb76-17"><a href="#cb76-17" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb76-18"><a href="#cb76-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_baseline, <span class="dv">2</span>, sum),</span>
+<span id="cb76-19"><a href="#cb76-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter, <span class="dv">2</span>, sum)</span>
+<span id="cb76-20"><a href="#cb76-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb76-21"><a href="#cb76-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb76-22"><a href="#cb76-22" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb76-23"><a href="#cb76-23" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                              base counterfactual
+Employed                19850.3040     19880.0583
+Inactive care            2593.3798      2558.1987
+Inactive long term sick  1438.2470      1415.5528
+Inactive other            164.6762       169.6738
+Inactive retired         8448.5706      8470.6175
+Inactive student         1890.8146      1894.0626
+Unemployed               2017.0078      2014.8363</code></pre>
+</div>
+</div>
+<p>And in relative terms</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb78"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a>sim_relative_change <span class="ot">&lt;-</span> <span class="fu">apply</span>(</span>
+<span id="cb78-2"><a href="#cb78-2" aria-hidden="true" tabindex="-1"></a>    predictions_summary_matrix, <span class="dv">1</span>, <span class="cf">function</span>(x) (<span class="dv">100</span> <span class="sc">*</span> x <span class="sc">/</span> x[<span class="dv">1</span>])</span>
+<span id="cb78-3"><a href="#cb78-3" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb78-4"><a href="#cb78-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">t</span>()</span>
+<span id="cb78-5"><a href="#cb78-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb78-6"><a href="#cb78-6" aria-hidden="true" tabindex="-1"></a>sim_relative_change</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                        base counterfactual
+Employed                 100      100.14989
+Inactive care            100       98.64343
+Inactive long term sick  100       98.42209
+Inactive other           100      103.03482
+Inactive retired         100      100.26095
+Inactive student         100      100.17178
+Unemployed               100       99.89234</code></pre>
+</div>
+</div>
+<p>This suggests the complete mitigation of Diabetes would have some effects on working age economic participation, but these would be modest as compared with fully mitigating clinical depression.</p>
+</section>
+<section id="high-blood-pressure" class="level3">
+<h3 class="anchored" data-anchor-id="high-blood-pressure">High blood pressure</h3>
+<p>Unlike the other flags, high blood pressure is associated with a reduction in penalised model fit. However we might want to look at this in any case</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb80"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a>df_baseline <span class="ot">&lt;-</span></span>
+<span id="cb80-2"><a href="#cb80-2" aria-hidden="true" tabindex="-1"></a>  df_ind_hconds_tidied <span class="sc">|&gt;</span> </span>
+<span id="cb80-3"><a href="#cb80-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">'a'</span>)</span>
+<span id="cb80-4"><a href="#cb80-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-5"><a href="#cb80-5" aria-hidden="true" tabindex="-1"></a>df_counterfactual_tensesaway <span class="ot">&lt;-</span></span>
+<span id="cb80-6"><a href="#cb80-6" aria-hidden="true" tabindex="-1"></a>  df_baseline <span class="sc">|&gt;</span> </span>
+<span id="cb80-7"><a href="#cb80-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">has_highbloodpressure =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb80-8"><a href="#cb80-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-9"><a href="#cb80-9" aria-hidden="true" tabindex="-1"></a>preds_df_baseline <span class="ot">&lt;-</span> </span>
+<span id="cb80-10"><a href="#cb80-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_diabetes, <span class="at">newdata =</span> df_baseline, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb80-11"><a href="#cb80-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-12"><a href="#cb80-12" aria-hidden="true" tabindex="-1"></a>preds_df_counter <span class="ot">&lt;-</span> </span>
+<span id="cb80-13"><a href="#cb80-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_diabetes, <span class="at">newdata =</span> df_counterfactual_diabetesaway, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb80-14"><a href="#cb80-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-15"><a href="#cb80-15" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb80-16"><a href="#cb80-16" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb80-17"><a href="#cb80-17" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb80-18"><a href="#cb80-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_baseline, <span class="dv">2</span>, sum),</span>
+<span id="cb80-19"><a href="#cb80-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter, <span class="dv">2</span>, sum)</span>
+<span id="cb80-20"><a href="#cb80-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb80-21"><a href="#cb80-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb80-22"><a href="#cb80-22" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb80-23"><a href="#cb80-23" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                              base counterfactual
+Employed                19850.3040     19880.0583
+Inactive care            2593.3798      2558.1987
+Inactive long term sick  1438.2470      1415.5528
+Inactive other            164.6762       169.6738
+Inactive retired         8448.5706      8470.6175
+Inactive student         1890.8146      1894.0626
+Unemployed               2017.0078      2014.8363</code></pre>
+</div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb82"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a>sim_relative_change <span class="ot">&lt;-</span> <span class="fu">apply</span>(</span>
+<span id="cb82-2"><a href="#cb82-2" aria-hidden="true" tabindex="-1"></a>    predictions_summary_matrix, <span class="dv">1</span>, <span class="cf">function</span>(x) (<span class="dv">100</span> <span class="sc">*</span> x <span class="sc">/</span> x[<span class="dv">1</span>])</span>
+<span id="cb82-3"><a href="#cb82-3" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb82-4"><a href="#cb82-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">t</span>()</span>
+<span id="cb82-5"><a href="#cb82-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb82-6"><a href="#cb82-6" aria-hidden="true" tabindex="-1"></a>sim_relative_change</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                        base counterfactual
+Employed                 100      100.14989
+Inactive care            100       98.64343
+Inactive long term sick  100       98.42209
+Inactive other           100      103.03482
+Inactive retired         100      100.26095
+Inactive student         100      100.17178
+Unemployed               100       99.89234</code></pre>
+</div>
+</div>
+<p>So, this might lead to a slight fall in inactivity due to long-term sickness, but not a substantial change.</p>
+</section>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
