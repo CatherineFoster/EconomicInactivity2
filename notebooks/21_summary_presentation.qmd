@@ -234,11 +234,13 @@ scens_combined <-
     mutate(scenario = ifelse(scenario == "counterfactual", "counter_health", scenario)) |> 
     bind_rows(
       scen_base_qual |> 
-    mutate(scenario = ifelse(scenario == "counterfactual", "counter_quals", scenario))
+    mutate(scenario = ifelse(scenario == "counterfactual", "counter_quals", scenario)) |> 
+      filter(scenario != "baseline")
     ) |> 
     bind_rows(
       scen_base_both |> 
-        mutate(scenario = ifelse(scenario == "counterfactual", "counter_both", scenario))
+        mutate(scenario = ifelse(scenario == "counterfactual", "counter_both", scenario)) |> 
+        filter(scenario != "baseline")
     )
   
 ```
@@ -269,6 +271,47 @@ scens_combined |>
   mutate(
     state = ordered(state, levels = c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other"))
   ) |> 
-  arrange(state)
+  arrange(state) |> 
+  select(-output)
+```
+## Absolute changes, as a table
+
+```{r}
+scens_combined |> 
+  filter(output == "absolute") |> 
+  select(-output) |> 
+  pivot_wider(names_from = "scenario", values_from = 'value')
+
+```
+## Absolute, as a graph
+
+```{r}
+scens_combined |> 
+  filter(output == "absolute") |> 
+  select(-output) |> 
+  ggplot(aes(x = state, y = value, group = scenario, fill = scenario)) + 
+  geom_col(position = "dodge") +
+  coord_flip()
 ```
 
+## Table of changes in proportions under each scenario 
+
+Let's see how the distribution of persons in each state is estimated to change 
+
+```{r}
+scens_combined |> 
+  filter(output == "absolute") |> 
+  select(-output) |> 
+  group_by(scenario) |> 
+  mutate(share = value / sum(value)) |> 
+  mutate(share = round(100 * share, 2)) |> 
+  select(-value) |> 
+  pivot_wider(names_from = 'scenario', values_from = 'share')
+```
+
+## Summary of tables
+
+- Improving general health estimated to reduce size of inactive long-term sick population by more than increasing qualifications
+- After health, the additional qualifications effect on inactive LT sick are estimated to be somewhat marginal
+- Both improved health and improved qualifications are associated with higher proportions of the population who are students, and thus economically inactive for this reason. 
+- Improved health is expected to increase the size of the employed population by around 2.4% 
