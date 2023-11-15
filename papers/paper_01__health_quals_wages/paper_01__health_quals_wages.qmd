@@ -1,0 +1,789 @@
+---
+title: "Assessing the impact of health, qualifications and wages on economic inactivity"
+author: 
+  - "Jon Minton"
+  - "Martin Taulbut"
+  - "Neil Chalmers"
+  - "Debs Shipton"
+format: 
+  wordcount-html:
+    warning: false
+    code-fold: true
+    message: false
+    code-summary: "Show R Code"
+  docx: 
+    warning: false
+    echo: false
+    message: false
+editor: visual
+prefer-html: true
+bibliography: references.bib
+---
+
+```{r}
+
+devtools::load_all(here::here('R'))
+
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+library(tidyverse)
+library(nnet)
+library(knitr)
+library(kableExtra)
+library(diagram)
+
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", 'hiqual_dv', "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "labels", "values", "values"
+  )
+
+```
+
+```{r}
+#| cache: true
+
+
+ind_data <- get_ind_level_vars_for_selected_waves(
+  varnames = varnames, vartypes = extract_what
+)
+
+ind_data_standardised <- 
+  ind_data |> 
+  mutate(
+    qual_group = case_when(
+      hiqual_dv %in% c("No qual", "No qualification") ~ "None",
+      hiqual_dv %in% c("GCSE etc", "A level etc", "A-level etc", "Other qual", "Other qualification", "Other higher") ~ "Some", 
+      hiqual_dv %in% c("Degree", "Other higher degree") ~ "Degree",
+      TRUE ~ NA_character_
+    )
+  ) |> 
+  mutate(
+    qual_group = ordered(qual_group, levels = c("None", "Some", "Degree"))
+  ) |> 
+  rename(age = dvage) |> 
+  mutate(across(c(age, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  filter(between(age, 25, 60)) %>%  #As highest qualification starting at 25 not 16 years of age  |> 
+  filter(complete.cases(.))
+
+
+```
+
+# Abstract
+
+**Introduction** The UK has comparatively high rates of working age economic inactivity (EI) due to poor health.
+
+**Methods** This paper uses a novel modelling framework, and data from the UKHLS, to estimate how much of this health-related EI (HREI) may be 'due to' i) poor general health directly, or due to two types of socioeconomic driver of health and inactivity: ii) low qualifications; and iii) low wages.
+
+**Findings** Considering each driver independently, poor general health may explain up to [UNKNOWN%]{style="color:red"} of HREI, whereas low wages may explain up to [UNKNOWN%]{style="color:red"}, and low qualifications may explain up to [UNKNOWN%]{style="color:red"}.
+
+**Discussion** [Write something insightful here]{style="color:red"}
+
+# [Notes/Todos]{style="color:blue"}
+
+<ul style="color:blue; font-style:italic;">
+
+-   [X] Adapt health code and run
+-   [ ] Adapt quals code and run
+-   [ ] Create wages code and run
+    -   [ ] Adapt hhincome code
+
+</ul>
+
+# Key Findings/Contributions
+
+
+
+# Introduction
+
+
+
+# Methods
+
+## The data
+
+The data used to fit the models are all valid observations from wave a to j of the UKHLS. By valid we mean all predictor and response variables are included.
+
+## The model
+
+The model uses multinomial logistic regression to predict the economic (in)activity state in the next time period (approximately one year) based on the economic activity state in the current time period, the individual's age, sex, and those specific drivers of interest.
+
+## Foundational Model
+
+The foundational model specification aims to adequately control for the effects that age, current state and sex have on transition probabilities between states. To recap, we know the following:
+
+-   That state at time T influences state at time T+1, including that there is path dependence.
+-   That transition propensities between states vary systematically by sex (in particular regarding the long-term carer state)
+-   That transitions between states vary by age, but in different ways for different states, and in ways that aren't linear with age.
+
+The foundational model specification operationalises the above knowledge as follows:
+
+$$
+S_{T+1}  \sim multinom(S_T \beta_S + male\beta_m + (S_T * male) \beta_I + bspline(x, 5)\beta_X)  
+$$
+
+i.e. that next state $S_{T+1}$ is predicted on the current state $S_T$, sex (the $male$ term so female is the reference category), the interaction of current state and sex $S_T * male$ , and a flexible function of age $bspline(x, 5)$ .
+
+The model is implemented using the multinom function of the nnet package as follows
+
+``` r
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    ...
+  )
+```
+
+```{r}
+#| message: false
+#| warning: false
+#| echo: true
+#| include: false
+#| cache: true
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = ind_data_standardised
+  )
+
+```
+
+## Exposure Models
+
+Exposure models extend the foundation with one or more additional variables. These variables are the exposures of interest, and for which we want to estimate the influence on economic activity levels and flows.
+
+For a single exposure $Z$, the equation simply extends the foundational model specification as follows:
+
+$$
+S_{T+1}  \sim multinom(S_T \beta_S + male\beta_m + (S_T * male) \beta_I + bspline(x, 5)\beta_X + Z \beta_Z)  
+$$
+
+Which is specified in R as follows
+
+``` r
+nnet::multinom(
+  next_status ~ this_status * sex + splines::bs(age, 5) + Z,
+  ...
+)
+```
+
+For two exposures, $Z_1$ and $Z_2$, this simply becomes
+
+``` r
+nnet::multinom(
+  next_status ~ this_status * sex + splines::bs(age, 5) + Z1 + Z2,
+  ...
+)
+```
+
+and so on.
+
+In some cases (as with estimating the effects of health as an exposure) interaction terms are included between exposure variables as well. The decision about whether to include such interactions is made based on both our understanding of the extent to which factors are likely to interact in practice, and the penalised model fit as assessed using metrics like AIC and BIC.
+
+
+## The simulation
+
+We simulate three different population groups:
+
+-   Populations of various representative working ages, male and female, whom we all assume start off as in employment
+-   Populations of various representative working ages, male and female, who all start off as unemployed
+-   A representative population of varying ages, sexes, current statuses, and driver states
+
+# Results
+
+## Descriptive Results
+
+
+### Simplified graphical transition between three states 
+
+- [ ] Show going between employed, unemployed and inactive as three node graph
+
+### Observed transitions between states
+
+Within each wave, people are observed in each of the two economically active states, and each of the five economically inactive states. As the UKHLS are longitudinal, they can be used to calculate the proportion of those observed in each state one wave who then either stay in that state the following wave, or migrate to any of the other six states. @tbl-transitions_overall shows these proportions as a single table. The rows in the first column indicate the state someone was observed for wave T, and the each of the states on the columns to the right indicate a possible state they could be observed the next wave (wave T+1). The order of the states is the same across rows and columns, meaning that the cells along the top-left to bottom-right diagonal indicate the proportions of those observed to stay in the same state from one wave to the next.
+
+```{r}
+#| label: tbl-transitions_overall
+#| tbl-cap: Observed transition probabilities between economic (in)activity states between years. Rows indicate state transitioning from
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+ind_data_standardised |> 
+  count(this_status, next_status) |> 
+  group_by(this_status) |> 
+  mutate(
+    proportion = n / sum(n)
+  ) |>
+  select(-n) |> 
+  mutate(
+    this_status = factor(this_status, 
+                         ordered = TRUE, 
+                         levels = econ_cat_levels
+                         )
+  ) |> 
+  arrange(this_status) |> 
+  pivot_wider(
+    names_from = "next_status",
+    values_from = "proportion"
+  ) |> 
+  select(c("this_status", econ_cat_levels)) |> 
+  rename(` `=this_status) |> 
+  knitr::kable(digits = 3,) |> 
+  kableExtra::add_header_above(header = c( " "=1, "Active" = 2, "Inactive" = 5)) |> 
+  kableExtra::pack_rows("Active", 1, 2) |> 
+  kableExtra::pack_rows("Inactive", 3, 7)
+  
+
+```
+
+Within @tbl-transitions_overall the diagonal cell values show that some economic (in)activity states are more persistent than others. For example, the overall probability of someone who is employed one wave remaining employed the next wave is over 95%, the proportion remaining retired is almost 83%. Conversely, the probability of someone unemployed remaining unemployed between waves is 43%, which is still higher than the probability of moving to employment (31%). From unemployment, there is also around a one-in-ten chance of moving either to inactive care, or to long-term sickness, but less than a 1% probability of becoming a full-time student in the next wave.
+
+For those states other than employment, the conditional probability of moving into employment is worth comparing. We can see that the conditional probability of moving from full time study (third row) to employment (first column) is 37%, which is higher than the 31% conditional probability of moving from unemployment (second row) to employment (first column). In this sense, the state of being a full-time student is *closer* to employment than the state of being unemployed, even though unemployment is considered economic activity whereas full time study is considered economic inactivity. The high level of heterogeneity between economically inactive states is why it is so important not to collapse these states into a single category.
+
+The transition rates observed vary markedly by sex, as shown in @tbl-transition-bysex.
+
+```{r}
+#| label: tbl-transition-bysex
+#| tbl-cap: "Transition probabilities by sex"
+#| tbl-subcap: 
+#|   - "Females"
+#|   - "Males"
+#| layout-ncol: 2
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+txfemale <- 
+  ind_data_standardised |> 
+    filter(sex == "female") |> 
+    count(this_status, next_status) |> 
+    group_by(this_status) |> 
+    mutate(
+      proportion = n / sum(n)
+    ) |>
+    select(-n)  |> 
+    mutate(
+      this_status = factor(this_status, 
+                           ordered = TRUE, 
+                           levels = econ_cat_levels
+                           )
+    ) |> 
+    arrange(this_status) |> 
+    pivot_wider(
+      names_from = "next_status",
+      values_from = "proportion"
+    ) |> 
+    select(c("this_status", econ_cat_levels)) |> 
+    rename(` `=this_status) |> 
+    knitr::kable(digits = 3,) |> 
+    kableExtra::add_header_above(header = c( " "=1, "Active" = 2, "Inactive" = 5)) |> 
+    kableExtra::pack_rows("Active", 1, 2) |> 
+    kableExtra::pack_rows("Inactive", 3, 7)
+
+txmale <- 
+  ind_data_standardised |> 
+    filter(sex == "male") |> 
+    count(this_status, next_status) |> 
+    group_by(this_status) |> 
+    mutate(
+      proportion = n / sum(n)
+    ) |>
+    select(-n)  |> 
+    mutate(
+      this_status = factor(this_status, 
+                           ordered = TRUE, 
+                           levels = econ_cat_levels
+                           )
+    ) |> 
+    arrange(this_status) |> 
+    pivot_wider(
+      names_from = "next_status",
+      values_from = "proportion"
+    ) |> 
+    select(c("this_status", econ_cat_levels)) |> 
+    rename(` `=this_status) |> 
+    knitr::kable(digits = 3,) |> 
+    kableExtra::add_header_above(header = c( " "=1, "Active" = 2, "Inactive" = 5)) |> 
+    kableExtra::pack_rows("Active", 1, 2) |> 
+    kableExtra::pack_rows("Inactive", 3, 7)
+
+txfemale
+txmale
+```
+
+The main differences by sex shown in @tbl-transition-bysex relates to the full-time care state. For working age females who are unemployed, 20% transition into full-time care the next wave; for males who are unemployed, the rate of transition to full-time care is 3%. The rates of remaining in or moving out of full-time care also differ by sex. For females, the probability of remaining in full-time care between waves is 71%; for males, 55%. Rates transition from full-time care to either long-term sickness or employment are similar by sex, whereas rates of transition from long-term sickness to unemployment (and so job-seeking) are around twice as high for males (16%) than females (8%).
+
+There are also marked differences in transition probabilities by age group, as illustrated in @tbl-transition-byage, which compares transition probabilities between states for persons aged between 25 and 45 years of age inclusive (@tbl-transition-byage-1), with those of working age aged over 45 years of age (@tbl-transition-byage-2)
+
+```{r}
+#| label: tbl-transition-byage
+#| tbl-cap: "Transition probabilities by broad age group"
+#| tbl-subcap: 
+#|   - "Younger (25-45 years of age)"
+#|   - "Older (56 years of age and above)"
+#| layout-ncol: 2
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+txyounger <- 
+  ind_data_standardised |> 
+    filter(between(age, 25, 45)) |> 
+    count(this_status, next_status) |> 
+    group_by(this_status) |> 
+    mutate(
+      proportion = n / sum(n)
+    ) |>
+    select(-n)  |> 
+    mutate(
+      this_status = factor(this_status, 
+                           ordered = TRUE, 
+                           levels = econ_cat_levels
+                           )
+    ) |> 
+    arrange(this_status) |> 
+    pivot_wider(
+      names_from = "next_status",
+      values_from = "proportion"
+    ) |> 
+    select(c("this_status", econ_cat_levels)) |> 
+    rename(` `=this_status) |> 
+    knitr::kable(digits = 3,) |> 
+    kableExtra::add_header_above(header = c( " "=1, "Active" = 2, "Inactive" = 5)) |> 
+    kableExtra::pack_rows("Active", 1, 2) |> 
+    kableExtra::pack_rows("Inactive", 3, 7)
+
+txolder <- 
+  ind_data_standardised |> 
+    filter(age > 45) |> 
+    count(this_status, next_status) |> 
+    group_by(this_status) |> 
+    mutate(
+      proportion = n / sum(n)
+    ) |>
+    select(-n)  |> 
+    mutate(
+      this_status = factor(this_status, 
+                           ordered = TRUE, 
+                           levels = econ_cat_levels
+                           )
+    ) |> 
+    arrange(this_status) |> 
+    pivot_wider(
+      names_from = "next_status",
+      values_from = "proportion"
+    ) |> 
+    select(c("this_status", econ_cat_levels)) |> 
+    rename(` `=this_status) |> 
+    knitr::kable(digits = 3,) |> 
+    kableExtra::add_header_above(header = c( " "=1, "Active" = 2, "Inactive" = 5)) |> 
+    kableExtra::pack_rows("Active", 1, 2) |> 
+    kableExtra::pack_rows("Inactive", 3, 7)
+
+txyounger
+txolder
+```
+
+As might be expected, the rates of transition into retirement are considerably higher in older ages (@tbl-transition-byage-2) than younger ages (@tbl-transition-byage-1), and the probabilities of someone remaining retired almost twice as high in older than younger ages. Rates of employment are somewhat higher in the younger ages than higher ages, and so are the probabilities of moving from unemployment to employment. Rates of transition into full-time care are somewhat higher in the younger age category.
+
+The two age categories presented above are somewhat arbitrary, and do not capture adequately how the probability of being in each of the states, and moving to other states, varies over the working age life course. As an example of this, figure X shows how the probability of remaining employed, unemployed, a full-time carer, a student, or long-term sick varies over five year intervals.
+
+```{r}
+#| label: fig-agesex-stayer
+#| fig-cap: "Probability of staying in a category by sex and age group"
+
+
+tempData <- 
+  ind_data_standardised |> 
+    mutate(
+      age_group = 
+        cut(age, seq(25, 65, by = 5))
+    ) |> 
+    filter(!is.na(age_group)) |> 
+    mutate(same_status = next_status == this_status) |> 
+    group_by(
+      this_status, sex, age_group
+    ) |> 
+    summarise(
+      n = sum(same_status),
+      N = length(same_status)
+    ) |> 
+    mutate(proportion_stay = n / N) |> 
+    ungroup() 
+
+age_group_labels <- unique(as.character(tempData$age_group))
+
+tempData |> 
+  filter(sex != "missing") |> 
+  mutate(age_num = as.numeric(age_group)) |> 
+  mutate(age_group = as.character(age_group)) |> 
+  filter(this_status %in% c("Employed", "Unemployed", "Inactive care", "Inactive student", "Inactive long term sick", "Inactive retired")) |> 
+  ggplot(aes(x=age_num, y = proportion_stay, colour = this_status)) + 
+  geom_line() + 
+  scale_x_continuous(breaks = 1:7, labels = age_group_labels) +
+  geom_point(aes(shape = this_status)) + 
+  facet_wrap(~sex) + 
+  labs(
+    x = "Five year age group", 
+    y = "Probability of remaining in state between wave",
+    title = "Probability of remaining in a state between wave by age group and sex"
+  )
+
+```
+
+These stayer probabilities are somewhat artificial for some ages - for example of remaining retired at ages where retirement is unlikely - but do show how the probabilities of remaining in each state vary over the life course, as well as differ by sex. The probabilities of transition between each of these states also changes over sex and age, and so a foundational model which controls for these varying associations in these standard (unmodifiable) demographic variables is important before reasonable estimates of the additional (potentially modifiable) exposures can be produced. The purpose of the foundational model specification is to do this.
+
+## Simulation Model Results 
+
+### Modelling health effects 
+
+The effect of suboptimal health as an exposure was assessed using SF-12 scores, subdivided into the physical health and mental health subdomains, and then standardised over the observed population to have a mean of 0 and standard deviation of 1. 
+
+Four different exposure model specifications were considered: 
+
+- `mod_mh`: MH only
+- `mod_ph`: PH only
+- `mod_ph_mh`: MH and PH as independent effects 
+- `mod_phmh`: MH and PH including an interaction term 
+
+Each of these was compared for penalised model fit against the foundational model specification using AIC and BIC, with lower scores preferred. 
+
+```{r}
+#| message: false
+#| warning: false
+#| echo: true
+#| include: false
+#| cache: true
+
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = ind_data_standardised
+  )
+
+mod_mh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12mcs_dv,
+    data = ind_data_standardised  
+  )
+
+mod_ph <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv,
+    data = ind_data_standardised
+  )
+
+mod_ph_mh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv + sf12mcs_dv,
+    data = ind_data_standardised
+  )
+
+mod_phmh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
+    data = ind_data_standardised
+)
+```
+
+
+
+
+```{r}
+#| label: tbl-model_fit_ghq12
+#| tbl-cap: "AIC and BIC for different model specifications for including health as an exposure"
+aics <- AIC(mod_00, mod_ph, mod_mh, mod_ph_mh, mod_phmh)
+bics <- BIC(mod_00, mod_ph, mod_mh, mod_ph_mh, mod_phmh)
+
+aics |> 
+  rownames_to_column(var = "model") |> 
+  left_join(
+    bics |> rownames_to_column(var="model")    
+  ) |> 
+  mutate(
+    aic_rank = rank(AIC),
+    bic_rank = rank(BIC)
+  ) |> 
+  knitr::kable()
+
+
+```
+
+@tbl-model_fit_ghq12 shows that, for the data used here, which starts with populations age age 25 years so that assessments of qualifications use the same data, the specification with independent effects of MH and PH is preferred by both AIC and BIC. Of models including only MH or PH, the model specification for MH is preferred. 
+
+Based on this, we will consider the following scenarios with the following models:
+
+- Scenario 1: Mental health only is improved using model `mod_mh`
+- Scenario 2: Mental health only is improved using model `mod_ph_mh`
+- Scenario 3: Physical health only is improved using model `mod_ph_mh`
+- Scenario 4: Mental health and physical health are both improved using `mod_ph_mh`
+
+#### Scenarios 1 and 2: Improving mental health only 
+
+@tbl-mh_scenarios shows the predicted effects on the number of people in each economic category of increasing each individual's mental health by a substantial amount, one standard deviation. The results are based on UKHLS participants for whom relevant information was observed in wave j, the last pre-COVID wave in the dataset. @tbl-mh_scenarios-1 is based on the model which includes MH as a driver only, whereas @tbl-mh_scenarios-2 is based on the model in which PH is also included as a driver, but in this scenario is not modified. 
+
+
+```{r}
+#| label: tbl-mh_scenarios
+#| tbl-cap: "Estimates of substantially improving Mental Health"
+#| tbl-subcap: 
+#|  - "Based on MH only model"
+#|  - "Based on MH + PH model"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(sf12mcs_dv = sf12mcs_dv + 1)
+
+
+preds_df_baseline <- 
+  predict(mod_mh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_mh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_mh <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+# Now the same, but with the other model 
+preds_df_baseline <- 
+  predict(mod_ph_mh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_ph_mh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_mh_ph <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+tbl_mod_mh |> knitr::kable()
+tbl_mod_mh_ph |> knitr::kable()
+```
+
+The two models whose results are shown in @tbl-mh_scenarios produce similar but not identical estimates on the effect of improving mental health on the number of people in each state in the following wave. Compared with the baseline scenario in which no one's MH is changed, in the counterfactual scenario in which MH is substantially there is around a 1.2 to 1.3% increase in the size of the employed population, and the size of the unemployed population is reduced by around a tenth. The most substantive relative change in state population size is in the economically inactive, long-term sick state, whose population size is predicted to fall by at least 15.4%, based on the first model, and by 16.0% based on the second model. 
+
+#### Scenario 3: Improving physical health only 
+
+@tbl-ph_scenario shows the estimated impact on state sizes of substantially improving physical health. As with the MH intervention scenarios, in the counterfactual scenario PH scores were improved by one standardised unit for all valid wave J observations. The model `mod_ph_mh` was used for this scenario calculation.
+
+
+
+```{r}
+#| label: tbl-ph_scenario
+#| tbl-cap: "Estimates of substantially improving Physical Health"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(sf12pcs_dv = sf12pcs_dv + 1)
+
+
+preds_df_baseline <- 
+  predict(mod_ph_mh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_ph_mh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_ph <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+tbl_mod_ph |> knitr::kable()
+```
+
+The scenario indicates that a substantial improvement on physical health could have an even larger effect on the size of the long-term sick population than a similarly sized improvement in mental health. In this scenario, the size of the long-term sick population falls by more than a quarter. The size of the unemployed population also is estimated to change substantially, falling by 12.6%. 
+
+#### Scenario 4: Improving mental and physical health 
+
+There is no single `health` driver/exposure included in the model. Instead there are separate mental health and physical health exposures. However both mental health and physical health have been standardised, meaning we can model a scenario in which 'health' has been improved, and the effect of these health improvements is equal across the mental and and physical health subdomains. In order to ensure we are looking at the effect of the type of the driver being modified, rather than the amount of change we are making to these drivers, we need to employ a little trigonometry. If we were to modify both MH and PH by one standard unit, the total amount of change in 'health' would be the hypotenuse of a triangle in which both MH and PH are 'legs', i.e. $\sqrt{1^2 + 1^2}$ or $\sqrt2$, which is 1.41 to two decimal places, and so larger than either of the previous exposure reductions being modelled. In order to work out the amount of equal change across both 'legs' required for a 1 unit total change across both dimensions, we therefore need to solve $1 = \sqrt{z^2 + z^2}$, i.e. $1 = \sqrt{2z^2}$. This means $1 = 2z^2$, so $z^2 = \frac{1}{2}$, and therefore $z = \frac{1}{\sqrt2}$. In scenario 4, therefore, both MH and PH are increased by this same amount, which is 0.71 to two decimal places. The results of running this scenario are shown in @tbl-genhealth 
+
+```{r}
+#| label: tbl-genhealth
+#| tbl-cap: "Estimates of substantially improving health via equal improvements in mental health and physical health"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(2),
+    sf12pcs_dv = sf12pcs_dv + 1 / sqrt(2)
+  )
+
+
+preds_df_baseline <- 
+  predict(mod_ph_mh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_ph_mh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_both <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+tbl_mod_both |> knitr::kable()
+```
+
+@tbl-genhealth suggests that the effects of intervening both on mental and physical health, without changing the total amount of change, may lead to greater shifts than intervening on online one of the two subdimensions. In this scenario, the size of the long-term sick population is predicted to fall by almost 30%, and unemployment to fall by over 15%. The estimated effect on the size of those in the employed state is also estimated to be slightly greater than for either MH or PH only interventions, at 2.4%.
+
+
+
+### Modelling effects of qualifications 
+
+
+### Modelling effects of higher or lower wages 
+
+- in those who are employed
+- those who are unemployed (?)
+
+#### Descriptive 
+
+- Want to get some kind of event history summary statistics 
+    - e.g. number of people in panel who have been employed 1 wave, 2 waves, 3 waves etc
+
+
+# Discussion
+
+
+
+# References
+
+# Appendices
+
+## Appendix 1
+
+## Appendix 2
