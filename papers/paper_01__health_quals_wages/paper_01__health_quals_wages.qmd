@@ -86,7 +86,7 @@ ind_data_standardised <-
 
 <ul style="color:blue; font-style:italic;">
 
--   [X] Adapt health code and run
+-   [x] Adapt health code and run
 -   [ ] Adapt quals code and run
 -   [ ] Create wages code and run
     -   [ ] Adapt hhincome code
@@ -95,11 +95,7 @@ ind_data_standardised <-
 
 # Key Findings/Contributions
 
-
-
 # Introduction
-
-
 
 # Methods
 
@@ -182,7 +178,6 @@ and so on.
 
 In some cases (as with estimating the effects of health as an exposure) interaction terms are included between exposure variables as well. The decision about whether to include such interactions is made based on both our understanding of the extent to which factors are likely to interact in practice, and the penalised model fit as assessed using metrics like AIC and BIC.
 
-
 ## The simulation
 
 We simulate three different population groups:
@@ -195,10 +190,9 @@ We simulate three different population groups:
 
 ## Descriptive Results
 
+### Simplified graphical transition between three states
 
-### Simplified graphical transition between three states 
-
-- [ ] Show going between employed, unemployed and inactive as three node graph
+-   [ ] Show going between employed, unemployed and inactive as three node graph
 
 ### Observed transitions between states
 
@@ -432,20 +426,20 @@ tempData |>
 
 These stayer probabilities are somewhat artificial for some ages - for example of remaining retired at ages where retirement is unlikely - but do show how the probabilities of remaining in each state vary over the life course, as well as differ by sex. The probabilities of transition between each of these states also changes over sex and age, and so a foundational model which controls for these varying associations in these standard (unmodifiable) demographic variables is important before reasonable estimates of the additional (potentially modifiable) exposures can be produced. The purpose of the foundational model specification is to do this.
 
-## Simulation Model Results 
+## Simulation Model Results
 
-### Modelling health effects 
+### Modelling health effects
 
-The effect of suboptimal health as an exposure was assessed using SF-12 scores, subdivided into the physical health and mental health subdomains, and then standardised over the observed population to have a mean of 0 and standard deviation of 1. 
+The effect of suboptimal health as an exposure was assessed using SF-12 scores, subdivided into the physical health and mental health subdomains, and then standardised over the observed population to have a mean of 0 and standard deviation of 1.
 
-Four different exposure model specifications were considered: 
+Four different exposure model specifications were considered:
 
-- `mod_mh`: MH only
-- `mod_ph`: PH only
-- `mod_ph_mh`: MH and PH as independent effects 
-- `mod_phmh`: MH and PH including an interaction term 
+-   `mod_mh`: MH only
+-   `mod_ph`: PH only
+-   `mod_ph_mh`: MH and PH as independent effects
+-   `mod_phmh`: MH and PH including an interaction term
 
-Each of these was compared for penalised model fit against the foundational model specification using AIC and BIC, with lower scores preferred. 
+Each of these was compared for penalised model fit against the foundational model specification using AIC and BIC, with lower scores preferred.
 
 ```{r}
 #| message: false
@@ -485,9 +479,6 @@ mod_phmh <-
 )
 ```
 
-
-
-
 ```{r}
 #| label: tbl-model_fit_ghq12
 #| tbl-cap: "AIC and BIC for different model specifications for including health as an exposure"
@@ -508,19 +499,18 @@ aics |>
 
 ```
 
-@tbl-model_fit_ghq12 shows that, for the data used here, which starts with populations age age 25 years so that assessments of qualifications use the same data, the specification with independent effects of MH and PH is preferred by both AIC and BIC. Of models including only MH or PH, the model specification for MH is preferred. 
+@tbl-model_fit_ghq12 shows that, for the data used here, which starts with populations age age 25 years so that assessments of qualifications use the same data, the specification with independent effects of MH and PH is preferred by both AIC and BIC. Of models including only MH or PH, the model specification for MH is preferred.
 
 Based on this, we will consider the following scenarios with the following models:
 
-- Scenario 1: Mental health only is improved using model `mod_mh`
-- Scenario 2: Mental health only is improved using model `mod_ph_mh`
-- Scenario 3: Physical health only is improved using model `mod_ph_mh`
-- Scenario 4: Mental health and physical health are both improved using `mod_ph_mh`
+-   Scenario 1: Mental health only is improved using model `mod_mh`
+-   Scenario 2: Mental health only is improved using model `mod_ph_mh`
+-   Scenario 3: Physical health only is improved using model `mod_ph_mh`
+-   Scenario 4: Mental health and physical health are both improved using `mod_ph_mh`
 
-#### Scenarios 1 and 2: Improving mental health only 
+#### Scenarios 1 and 2: Improving mental health only
 
-@tbl-mh_scenarios shows the predicted effects on the number of people in each economic category of increasing each individual's mental health by a substantial amount, one standard deviation. The results are based on UKHLS participants for whom relevant information was observed in wave j, the last pre-COVID wave in the dataset. @tbl-mh_scenarios-1 is based on the model which includes MH as a driver only, whereas @tbl-mh_scenarios-2 is based on the model in which PH is also included as a driver, but in this scenario is not modified. 
-
+@tbl-mh_scenarios shows the predicted effects on the number of people in each economic category of increasing each individual's mental health by a substantial amount, one standard deviation. The results are based on UKHLS participants for whom relevant information was observed in wave j, the last pre-COVID wave in the dataset. @tbl-mh_scenarios-1 is based on the model which includes MH as a driver only, whereas @tbl-mh_scenarios-2 is based on the model in which PH is also included as a driver, but in this scenario is not modified.
 
 ```{r}
 #| label: tbl-mh_scenarios
@@ -625,13 +615,11 @@ tbl_mod_mh |> knitr::kable()
 tbl_mod_mh_ph |> knitr::kable()
 ```
 
-The two models whose results are shown in @tbl-mh_scenarios produce similar but not identical estimates on the effect of improving mental health on the number of people in each state in the following wave. Compared with the baseline scenario in which no one's MH is changed, in the counterfactual scenario in which MH is substantially there is around a 1.2 to 1.3% increase in the size of the employed population, and the size of the unemployed population is reduced by around a tenth. The most substantive relative change in state population size is in the economically inactive, long-term sick state, whose population size is predicted to fall by at least 15.4%, based on the first model, and by 16.0% based on the second model. 
+The two models whose results are shown in @tbl-mh_scenarios produce similar but not identical estimates on the effect of improving mental health on the number of people in each state in the following wave. Compared with the baseline scenario in which no one's MH is changed, in the counterfactual scenario in which MH is substantially there is around a 1.2 to 1.3% increase in the size of the employed population, and the size of the unemployed population is reduced by around a tenth. The most substantive relative change in state population size is in the economically inactive, long-term sick state, whose population size is predicted to fall by at least 15.4%, based on the first model, and by 16.0% based on the second model.
 
-#### Scenario 3: Improving physical health only 
+#### Scenario 3: Improving physical health only
 
 @tbl-ph_scenario shows the estimated impact on state sizes of substantially improving physical health. As with the MH intervention scenarios, in the counterfactual scenario PH scores were improved by one standardised unit for all valid wave J observations. The model `mod_ph_mh` was used for this scenario calculation.
-
-
 
 ```{r}
 #| label: tbl-ph_scenario
@@ -691,11 +679,11 @@ tbl_mod_ph <-
 tbl_mod_ph |> knitr::kable()
 ```
 
-The scenario indicates that a substantial improvement on physical health could have an even larger effect on the size of the long-term sick population than a similarly sized improvement in mental health. In this scenario, the size of the long-term sick population falls by more than a quarter. The size of the unemployed population also is estimated to change substantially, falling by 12.6%. 
+The scenario indicates that a substantial improvement on physical health could have an even larger effect on the size of the long-term sick population than a similarly sized improvement in mental health. In this scenario, the size of the long-term sick population falls by more than a quarter. The size of the unemployed population also is estimated to change substantially, falling by 12.6%.
 
-#### Scenario 4: Improving mental and physical health 
+#### Scenario 4: Improving mental and physical health
 
-There is no single `health` driver/exposure included in the model. Instead there are separate mental health and physical health exposures. However both mental health and physical health have been standardised, meaning we can model a scenario in which 'health' has been improved, and the effect of these health improvements is equal across the mental and and physical health subdomains. In order to ensure we are looking at the effect of the type of the driver being modified, rather than the amount of change we are making to these drivers, we need to employ a little trigonometry. If we were to modify both MH and PH by one standard unit, the total amount of change in 'health' would be the hypotenuse of a triangle in which both MH and PH are 'legs', i.e. $\sqrt{1^2 + 1^2}$ or $\sqrt2$, which is 1.41 to two decimal places, and so larger than either of the previous exposure reductions being modelled. In order to work out the amount of equal change across both 'legs' required for a 1 unit total change across both dimensions, we therefore need to solve $1 = \sqrt{z^2 + z^2}$, i.e. $1 = \sqrt{2z^2}$. This means $1 = 2z^2$, so $z^2 = \frac{1}{2}$, and therefore $z = \frac{1}{\sqrt2}$. In scenario 4, therefore, both MH and PH are increased by this same amount, which is 0.71 to two decimal places. The results of running this scenario are shown in @tbl-genhealth 
+There is no single `health` driver/exposure included in the model. Instead there are separate mental health and physical health exposures. However both mental health and physical health have been standardised, meaning we can model a scenario in which 'health' has been improved, and the effect of these health improvements is equal across the mental and and physical health subdomains. In order to ensure we are looking at the effect of the type of the driver being modified, rather than the amount of change we are making to these drivers, we need to employ a little trigonometry. If we were to modify both MH and PH by one standard unit, the total amount of change in 'health' would be the hypotenuse of a triangle in which both MH and PH are 'legs', i.e. $\sqrt{1^2 + 1^2}$ or $\sqrt2$, which is 1.41 to two decimal places, and so larger than either of the previous exposure reductions being modelled. In order to work out the amount of equal change across both 'legs' required for a 1 unit total change across both dimensions, we therefore need to solve $1 = \sqrt{z^2 + z^2}$, i.e. $1 = \sqrt{2z^2}$. This means $1 = 2z^2$, so $z^2 = \frac{1}{2}$, and therefore $z = \frac{1}{\sqrt2}$. In scenario 4, therefore, both MH and PH are increased by this same amount, which is 0.71 to two decimal places. The results of running this scenario are shown in @tbl-genhealth
 
 ```{r}
 #| label: tbl-genhealth
@@ -760,25 +748,19 @@ tbl_mod_both |> knitr::kable()
 
 @tbl-genhealth suggests that the effects of intervening both on mental and physical health, without changing the total amount of change, may lead to greater shifts than intervening on online one of the two subdimensions. In this scenario, the size of the long-term sick population is predicted to fall by almost 30%, and unemployment to fall by over 15%. The estimated effect on the size of those in the employed state is also estimated to be slightly greater than for either MH or PH only interventions, at 2.4%.
 
+### Modelling effects of qualifications
 
+### Modelling effects of higher or lower wages
 
-### Modelling effects of qualifications 
+-   in those who are employed
+-   those who are unemployed (?)
 
+#### Descriptive
 
-### Modelling effects of higher or lower wages 
-
-- in those who are employed
-- those who are unemployed (?)
-
-#### Descriptive 
-
-- Want to get some kind of event history summary statistics 
-    - e.g. number of people in panel who have been employed 1 wave, 2 waves, 3 waves etc
-
+-   Want to get some kind of event history summary statistics
+    -   e.g. number of people in panel who have been employed 1 wave, 2 waves, 3 waves etc
 
 # Discussion
-
-
 
 # References
 
