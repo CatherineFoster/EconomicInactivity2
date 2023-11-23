@@ -1,0 +1,366 @@
+---
+title: "22 Effect of wages on remaining employed"
+format: html
+editor: visual
+---
+
+## Aims
+
+The aims of this notebook are to understand the effect of wages on remaining employed.
+
+The variables to look at are:
+
+-   employees_w12_paygl: gross pay at last payment
+-   employees_w12_paynl: take home pay at last payment
+-   seearngrs_dv: self-employment earnings - gross
+-   seearnnet_dv: self-employment earnings - net
+
+We are predominantly interested in the extent to which different levels of the above affect probability of those employed remaining employed at the next wave.
+
+## Preparation
+
+```{r}
+library(tidyverse)
+library(nnet)
+
+devtools::load_all(here::here('R'))
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", 
+  "payg_dv", "payn_dv" # Gross and net monthly take-home pay
+  )
+
+vartypes <- c(
+  "labels", "values", "labels",  
+  "values", "values"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_wages_standardised <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(c(dvage, payn_dv, payg_dv), function(x) ifelse(x < 0, NA, x))) |>
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    mutate(
+      ifelse(sex %in% c("male", "female"), sex, NA)
+    ) |> 
+    filter(between(age, 16, 64))  %>% 
+    filter(complete.cases(.)) |> 
+    group_by(wave) 
+
+```
+
+We are not yet sure whether the derived wages variables includes second jobs.
+
+Let's now look at the range of take-home pay by wave for those employed
+
+```{r}
+df_ind_wages_standardised |> 
+  group_by(wave) |> 
+  summarise(
+    lower_q = quantile(payg_dv, 0.25, na.rm = TRUE),
+    median_q = median(payg_dv, na.rm = TRUE),
+    upper_q = quantile(payg_dv, 0.75, na.rm = TRUE)
+  )
+```
+
+Because the median and distribution of wages changed with each wave, in order to make use of all waves worth of data as predictors of remaining employment, we should probably look at the effect of wage-specific quantiles on remaining employed
+
+```{r}
+df_ind_wages_normalised <- 
+  df_ind_wages_standardised |> 
+    group_by(wave) |> 
+    mutate(
+      z_payg_dv = ecdf(payg_dv)(payg_dv),
+      z_payn_dv = ecdf(payn_dv)(payn_dv)
+    ) |> 
+    mutate(not_employed = next_status != "Employed")
+
+```
+
+Now let's start with the simplest model, just predicting whether next_wave is still employed
+
+```{r}
+mod_00 <- glm(not_employed ~ z_payg_dv, family = binomial(link = 'logit'), data = df_ind_wages_normalised)
+```
+
+```{r}
+summary(mod_00)
+```
+
+The more relative pay people in employment get, the lower the probability of moving from employment becomes, and this term is statistically significant.
+
+What does this mean substantively?
+
+```{r}
+predict(mod_00, type = "response", newdata = data.frame(z_payg_dv = c(0.2, 0.4, 0.5, 0.6, 0.8)))
+
+```
+
+For someone earning less than 80% of earners, the probability of no longer being employed in the next wave is 14%. For someone earning more than 80% of earners, the probability of no longer being employed in the next wave is 2%. For someone earning the median amount, the probability of not being employed in the next wave is 5.6%.
+
+Now let's add the standard controls
+
+```{r}
+mod_01 <- glm(not_employed ~ sex + splines::bs(age, 5) + z_payg_dv, family = binomial(link = 'logit'), data = df_ind_wages_normalised)
+```
+
+```{r}
+summary(mod_01)
+```
+
+Once age is controlled for in the standard way, the effect of sex becomes non-significant.
+
+Let's compare the models
+
+```{r}
+AIC(mod_00, mod_01)
+BIC(mod_00, mod_01)
+```
+
+The more complex model is still preferred
+
+Let's work out what mod_01 is implying
+
+```{r}
+pred_df <- expand_grid(
+  z_payg_dv = c(0.2, 0.4, 0.5, 0.6, 0.8),
+  sex = c("male", "female"),
+  age = 20:60
+)
+
+pred_df <- pred_df |> 
+  mutate(
+    pred_move = predict(mod_01, type = "response", newdata = pred_df)
+  )
+
+
+```
+
+Let's see what this shows:
+
+```{r}
+pred_df |> 
+  ggplot(
+    aes(
+      x = age, y = pred_move, group = factor(z_payg_dv), color = factor(z_payg_dv)
+    )) + geom_line() + facet_wrap(~sex)
+```
+
+The model predicts a strongly U-shaped relationship with age. There is no interaction between age and quantile. We could look at that next
+
+```{r}
+mod_02 <- glm(not_employed ~ sex + splines::bs(age, 5) * z_payg_dv, family = binomial(link = 'logit'), data = df_ind_wages_normalised)
+
+AIC(mod_00, mod_01, mod_02)
+BIC(mod_00, mod_01, mod_02)
+```
+
+The model with interactions between age and relative wage is preferred over the next most complex model. As before, let's look at what the model predicts
+
+```{r}
+pred_df <- expand_grid(
+  z_payg_dv = c(0.2, 0.4, 0.5, 0.6, 0.8),
+  sex = c("male", "female"),
+  age = 20:60
+)
+
+pred_df <- pred_df |> 
+  mutate(
+    pred_move = predict(mod_02, type = "response", newdata = pred_df)
+  )
+
+```
+
+```{r}
+pred_df |> 
+  ggplot(
+    aes(
+      x = age, y = pred_move, group = factor(z_payg_dv), color = factor(z_payg_dv)
+    )) + geom_line() + facet_wrap(~sex)
+```
+
+Comparatively wages have a very strong influence on probability of remaining employed at younger adult ages. These influences diminish with age. From the early to mid 50s the probability of leaving employment increases regardless of comparative wages.
+
+There are a couple more modifications to consider:
+
+-   Include an interaction between sex and comparative wages (for example, are women more likely to exit employment if they receive low wages than men, or vice versa?)
+
+-   Move to multinomial logistic regression, to model where people move if they move from employment
+
+Let's start with the sex interaction term
+
+```{r}
+mod_03 <- glm(not_employed ~ sex + sex:z_payg_dv + splines::bs(age, 5) * z_payg_dv, family = binomial(link = 'logit'), data = df_ind_wages_normalised)
+
+AIC(mod_00, mod_01, mod_02, mod_03)
+BIC(mod_00, mod_01, mod_02, mod_03)
+```
+
+The model with a sex:wage interaction is *not* preferred to the model without such terms.
+
+Now let's run the multinomial logit model:
+
+```{r}
+mod_multi_00 <- nnet::multinom(
+  next_status ~ sex  + splines::bs(age, 5) * z_payg_dv, 
+  data = df_ind_wages_normalised
+  )
+
+
+```
+
+Let's now see what it predicts:
+
+```{r}
+pred_df <- expand_grid(
+  z_payg_dv = c(0.2, 0.4, 0.5, 0.6, 0.8),
+  sex = c("male", "female"),
+  age = 20:60
+)
+
+pred_preds_df <- bind_cols(
+  pred_df,
+  predict(mod_multi_00, type = "probs", newdata = pred_df)
+) |> 
+  pivot_longer(
+    Employed:Unemployed, names_to = "state", values_to = "probability"
+  )
+
+```
+
+Now to visualise it, focusing on Unemployment, Inactive care, Inactive long term sick, Inactive student, and Inactive retired
+
+```{r}
+pred_preds_df |> 
+  filter(
+    state %in% c("Employed", "Inactive care", "Inactive student", "Inactive long term sick", "Unemployed", "Inactive retired")
+  ) |> 
+  ggplot(aes(x = age, y = probability, colour = factor(z_payg_dv), group = z_payg_dv)) +
+  geom_line() + 
+  facet_grid(state ~ sex, scales = "free_y")
+
+```
+
+Let's look at the equivalent for net
+
+```{r}
+mod_multi_00_net <- nnet::multinom(
+  next_status ~ sex  + splines::bs(age, 5) * z_payn_dv, 
+  data = df_ind_wages_normalised
+  )
+```
+
+```{r}
+pred_df <- expand_grid(
+  z_payn_dv = c(0.2, 0.4, 0.5, 0.6, 0.8),
+  sex = c("male", "female"),
+  age = 20:60
+)
+
+pred_preds_df_net <- bind_cols(
+  pred_df,
+  predict(mod_multi_00_net, type = "probs", newdata = pred_df)
+) |> 
+  pivot_longer(
+    Employed:Unemployed, names_to = "state", values_to = "probability"
+  )
+
+```
+
+```{r}
+pred_preds_df_net |> 
+  filter(
+    state %in% c("Employed", "Inactive care", "Inactive student", "Inactive long term sick", "Unemployed", "Inactive retired")
+  ) |> 
+  ggplot(aes(x = age, y = probability, colour = factor(z_payn_dv), group = z_payn_dv)) +
+  geom_line() + 
+  facet_grid(state ~ sex, scales = "free_y")
+```
+
+I don't think there's any substantive difference whether using gross or net pay. For consistency I'm going to keep using gross pay for the counterfactual
+
+## Counterfactual Simulation
+
+Let's model the following counterfactual:
+
+-   If someone is earning at at least the 40th percentile, their pay stays as is;
+
+-   If someone is earning below the 40th percentile, their pay is moved up to the 40th percentile
+
+```{r}
+df_ind_baseline <- 
+  df_ind_wages_normalised |>
+    ungroup() |> 
+    filter(wave == 'j')
+
+df_ind_counterfactual <-
+  df_ind_baseline |> 
+  mutate(
+    z_payg_dv = ifelse(z_payg_dv < 0.4, 0.4, z_payg_dv)
+  )
+
+preds_baseline <- predict(mod_multi_00, newdata = df_ind_baseline, type = "probs")
+
+preds_counterfactual <- predict(mod_multi_00, newdata = df_ind_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_baseline, 2, sum),
+  apply(preds_counterfactual, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+predictions_summary_matrix
+
+
+```
+
+```{r}
+sim_relative_change <- apply(
+    predictions_summary_matrix, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change
+```
+
+In this scenario, the proportion of those employed who remain employed is expected to increase by around 3%, the proportion transitioning from employment to full-time care to fall by around 40%, from employment to long-term sick to fall by around 22%, and to unemployment by around 15%. Many of these transitions from employment are quite unusual; instead such transitions may occur over multiple waves, often via unemployment through an intermediate state. The following table shows the proportion of the population projected to move into each state in both the baseline and counterfactual scenario:
+
+```{r}
+prop_in_scenario <- apply(
+    predictions_summary_matrix, 2, function(x) (100 * x / sum(x))
+  ) 
+
+
+prop_in_scenario
+```
+
+So, in the baseline scenario around 92% of those employed in wave T are predicted to remain employed at wave T+1, around 3% to become a student at wave T+1, around 2% to become retired, or to become unemployed. In the counterfactual scenario the proportion remaining employed is projected to increase retention of employment by 2.9%.
+
+## Notes from Martin
+
+The function ecdf converts the real wages into a value between 0 and 1, where e.g. 0.2 is 20% up the wages distribution, with 80% of waged employees earning more than them.
+
+This allows us to compare relative position across all the waves without adjusting wages 
+
+Model 1 - probability of moving from employment to other categories, based on age sex and wage position
+
+We included an interaction between wages and age
+
+But we don't think at the broadest level sex makes a difference
+
+This is all standard logistic regression
+
+We don't think we can use the Minimum Income Standard because this operates at a household income 
+
+Could a wage based intervention increase inequalities?
+
+By having people who moved into education remaining in better paid work?
+
+Should we give a different floor? By age  group?

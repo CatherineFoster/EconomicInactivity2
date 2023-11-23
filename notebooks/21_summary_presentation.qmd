@@ -102,7 +102,7 @@ ind_data_standardised <-
 
 ```
 
-## Modelling 
+## Modelling
 
 ```{r}
 
@@ -133,7 +133,7 @@ mod_full <-
   
 ```
 
-## Model comparison 
+## Model comparison
 
 ```{r}
 aics <- AIC(mod_00, mod_hlth, mod_qual, mod_full)$AIC
@@ -170,7 +170,7 @@ There is no difference in the rank ordering of models preferred by the AIC and B
 
 We will present results from the Both model even though it has the poorest performance by these measures
 
-## Representative data 
+## Representative data
 
 -   Select wave J from UKHLS as it's comparatively recent (and/but pre-pandemic)
 
@@ -245,7 +245,7 @@ scens_combined <-
   
 ```
 
-## Relative change, plotted 
+## Relative change, plotted
 
 Now let's at least visualise this
 
@@ -258,8 +258,8 @@ scens_combined |>
   geom_vline(xintercept = 1)
   
 ```
-## Relative change, as a table
 
+## Relative change, as a table
 
 ```{r}
 scens_combined |>
@@ -274,6 +274,7 @@ scens_combined |>
   arrange(state) |> 
   select(-output)
 ```
+
 ## Absolute changes, as a table
 
 ```{r}
@@ -283,6 +284,7 @@ scens_combined |>
   pivot_wider(names_from = "scenario", values_from = 'value')
 
 ```
+
 ## Absolute, as a graph
 
 ```{r}
@@ -294,9 +296,9 @@ scens_combined |>
   coord_flip()
 ```
 
-## Table of changes in proportions under each scenario 
+## Table of changes in proportions under each scenario
 
-Let's see how the distribution of persons in each state is estimated to change 
+Let's see how the distribution of persons in each state is estimated to change
 
 ```{r}
 scens_combined |> 
@@ -311,29 +313,27 @@ scens_combined |>
 
 ## Summary of tables
 
-- Improving general health estimated to reduce size of inactive long-term sick population by more than increasing qualifications
-- After health, the additional qualifications effect on inactive LT sick are estimated to be somewhat marginal
-- Both improved health and improved qualifications are associated with higher proportions of the population who are students, and thus economically inactive for this reason. 
-- Improved health is expected to increase the size of the employed population by around 2.4% 
+-   Improving general health estimated to reduce size of inactive long-term sick population by more than increasing qualifications
+-   After health, the additional qualifications effect on inactive LT sick are estimated to be somewhat marginal
+-   Both improved health and improved qualifications are associated with higher proportions of the population who are students, and thus economically inactive for this reason.
+-   Improved health is expected to increase the size of the employed population by around 2.4%
 
-## Job quality 
+## Job quality
 
-We will also look at including measures of job quality in the above. 
-We need to note that as the job quality measure only applies to persons in employment, the PICO frame will need to be adjusted accordingly; i.e this will look only at those who start off in employment, rather than the whole dataset. 
+We will also look at including measures of job quality in the above. We need to note that as the job quality measure only applies to persons in employment, the PICO frame will need to be adjusted accordingly; i.e this will look only at those who start off in employment, rather than the whole dataset.
 
-## PICO of above 
+## PICO of above
 
-- Population: Persons in employment at time T
-   - Aged 25-60 years of age 
-- Intervention: 
-    - Qualifications: up one level
-    - Health: up one SD
-    - Job quality: 
-       - Initially just the job satisfaction item 
-    - Both individually and in combination
+-   Population: Persons in employment at time T
+    -   Aged 25-60 years of age
+-   Intervention:
+    -   Qualifications: up one level
+    -   Health: up one SD
+    -   Job quality:
+        -   Initially just the job satisfaction item
+    -   Both individually and in combination
 
-
-## Extracting the data 
+## Extracting the data
 
 ```{r}
 devtools::load_all(here::here('R'))
@@ -418,8 +418,8 @@ ind_data_standardised <-
 
 
 ```
-Now to model
 
+Now to model
 
 ```{r}
 mod_00 <- 
@@ -481,7 +481,7 @@ summary_output |>
 
 As before, we recognise that the full model does not have the best fit (and according to BIC has the worst fit adjusted for complexity), but at the same time we are interested in something like SAFs, so will use it below
 
-## Scenario creation 
+## Scenario creation
 
 ```{r}
 #change no exposures
@@ -612,8 +612,6 @@ df_counter_all <-
 
 ```
 
-
-
 ```{r}
 #changing one exposure
 scen_base_hlth <- calculate_baseline_counterfactual_distribution(
@@ -684,7 +682,7 @@ scens_combined <-
   
 ```
 
-## Comparison of scenarios: change in distributions 
+## Comparison of scenarios: change in distributions
 
 ```{r}
 scens_combined |> 
@@ -696,4 +694,3 @@ scens_combined |>
   select(-value) |> 
   pivot_wider(names_from = 'scenario', values_from = 'share')
 ```
-

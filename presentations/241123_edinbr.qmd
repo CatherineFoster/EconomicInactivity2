@@ -1,0 +1,576 @@
+---
+title: "Modelling Drivers of Economic (In)Activity"
+author: "Jon Minton"
+format: 
+  revealjs:
+    theme: dark
+editor: visual
+---
+
+## Who am I?
+
+-   *If you like this presentation*: Public Health Intelligence Adviser at Public Health Scotland
+-   *If you don't like this presentation*: Just someone who likes coding in R
+
+## My challenge... now *your* challenge {.scrollable}
+
+::: panel-tabset
+### Challenge/Brief
+
+> Produce estimates of the influence of [**drivers**]{style="color: red;"} on [**economic inactivity**]{style="color: blue;"}
+
+### [Drivers]{style="color: red;"}
+
+-   **drivers**: Factors that influence probabilities of being economically active or inactive in some way
+    -   Can be divided into:
+        -   Downstream/Upstream
+        -   Proximate/Distal
+        -   Individual/Household/Local Area/Structural
+
+### [Economic Inactivity]{style="color: blue;"}
+
+-   **economic inactivity**:
+    -   Persons not contributing currently providing labour or labour supply:
+        -   Economic activity:
+            -   Employed (realised labour)
+            -   Unemployed (labour supply)
+        -   Economic inactivity:
+            -   Full-time student
+            -   Full-time carer
+            -   Long-term sick
+            -   Retired
+            -   Other (catch-all)
+:::
+
+## Useful ideas/concepts
+
+::: panel-tabset
+### General
+
+-   Epidemiological concepts
+-   Modelling concepts
+
+### Epidemiological
+
+-   Path dependency
+-   Demography
+-   'Explained by'
+    -   Population Attributable Fractions
+    -   Ideal Alternative Exposure Scenarios
+-   Baseline and Counterfactual scenarios
+
+### Modelling
+
+-   Markov modelling
+-   Generalised Linear modelling
+-   Model fitting
+-   Using models for prediction/projection
+:::
+
+## GLM fundamentals {.scrollable}
+
+::: panel-tabset
+### Equation fundamentals
+
+**Stochastic Component**
+
+$$
+Y_i \sim f(\theta_i, \alpha)
+$$ **Systematic Component**
+
+$$
+\theta_i = g(X_i, \beta)
+$$
+
+Source: King, Tomz, Wittenberg (2000), [Making the most of Statistical Analyses: Improving Interpretation and presentation](https://gking.harvard.edu/files/making.pdf)
+
+### Logit model
+
+**Stochastic**
+
+$$
+Y_i \sim Bernoulli(\pi_i)
+$$ **Systematic**
+
+$$
+\pi_i = \dfrac{1}{1 + e^{-X\beta}}
+$$
+
+### Linear regression
+
+**Stochastic**
+
+$$
+Y_i \sim N(\mu_i, \sigma^2)
+$$
+
+**Systematic**
+
+$$
+\mu_i = X_i \beta
+$$
+:::
+
+## Model Fitting and Model Prediction {.scrollable}
+
+::: panel-tabset
+### Model fitting challenge
+
+-   **Satisfy loss function**: Find values of $\beta$ such that discrepency between $y_i$ (observed response) and $Y_i$ (predicted response given $X_i$, observed predictors) is minimised.
+
+-   Statisticians usually use likelihood theory to justify the loss function. 'Data scientists' can be a bit wilder. (e.g. RMSE on out-of-sample test data)
+
+### Model prediction
+
+-   Once the best model parameters $\beta$ have been identified for our model $M$, we can now swap out observed predictors $X_i$ for hypothetical predictors $X^{(H)}$ to get conditional predictions $Y | X^{(H)}$
+
+### Modelled 'trials'
+
+-   Let's split the predictors $X$ into $(X^*, Z)$, where $X^*$ is variables we aren't interested in but need to control for, and $Z$ are the exposure variables for which we are interested in modelling the causal effects on $Y$.
+
+-   $H_1 := (X^*, Z=1)$ : The exposure is 'on'
+
+-   $H_0 := (X^*, Z=0)$ : The exposure is 'off'
+
+-   Comparison of $Y|H_1$ and $Y|H_0$ gives an effect estimate of $Z$ on $Y$, i.e. the amount that $Y$ changes as a result of $Z$, holding all else constant.
+
+-   In practice:
+
+    -   Many exposures are not either 'on' or 'off', but continuous
+    -   Rather than $H_1$ being $Z=1$ for all observations, we might use the observed values of $Z$ from an indicative dataset. (Not everyone smokes/ has diabetes etc)
+
+### Path dependency
+
+-   We can use the same GLM 'chassis' to model the influence of history.
+
+-   Swap out $Y$ for $Y_{T+1}$ on the response side
+
+-   Include $Y_T$ on the predictor side
+
+-   If Y is continuous we have conventional time-series modelling
+
+-   If Y is discrete we have Markov modelling (broadly speaking)
+:::
+
+## In practice {.scrollable}
+
+::: panel-tabset
+### Data requirements
+
+We require data where:
+
+-   we can observe the same individuals transitioning between discrete states over time
+-   there are adequate demographic controls
+-   there are driver/exposure variables of interest
+
+I have used UK Household Longitudinal Study (UKHLS), which grew out of the British Household Panel Survey (BHPS).
+
+### Foundational model
+
+A model that *adequately* controls for path dependency $Y_T$ and demography $X^*$
+
+-   Different specifications can do this. I used AIC & BIC to decide between different possible specifications
+
+### Exposure model
+
+A model that incrementally builds on the Foundational model to include at least one exposure variable as well.
+
+-   Decision guided both by substantive interest in a given exposure, and whether AIC and BIC suggest it is 'better' than the Foundational model
+
+### Continuous variables as exposures
+
+-   Absent clear epidemiological knowledge otherwise, continuous exposures are standardised then, in the counterfactual scenario, moved one standardised unit in the 'good' direction.
+:::
+
+## Illustration using logit model
+
+::: panel-tabset
+### Example data
+
+```{r}
+#| cache: true
+devtools::load_all(here::here('R'))
+library(tidyverse)
+# library(haven)
+# library(here)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:3])
+
+# Clean the data 
+df_ind <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  %>%
+    mutate(
+      this_status = case_when(
+        this_status %in% c("Employed", "Unemployed") ~ TRUE,
+        str_detect(this_status, "Inactive") ~ FALSE,
+        TRUE ~ NA
+      )
+    ) |> 
+      mutate(
+      next_status = case_when(
+        next_status %in% c("Employed", "Unemployed") ~ TRUE,
+        str_detect(next_status, "Inactive") ~ FALSE,
+        TRUE ~ NA
+      )
+    ) %>%
+    filter(complete.cases(.)) 
+
+df_ind
+
+```
+
+### Logit model spec
+
+```{r}
+#| echo: true
+#| cache: true
+mod_00 <- glm(
+  next_status ~ this_status * sex + splines::bs(age, 5),
+  family = binomial(link = 'logit'),
+  data = df_ind
+  )
+
+summary(mod_00)
+
+
+```
+
+### Model predictions
+
+```{r}
+library(tidyverse)
+pred_matrix <- 
+  expand_grid(
+    age = c(25, 40, 60),
+    sex = c("male", "female"),
+    this_status = c(TRUE, FALSE)
+  )
+
+# 
+predictions <-
+           predict(mod_00, newdata = pred_matrix,
+                       type = "response")
+
+pred_preds <- pred_matrix |> 
+  mutate(prob_active = predictions) |> 
+  mutate(prob_inactive = 1 - prob_active)
+
+
+pred_preds
+```
+:::
+
+## In practice: Multinomial Logit
+
+::: panel-tabset
+### Logit to multinomial logit
+
+-   multinomial logit extends from two mutually exclusive states to K mutually exclusive states
+-   implemented using `mlogit` function in `nnet` package
+-   more computationally intensive but not different conceptually
+
+### Example data
+
+```{r}
+#| cache: true
+devtools::load_all(here::here('R'))
+library(tidyverse)
+# library(haven)
+# library(here)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:3])
+
+# Clean the data 
+df_ind <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  %>%
+    filter(complete.cases(.)) 
+
+df_ind
+```
+
+### Example model spec {.scrollable}
+
+```{r .scrollable}
+#| message: false
+#| warning: false
+#| collapse: true
+#| echo: true
+#| cache: true
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind
+  )
+
+summary(mod_00)
+```
+
+### Example predictions {.scrollable}
+
+```{r .table-responsive .scrollable}
+library(tidyverse)
+library(nnet)
+pred_matrix <- 
+  expand_grid(
+    age = c(25, 40, 60),
+    sex = c("male", "female"),
+    this_status = c(
+      "Employed", "Unemployed"
+    )
+  )
+
+# 
+predictions <-
+           predict(mod_00, newdata = pred_matrix,
+                       type = "probs")
+
+pred_preds <- bind_cols(
+  pred_matrix, 
+  predictions
+)
+
+pred_preds 
+```
+:::
+
+## Exposure Model 1: Clinical Depression
+
+```{r}
+#| echo: true
+#| eval: true
+#| collapse: true
+#| cache: true
+
+
+# Select variables to take from all wave-specific datasets
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "hcond17"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+# Grab from first 11 waves 
+
+df_ind_hconds <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Tidy dataset with Y_T+1, Y_T, X and Z
+
+df_ind_hconds_tidied <- 
+  df_ind_hconds |> 
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+    mutate(across(hcond17, 
+      function(x) {
+        case_when(
+          x == 'Mentioned' ~ TRUE,
+          x == 'not mentioned' ~ FALSE,
+          TRUE ~ NA
+        )
+      }
+      )
+    ) |> 
+    rename(
+      has_clinicaldepression = hcond17,
+      age = dvage
+    ) %>%
+    filter(complete.cases(.)) 
+  
+# Run model with exposure term Z, has_clinicaldepression
+
+mod_depression <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + has_clinicaldepression,
+    data = df_ind_hconds_tidied
+  )
+
+
+# Compare exposure model against foundational model
+BIC(mod_00, mod_depression)
+AIC(mod_00, mod_depression)
+
+# If the exposure model 'beats' the foundational model (it does) then 
+# create a baseline and counterfactual scenario dataset X_H0 and X_H1
+
+# I'm going to use observed data from first wave for X_H0
+
+df_baseline <-
+  df_ind_hconds_tidied |> 
+  filter(wave == 'a')
+
+
+# For X_H1, I'm going to set everyone with clinical depression to no clinical 
+# depression
+df_counterfactual_depressaway <-
+  df_baseline |> 
+  mutate(has_clinicaldepression = FALSE)
+
+# For X_H0, we can get the probability of each person moving to each possible state
+# using the predict function on the df_baseline dataset, setting type to 'probs'
+preds_df_baseline <- 
+  predict(mod_depression, newdata = df_baseline, type = "probs")
+
+# For X_H1, we can do the same, but with the counterfactual dataset X_H1
+preds_df_counter <- 
+  predict(mod_depression, newdata = df_counterfactual_depressaway, type = "probs")
+
+# A bit of base R 'magic' to add up the total number of people predicted to be in each state under both scenarios
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, sum),
+  apply(preds_df_counter, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+predictions_summary_matrix
+
+# And we can also calculate the % change in each state when going from the baseline
+# to counterfactual scenario
+sim_relative_change <- apply(
+    predictions_summary_matrix, 1, function(x) (100 * x / x[1])
+  ) |> 
+  t()
+
+sim_relative_change
+
+
+```
+
+## Predictions/Projections
+
+::: panel-tabset
+### Absolute {.scrollable}
+
+```{r}
+predictions_summary_matrix
+
+```
+
+### Relative
+
+```{r}
+sim_relative_change
+
+```
+
+### Interpretation
+
+-   "If the effects of clinical depression on economic inactivity were fully mitigated, then the size of the economically inactive long-term sick population could be reduced by around a tenth."[^1]
+
+-   "Around a tenth of economic inactivity due to long-term sickness is explained by clinical depression."[^2]
+:::
+
+[^1]: Caveat emptor
+
+[^2]: Caveat emptor
+
+## Second example: Improving health in general {.scrollable .smaller}
+
+```{r }
+#| tbl-cap: "Effect of moving MH and PH by 1 SD collectively"
+#| label: tbl-hlth
+
+tab <- tribble(
+~"State", ~"base", ~"counterfactual",	~"Absolute Change",	~"Relative Change", 
+"Employed", 12530, 12827,	297, "2.4% up",
+"Unemployed", 	619, 524, -95,	"15.3% down",
+"Inactive student", 88,93, 5, "5.7% up",
+"Inactive care", 857,844, -13, "1.5% down",
+"Inactive long term sick", 681,	478,	-203, "29.8% down",
+"Inactive retired", 520, 528, 8, "1.5% up",
+"Inactive other", 66, 65, -1, "1.5% down"
+)
+
+
+tab |> knitr::kable()
+
+```
+
+## General framework {.scrollable}
+
+```{mermaid}
+flowchart TB
+  D[Data]
+  M0(Foundational Model)
+  M1(Exposure Model)
+  Tx{Compare Models}
+  H0[Baseline]
+  H1[Counterfactual]
+  I((Imagination))
+  Y0(Baseline Results)
+  Y1(Counterfactual Results)
+  Yx{Compare Results}
+  Rx[Summarised differences]
+  
+  D -->|fit|M0
+  D -->|fit|M1
+  M0 -->|AIC/BIC|Tx
+  M1 -->|AIC/BIC|Tx
+  Tx -->|validate|M1
+  D -->|subset|H0
+  H0 -->|modify|H1
+  I -->|make up|H0
+  I -->|make up|H1
+  H0 --> M1 --> Y0
+  H1 --> M1 --> Y1
+  Y0 --> Yx
+  Y1 --> Yx
+  Yx -->|report| Rx
+  
+  
+
+```
+
+## Concluding thoughts
+
+-   Simple question, complicated methods
+-   LM vs GLM
+-   Many 'heroic assumptions'
+-   Many potential refinements
+-   Many potential applications
+
+## Contact
+
+-   jon.will.minton\@gmail.com
+-   jon.minton\@phs.scot
+-   @jonminton on the X social media platform
+-   Website: https://jonminton.net 
+
+[Thanks for listening!]{style="color: purple; font-family: cursive; font-size: larger;"}

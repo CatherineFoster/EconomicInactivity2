@@ -286,3 +286,68 @@ predictions_predictors <-
 
 predictions_predictors
 ```
+
+What's the broader schedule by age?
+
+```{r}
+
+vignettes <- expand_grid(
+  age = 18:50, 
+  sex = c("male", "female"),
+  this_status = c("Employed"),
+  has_children = c(FALSE, TRUE)
+)
+
+predictions <- predict(mod_02, newdata = vignettes, type = "probs")
+
+
+predictions_predictors <- 
+  bind_cols(
+    vignettes, predictions
+  ) |> 
+  pivot_longer(
+    `Employed`:`Unemployed`, 
+    names_to = 'next_status', 
+    values_to = 'probability'
+  )
+
+predictions_predictors |> 
+  filter(next_status == 'Employed') |> 
+  ggplot(
+    aes(
+      x = age, 
+      y= probability, 
+      group = has_children, linetype = has_children, colour = has_children
+    )
+  ) +
+  geom_line() + 
+  facet_wrap(~sex) + 
+  labs(
+    x = "Age in years", 
+    y = "Predicted probability of remaining employed in next wave",
+    title = "Predicted effects of havhing children on remaining employed in next wave by age and sex"
+  )
+  
+```
+
+And the same idea but for either becoming unemployed or becoming a full time carer
+
+```{r}
+predictions_predictors |> 
+  filter(next_status %in% c('Unemployed', 'Inactive care') )|> 
+  ggplot(
+    aes(
+      x = age, 
+      y= probability, 
+      group = has_children, linetype = has_children, colour = has_children
+    )
+  ) +
+  geom_line() + 
+  facet_grid(next_status ~ sex) + 
+  labs(
+    x = "Age in years", 
+    y = "Predicted probability of moving to this stage in next wave",
+    title = "Predicted effects of having children on on becoming unemployed or a full time carer in next wave by age and sex"
+  )
+
+```

@@ -561,6 +561,8 @@ preds_df_baseline <-
 preds_df_counter <- 
   predict(mod_depression, newdata = df_counterfactual_depressaway, type = "probs")
 
+
+
 predictions_summary_matrix <- cbind(
   # The number 2 indicates do the sum function for each column.
   # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
