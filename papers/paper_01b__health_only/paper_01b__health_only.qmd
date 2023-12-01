@@ -1,0 +1,1307 @@
+---
+title: "Assessing the impact of health on health-related economic inactivity"
+author: 
+  - "Jon Minton"
+  - "Martin Taulbut"
+  - "Neil Chalmers"
+  - "Debs Shipton"
+format: 
+  wordcount-html:
+    warning: false
+    code-fold: true
+    message: false
+    code-summary: "Show R Code"
+  docx: 
+    warning: false
+    echo: false
+    message: false
+editor: visual
+prefer-html: true
+bibliography: references.bib
+---
+
+```{r}
+
+devtools::load_all(here::here('R'))
+
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+library(tidyverse)
+library(nnet)
+library(knitr)
+library(kableExtra)
+library(DiagrammeR)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+```
+
+```{r}
+#| cache: true
+
+
+ind_data <- get_ind_level_vars_for_selected_waves(
+  varnames = varnames, vartypes = extract_what
+)
+
+ind_data_standardised <- 
+  ind_data |> 
+  rename(age = dvage) |> 
+  mutate(across(c(age, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  filter(between(age, 16, 64)) %>%
+  filter(complete.cases(.))
+
+
+```
+
+# Abstract
+
+**Introduction** The UK has comparatively high rates of working age economic inactivity (EI) due to poor health.
+
+**Methods** This paper uses a novel modelling framework, and data from the UKHLS, to estimate how much of this health-related EI (HREI) may be 'due to' i) poor general health directly. We modelled the individual transition probabilities between seven economic (in)activity states for a broadly representative population from the UKHLS observed pre-pandemic, who were between 16 and 64 years of age when interviewed. We projected how many move between states both under observed circumstances and in a scenario where an adverse driver was fully or largely mitigated, and compared how many more or fewer people were in the economically inactive long term sick state in both scenarios. From this we were able to produce estimates of the amount of HREI that may be 'explained by' these specific drivers.
+
+**Findings** ...
+
+**Discussion** ...
+
+# [Notes/Todos]{style="color:blue"}
+
+<ul style="color:blue; font-style:italic;">
+
+-   [x] Adapt health code and run
+-   [ ] Add discrete health variable example
+-   [ ] Add biased/weighted unit change examples (biased to MH or PH)
+-   [ ] Look at subpopulations e.g. by household type/lone parent cf two parent hh
+
+</ul>
+
+# Key Findings/Contributions
+
+# Introduction
+
+For working-age people, being employed or retired is associated with relatively good health, while being unemployment and long-term sickness) are associated with relatively poor health. Other economic states occupy an intermediate position. There is evidence to say that good quality work (e.g. insecure, high job-strain) is beneficial for health. There is also evidence that unemployment itself increases the risk of poor health (especially poor mental health) and premature mortality, rather than bad health being part of a broader selection effect.
+
+From a policy perspective, there has been long-standing interest in increasing the share of the population in paid employment, and lowering the proportion who are unemployed, long-term sick and looking after home and family. Measures to achieve this have usually focused on moving people out of the detrimental states, rather than preventing them moving into them in the first place. They have tended to focus on the sub-groups of the population in these states and claiming out-of-work benefits. The policy mix has included public employment support, increased conditionality (including sanctions and changes to benefit eligibility) as well as increasing the financial support for working. In addition, some policies have provided financial help to meet the costs of working (e.g. childcare, Access to Work). While the overall approach has moved some people into work, it also appears to have pushed others into long-term sickness and other forms of economic inactivity. 
+
+## Structure
+
+The first part of the results section of this paper present model-based projections of how the size of each of the seven economic activity and economic inactivity states might change as a result of i) a discrete adverse health related exposure being 'turned off' in a UK population; and ii) two related continuous health states changed by one standard unit. 
+
+The second part of the results section will consider how these projections differ by a) males and females; b) younger and older persons of working age; and c) household composition, with an emphasis on identifying any additional barriers out of economic inactivity and into employment for single parents. 
+
+# Methods
+
+## The data
+
+The data used to fit the models are all observations from wave a to j of the UKHLS, excluding observations where data was missing on any of the predictor and outcome variables.
+
+## The model
+
+The model uses multinomial logistic regression to predict the economic (in)activity state in the next time period (approximately one year) based on the economic activity state in the current time period, the individual's age, sex, and those specific drivers of interest.
+
+## Foundational Model
+
+The foundational model specification aims to adequately control for the effects that age, current state and sex have on transition probabilities between states. To recap, we know the following:
+
+-   That state at time T influences state at time T+1, including that there is path dependence.
+-   That transition propensities between states vary systematically by sex (in particular regarding the long-term carer state)
+-   That transitions between states vary by age, but in different ways for different states, and in ways that aren't linear with age.
+
+The foundational model specification operationalises the above knowledge as follows:
+
+$$
+S_{T+1}  \sim multinom(S_T \beta_S + male\beta_m + (S_T * male) \beta_I + bspline(x, 5)\beta_X)  
+$$
+
+i.e. that next state $S_{T+1}$ is predicted on the current state $S_T$, sex (the $male$ term so female is the reference category), the interaction of current state and sex $S_T * male$ , and a flexible function of age $bspline(x, 5)$ .
+
+The model is implemented using the multinom function of the nnet package as follows
+
+``` r
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    ...
+  )
+```
+
+```{r}
+#| message: false
+#| warning: false
+#| echo: true
+#| include: false
+#| cache: true
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = ind_data_standardised,
+    maxit = 200
+  )
+
+
+```
+
+## Exposure Models
+
+Exposure models extend the foundation with one or more additional variables. These variables are the exposures of interest, and for which we want to estimate the influence on economic activity levels and flows.
+
+For a single exposure $Z$, the equation simply extends the foundational model specification as follows:
+
+$$
+S_{T+1}  \sim multinom(S_T \beta_S + male\beta_m + (S_T * male) \beta_I + bspline(x, 5)\beta_X + Z \beta_Z)  
+$$
+
+Which is specified in R as follows
+
+``` r
+nnet::multinom(
+  next_status ~ this_status * sex + splines::bs(age, 5) + Z,
+  ...
+)
+```
+
+For two exposures, $Z_1$ and $Z_2$, this simply becomes
+
+``` r
+nnet::multinom(
+  next_status ~ this_status * sex + splines::bs(age, 5) + Z1 + Z2,
+  ...
+)
+```
+
+and so on.
+
+In some cases (as with estimating the effects of health as an exposure) interaction terms are included between exposure variables as well. The decision about whether to include such interactions is made based on both our understanding of the extent to which factors are likely to interact in practice, and the penalised model fit as assessed using metrics like AIC and BIC.
+
+## The simulation
+
+We estimate the effect that health drivers have on the composition of economic activity and inactivity in the general working age population by creating a model that... does stuff.
+
+We create scenarios where adverse drivers are either, i) as observed or ii) 'turned off', and compare the proportion of people estimated to be in each economic (in)activity state between scenarios, in order to produce estimates of how much of HREI is 'due to' the driver/exposure of interest.
+
+# Results
+
+## Part one: Effects of discrete and continous health outcomes on populations in general
+
+### Modelling discrete health state (LLTI/No LLTI), people aged 16-64
+
+In each wave of the UKHLS, respondents are asked the following question
+
+> Do you have any long-standing physical or mental impairment, illness or disability? By 'long-standing' I mean anything that has troubled you over a period of at least 12 months or that is likely to trouble you over a period of at least 12 months.
+
+**Should I do the following?**
+
+-   **DESCRIPTIVE STATS**
+-   SEX DIFFERENCES
+-   DIFFERENCES BY AGE GROUP
+-   ANY DIFFERENCES BETWEEN WAVES
+
+```{r}
+devtools::load_all(here::here('R'))
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "health"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+df_ind_llti <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_llti_standardised <- 
+  df_ind_llti |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  |> 
+    mutate(
+      lt_condition = case_when(
+        health %in% c("No", "no") ~ FALSE,
+        health %in% c("Yes", "yes") ~ TRUE,
+        TRUE ~ NA_integer_
+      ) |> as.logical()
+    ) %>% 
+    filter(complete.cases(.)) 
+
+```
+
+```{r}
+#| cache: true
+#| message: false
+#| warning: false
+mod_00_llti <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_llti_standardised |> 
+      filter(!is.na(lt_condition)),
+    maxit = 200
+  )
+
+mod_llti <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition,
+    data = df_ind_llti_standardised,
+    maxit = 200
+  )
+```
+
+```{r}
+aics <- AIC(mod_00_llti, mod_llti)
+bics <- BIC(mod_00_llti, mod_llti)
+
+aics |> 
+  rownames_to_column(var = "model") |> 
+  left_join(
+    bics |> rownames_to_column(var="model")    
+  ) |> 
+  mutate(
+    aic_rank = rank(AIC),
+    bic_rank = rank(BIC)
+  ) |> 
+  knitr::kable()
+```
+
+```{r}
+#| label: tbl-llti
+#| tbl-cap: Estimated effect of Limiting Long-term Illnesses (LLTI) on Economic (In)activity states 
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+
+df_ind_ltcondition_wave_j_baseline <- 
+  df_ind_llti_standardised |> 
+  filter(!is.na(lt_condition)) |> 
+  filter(wave == 'j')
+
+
+df_ind_ltcondition_wave_j_counterfactual <- 
+  df_ind_ltcondition_wave_j_baseline  |> 
+  mutate(lt_condition = FALSE)
+
+
+preds_baseline <- predict(mod_llti, newdata = df_ind_ltcondition_wave_j_baseline, type = "probs")
+
+
+preds_counterfactual <- predict(mod_llti, newdata = df_ind_ltcondition_wave_j_counterfactual, type = "probs")
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_baseline, 2, sum),
+  apply(preds_counterfactual, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("baseline", "counterfactual")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_llti <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+
+tbl_mod_llti |> knitr::kable()
+```
+
+@tbl-llti indicates that, if everyone with a LLTI ceased to have one, the proportion of the population who are inactive for reasons of long-term sickness would be reduced by 60%. The proportion of the population in each of the other states, both economically inactive and active, would then increase. This includes a predicted 5.4% increase in unemployment, an 8.6% increase in long-term carers, and a 7.4% increase in those of working age who retire.
+
+The finding that removing LLTI would greatly decrease the economically inactive long-term sick population should, of course, not be surprising. We can interpret these results, broadly, as suggesting that the majority of inactivity due to long-term sickness is caused by LLTI. We might in fact consider the 40% or so who remain in this category even in a scenario in which no one has LLTI to be more surprising.
+
+### Modelling continuous health effects, people aged 16-64
+
+The effect of suboptimal health as an exposure was assessed using SF-12 scores, subdivided into the physical health (PH) and mental health (MH) subdomains, and then standardised over the observed population to have a mean of 0 and standard deviation of 1.
+
+Four different exposure model specifications were considered:
+
+-   `mod_mh`: MH only
+-   `mod_ph`: PH only
+-   `mod_ph_mh`: MH and PH as independent effects
+-   `mod_phmh`: MH and PH including an interaction term
+
+Each of these was compared for penalised model fit against the foundational model specification using AIC and BIC, with lower scores preferred. (1 = most preferred; 5 = least preferred)
+
+```{r}
+#| message: false
+#| warning: false
+#| echo: true
+#| include: false
+#| cache: true
+
+
+
+mod_mh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12mcs_dv,
+    data = ind_data_standardised, 
+    maxit = 200
+  )
+
+mod_ph <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv,
+    data = ind_data_standardised,
+    maxit = 200
+  )
+
+mod_ph_mh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv + sf12mcs_dv,
+    data = ind_data_standardised,
+    maxit = 200
+  )
+
+mod_phmh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
+    data = ind_data_standardised,
+    maxit = 200
+)
+```
+
+```{r}
+#| label: tbl-model_fit_ghq12
+#| tbl-cap: "AIC and BIC for different model specifications for including health as an exposure"
+aics <- AIC(mod_00, mod_ph, mod_mh, mod_ph_mh, mod_phmh)
+bics <- BIC(mod_00, mod_ph, mod_mh, mod_ph_mh, mod_phmh)
+
+aics |> 
+  rownames_to_column(var = "model") |> 
+  left_join(
+    bics |> rownames_to_column(var="model")    
+  ) |> 
+  mutate(
+    aic_rank = rank(AIC),
+    bic_rank = rank(BIC)
+  ) |> 
+  knitr::kable()
+
+
+```
+
+@tbl-model_fit_ghq12 shows that the specification with an interaction between MH and PH is preferred by both AIC and BIC. Of models including only MH or PH, the model specification for PH is preferred.
+
+Based on this, we will consider the following scenarios, each with the best performing model, `mod_phmh`:
+
+-   Scenario 1: Mental health only is improved (but physical health is unchanged)
+-   Scenario 2: Physical health only is improved (but mental health is unchanged)
+-   Scenario 3: Both mental health and physical health are changed by equal amounts
+-   Scenario 4: Both mental health and physical health are changed, but mental health is changed more.
+-   Scenario 5: Both mental health and physical health are changed, but physical health is changed more.
+
+These scenarios are represented graphically in @fig-genhealth. All interventions on the unit circle (grey curve) represent equal change over both dimensions, but the scenarios differ in terms of how the two components, mental health and physical health, contribute to the overall health change.[^1]
+
+[^1]: There is no single \`health\` driver/exposure included in the model. Instead there are separate mental health and physical health exposures. However both mental health and physical health have been standardised, meaning we can model a scenario in which 'health' has been improved, and the effect of these health improvements is equal across the mental and and physical health subdomains. In order to ensure we are looking at the effect of the type of the driver being modified, rather than the amount of change we are making to these drivers, we need to employ a little trigonometry. If we were to modify both MH and PH by one standard unit, the total amount of change in 'health' would be the hypotenuse of a triangle in which both MH and PH are 'legs', i.e. \$\\sqrt{1\^2 + 1\^2}\$ or \$\\sqrt2\$, which is 1.41 to two decimal places, and so larger than either of the previous exposure reductions being modelled. In order to work out the amount of equal change across both 'legs' required for a 1 unit total change across both dimensions, we therefore need to solve \$1 = \\sqrt{z\^2 + z\^2}\$, i.e. \$1 = \\sqrt{2z\^2}\$. This means \$1 = 2z\^2\$, so \$z\^2 = \\frac{1}{2}\$, and therefore \$z = \\frac{1}{\\sqrt2}\$. In scenario 3, therefore, both MH and PH are increased by this same amount, which is 0.71 to two decimal places.
+
+```{r}
+#| label: fig-genhealth
+#| fig-cap: "Schematic representation of continuous health improvement scenarios modelled"
+library(geomtextpath)
+
+pos_y <- function(x) {sqrt(1 - x^2)}
+x = seq(0, 1, by = 0.001)
+dta <- tibble(
+  x = x
+) |> 
+  mutate(
+    y = pos_y(x)
+  )
+
+dta |> 
+  ggplot(aes(x = x, y = y)) + 
+    geom_line(color = "grey") + 
+    coord_equal() + 
+    labs(x = "Physical Health (Standardised)",
+         y = "Mental Health (Standardised)",
+         title = "Health improvement scenarios modelled") + 
+  theme_minimal() + 
+  annotate("point", x = 1, y = 0) + 
+  annotate("point", x = 0, y = 1) + 
+  annotate("point", x = 1/ sqrt(2), y = 1/ sqrt(2)) + 
+  annotate("point", x =  2 / sqrt(5), y = 1 / sqrt(5)) + 
+  annotate("point", x = 1 / sqrt(5), y = 2 / sqrt(5)) + 
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, xend = 0, yend = 1), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S1: MH Only", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) + 
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, xend = 1, yend = 0), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S2: PH Only", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) + 
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, xend = 1/sqrt(2), yend = 1/sqrt(2)), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S3: Equal Gain", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) + 
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, yend = 2/sqrt(5), xend = 1/sqrt(5)), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S4: MH Bias", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  )  +
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, yend = 1/sqrt(5), xend = 2/sqrt(5)), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S5: PH Bias", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  )  
+  
+  
+  
+  
+
+```
+
+#### Scenario 1: Improving mental health only
+
+@tbl-mh_scenarios shows the predicted effects on the number of people in each economic category of increasing each individual's mental health by a substantial amount, one standard deviation. The baseline model shows the distribution of the population aged 25-64 before health was improved; the counterfactual shows it after health was improved. The results are based on UKHLS participants for whom relevant information was observed in wave j, the last pre-COVID wave in the dataset. @tbl-mh_scenarios-1 is based on the model which includes MH as a driver only, whereas @tbl-mh_scenarios-2 is based on the model in which PH is also included as a driver, but in this scenario is not modified.
+
+```{r}
+#| label: tbl-mh_scenarios
+#| tbl-cap: "Estimates of substantially improving Mental Health"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(sf12mcs_dv = sf12mcs_dv + 1)
+
+
+preds_df_baseline <- 
+  predict(mod_phmh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_phmh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_mh <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+
+tbl_mod_mh |> knitr::kable()
+
+```
+
+In this scenario, in which mental health was improved but physical health unaffected, unemployment is projected to fall by 12%, and economic inactivity due to long-term sickness by almost 16%. Small relative (but large absolute) increases in Employment are projected too, along with a small increase in early retirement.
+
+#### Scenario 2: Improving physical health only
+
+@tbl-ph_scenario shows the estimated impact on state sizes of substantially improving PH. As with the MH intervention scenarios, in the counterfactual scenario PH scores were improved by one standardised unit for all valid wave J observations. The model `mod_ph_mh` was used for this scenario calculation.
+
+```{r}
+#| label: tbl-ph_scenario
+#| tbl-cap: "Estimates of substantially improving Physical Health"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(sf12pcs_dv = sf12pcs_dv + 1)
+
+
+preds_df_baseline <- 
+  predict(mod_phmh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_phmh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_ph <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+tbl_mod_ph |> knitr::kable()
+```
+
+In this scenario, economic inactivity due to long-term sickess is projected to fall by 26%, and unemployment by 15%. A 2.5% increase in employment - due largely to transfers from unemployment and long-term sickness - is also project. Unlike
+
+Comparing @tbl-ph_scenario with @tbl-mh_scenarios we can see that a hypothetical intervention purely on physical health is therefore likely to lead to a larger effect on those economic categories of most interest than an equivalently sized intervention on mental health only.
+
+#### Scenario 3: Improving mental and physical health by equal amounts
+
+The results of running this scenario are shown in @tbl-genhealth
+
+```{r}
+#| label: tbl-genhealth
+#| tbl-cap: "Estimates of substantially improving health via equal improvements in mental health and physical health"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(2),
+    sf12pcs_dv = sf12pcs_dv + 1 / sqrt(2)
+  )
+
+
+preds_df_baseline <- 
+  predict(mod_phmh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_phmh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_both <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+kbl_health <- tbl_mod_both |> knitr::kable()
+# save_kable(kbl_health, file = here::here("presentations/health_table.html"))
+
+kbl_health
+```
+
+@tbl-genhealth suggests that, if mental and physical health were intervened on equally effectively, then a near 30% fall in inactivity due to long-term sickness is projected to result, as well as an 18.5% fall in unemployment. As with @tbl-ph-scenario and @tbl-mh-scenario, the majority of the reduction in these categories is projected to translate into increased in the number of people in employment. Inactivity due to full time study and early retirement are also project to increase, but by more modest amounts.
+
+Comparing @tbl-genhealth with @tbl-ph_scenario, which had the larger of the two single component intervention scenarios on economic inactivity due to long-term sickness, we can see that, at 30%, the projected effect of intervening on both mental and physical health equally is slightly larger than the 26% relative change projected in the physical health only scenario.
+
+#### Scenario 4: Both MH and PH improved, but MH changed more
+
+In this scenario, both MH and PHS are affected, but the size of the change in MH is modelled to be twice as large as the effect on PH. The results are shown in @tbl-genhealth_mhbias
+
+```{r}
+#| label: tbl-genhealth_mhbias
+#| tbl-cap: "Estimates of substantially improving health via disproprtionate improvement in mental health"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 2 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 1 / sqrt(5)
+  )
+
+
+preds_df_baseline <- 
+  predict(mod_phmh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_phmh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_both <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+kbl_health_mhbias <- tbl_mod_both |> knitr::kable()
+# save_kable(kbl_health, file = here::here("presentations/health_table.html"))
+
+kbl_health_mhbias
+```
+
+@tbl-genhealth_mhbias projects a fall in economic inactivity due to long-term sickness of around 26%, which is similar to the effect of scenario 2, as shown in @tbl-ph_scenario.
+
+#### Scenario 5: Health improved, but PH improved more
+
+In this scenario, both MH and PH are changed, but the change in PH modelled to be twice as large as for MH. The projections are shown in @tbl-genhealth_phbias. 
+
+```{r}
+#| label: tbl-genhealth_phbias
+#| tbl-cap: "Estimates of substantially improving health via disproprtionate improvement in physical health"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 2 / sqrt(5)
+  )
+
+
+preds_df_baseline <- 
+  predict(mod_phmh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_phmh, newdata = df_counterfactual, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_baseline, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counterfactual, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+
+tbl_mod_both <- 
+  predictions_summary_matrix |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+kbl_health_phbias <- tbl_mod_both |> knitr::kable()
+# save_kable(kbl_health, file = here::here("presentations/health_table.html"))
+
+kbl_health_phbias
+
+```
+
+tbl-genhealth_phbias shows that, in this scenario, a 30.5% reduction in inactivity due to long-term sickness is projected to result. This is slightly larger than the previous maximum relative reduction in this category, of 29.9%, but not appreciably so.
+
+## Part two: Effects of discrete and continuous changes to health in distinct subpopulations
+
+### Differences by sex 
+
+- Approach 1: (More empirical) just use the observed males and females and run separately 
+
+```{r}
+#| label: tbl-male_female_separately_observed
+#| tbl-cap: "Differences in effects of improving health (biased towards physical health improvements) from observed male and female populations"
+#| tbl-subcap: 
+#| - "Females"
+#| - "Males"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+df_baseline_females <- 
+  ind_data_standardised |> 
+  filter(
+    wave == "j",
+    sex == "female"
+  )
+
+df_baseline_males <- 
+  ind_data_standardised |> 
+  filter(
+    wave == "j",
+    sex == "male"
+  )
+
+df_counter_females <-
+  df_baseline_females |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 2 / sqrt(5)
+  )  
+
+df_counter_males <-
+  df_baseline_males |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 2 / sqrt(5)
+  ) 
+
+preds_df_base_females <- 
+  predict(mod_phmh, newdata = df_baseline_females, type = "probs")
+
+preds_df_base_males <- 
+  predict(mod_phmh, newdata = df_baseline_males, type = "probs")
+
+preds_df_counter_females <- 
+  predict(mod_phmh, newdata = df_counter_females, type = "probs")
+
+preds_df_counter_males <- 
+  predict(mod_phmh, newdata = df_counter_males, type = "probs")
+
+
+
+predictions_summary_matrix_females <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_base_females, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counter_females, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix_females) <- c("base", "counterfactual")
+
+tbl_mod_females <- 
+  predictions_summary_matrix_females |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+
+predictions_summary_matrix_males <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_base_males, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counter_males, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix_males) <- c("base", "counterfactual")
+
+tbl_mod_males <- 
+  predictions_summary_matrix_males |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+
+kbl_health_phbias_females <- tbl_mod_females |> knitr::kable()
+# save_kable(kbl_health, file = here::here("presentations/health_table.html"))
+
+kbl_health_phbias_males <- tbl_mod_males |> knitr::kable()
+
+kbl_health_phbias_females
+kbl_health_phbias_males
+
+```
+
+- Approach 2: (More model-based) turn everyone to one particular sex at a time
+
+```{r}
+#| label: tbl-male_female_separately_modelled
+#| tbl-cap: "Differences in effects of improving health (biased towards physical health improvements) from observed male and female populations (modelled approach"
+#| tbl-subcap: 
+#| - "Females"
+#| - "Males"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+df_baseline_females <- 
+  ind_data_standardised |> 
+  filter(
+    wave == "j"
+  ) |> 
+  mutate(sex = "female")
+
+df_baseline_males <- 
+  ind_data_standardised |> 
+  filter(
+    wave == "j"
+  ) |> 
+  mutate(sex = "male")
+
+df_counter_females <-
+  df_baseline_females |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 2 / sqrt(5)
+  )  
+
+df_counter_males <-
+  df_baseline_males |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 2 / sqrt(5)
+  ) 
+
+preds_df_base_females <- 
+  predict(mod_phmh, newdata = df_baseline_females, type = "probs")
+
+preds_df_base_males <- 
+  predict(mod_phmh, newdata = df_baseline_males, type = "probs")
+
+preds_df_counter_females <- 
+  predict(mod_phmh, newdata = df_counter_females, type = "probs")
+
+preds_df_counter_males <- 
+  predict(mod_phmh, newdata = df_counter_males, type = "probs")
+
+
+
+predictions_summary_matrix_females <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_base_females, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counter_females, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix_females) <- c("base", "counterfactual")
+
+tbl_mod_females <- 
+  predictions_summary_matrix_females |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+
+predictions_summary_matrix_males <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_base_males, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counter_males, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix_males) <- c("base", "counterfactual")
+
+tbl_mod_males <- 
+  predictions_summary_matrix_males |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+
+kbl_health_phbias_females <- tbl_mod_females |> knitr::kable()
+# save_kable(kbl_health, file = here::here("presentations/health_table.html"))
+
+kbl_health_phbias_males <- tbl_mod_males |> knitr::kable()
+
+kbl_health_phbias_females
+kbl_health_phbias_males
+
+```
+
+### Differences by age group
+
+- For this we can only use approach 1: stratify by age groups
+
+```{r}
+#| label: tbl-younger_older_separately_observed
+#| tbl-cap: "Differences in effects of improving health (biased towards physical health improvements) from observed younger and older populations"
+#| tbl-subcap: 
+#| - "Younger (16-44)"
+#| - "Older (45-65)"
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+df_baseline_younger <- 
+  ind_data_standardised |> 
+  filter(
+    wave == "j",
+    between(age, 16, 44)
+  )
+
+df_baseline_older <- 
+  ind_data_standardised |> 
+  filter(
+    wave == "j",
+    between(age, 45, 64)
+  )
+
+df_counter_younger <-
+  df_baseline_younger |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 2 / sqrt(5)
+  )  
+
+df_counter_older <-
+  df_baseline_older |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 2 / sqrt(5)
+  ) 
+
+preds_df_base_younger <- 
+  predict(mod_phmh, newdata = df_baseline_younger, type = "probs")
+
+preds_df_base_older <- 
+  predict(mod_phmh, newdata = df_baseline_older, type = "probs")
+
+preds_df_counter_younger <- 
+  predict(mod_phmh, newdata = df_counter_younger, type = "probs")
+
+preds_df_counter_older <- 
+  predict(mod_phmh, newdata = df_counter_older, type = "probs")
+
+
+
+predictions_summary_matrix_younger <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_base_younger, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counter_younger, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix_younger) <- c("base", "counterfactual")
+
+tbl_mod_younger <- 
+  predictions_summary_matrix_younger |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+
+predictions_summary_matrix_older <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_df_base_older, 2, function(x) round(sum(x), 0)),
+  apply(preds_df_counter_older, 2, function(x) round(sum(x), 0))
+)
+
+colnames(predictions_summary_matrix_older) <- c("base", "counterfactual")
+
+tbl_mod_older <- 
+  predictions_summary_matrix_older |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "State") |> 
+    mutate(
+        State = factor(
+          State, 
+          ordered = TRUE, 
+          levels = econ_cat_levels
+        )
+      ) |> 
+    arrange(State) |> 
+    mutate(
+      `Absolute Change` = counterfactual - base,
+      `Relative Change` = `Absolute Change` / base
+    ) |> 
+    mutate(
+      `Relative Change` = ifelse(
+        `Relative Change` > 0, 
+        glue::glue("{round(100 * `Relative Change`, 1)}% up" ),
+        glue::glue("{round(-100 * `Relative Change`, 1)}% down")
+        )
+    )
+
+
+kbl_health_phbias_younger <- tbl_mod_younger |> knitr::kable()
+# save_kable(kbl_health, file = here::here("presentations/health_table.html"))
+
+kbl_health_phbias_older <- tbl_mod_older |> knitr::kable()
+
+kbl_health_phbias_younger
+kbl_health_phbias_older
+
+```
+
+
+### Differences by household composition
+
+
+
+
+# Discussion
+
+## Strengths
+
+-   Very generalisable and adaptable framework for potentially considering many drivers both individually and in combination.
+
+-   Makes use of a large and complex dataset which was initially broadly representative of the UK population.
+
+-   UKHLS has both strengths in following individuals and households over time. But on the other hand there is selective retention from wave to wave, so the study sample may become less representative of the general population over time.
+
+    -   Particular strength is the longitudinal nature of the study. This was essential for allowing transitions at individual level to be modelled, as a first stage to producing estimates of the effects of drivers on the overall populations
+
+## Comparison with other findings
+
+-   We haven't looked yet. **A priority to focus on?**
+
+## Limitations/Caveats
+
+-   We aren't capturing uncertainty (i) where there are few observations (ii) representativeness of the sample (including sub-groups) (iii) multiplication of uncertainty - more variables, more biased data (iv) computations stop at 100 runs...we could do more for a more precise model.
+
+## Implications
+
+### Research
+
+-   As more variables are included in a model, there is less complete data available to populate the models. This may bias the results. We could look at methods such as multiple imputation to attempt to reduce this source of bias.
+
+-   We can attempt to make the results more representative of specific within-UK populations, such as those more representative of Scotland, Northern Ireland, or Wales. Different UK nations differ in terms of their demographic and socioeconomic characteristics and so the same exposures are likely to have different effects in different parts of the UK.
+
+-   We can also use the modelling framework to consider the effect that ageing populations alone will likely have on the proportion of the working age population who are economically active and inactive in different ways.
+
+-   We can also use the framework to project the effect that modest but sustained interventions on drivers may have over multiple years.
+
+-   Will link geographic drivers to provide broader upstream context to movements into and out of different economic (in)activity states.
+
+### Practice
+
+-   These estimates attempt to quantify the amount of HREI 'explained by' specific drivers, based on a PAF-style framing of the questions. This is equivalent to asking what the effect of fully mitigating any driver would be on the population as a whole. However the effectiveness of any real-world intervention is likely to be less, as no adverse driver/exposure is likely to be fully mitigated. As such these estimates likely give an upper bound to the effect of any real-world intervention.
+
+-   
+
+# References
+
+::: {#refs}
+:::
+
+# Appendices
+
+## Appendix 1
+
+## Appendix 2
