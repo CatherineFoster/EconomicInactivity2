@@ -41,27 +41,16 @@ There are quite a lot of variables to consider, all within the \_hhresp files
 **Income and Expenditure**
 
 -   `fihhmngrs_dv`: total gross monthly household income - month before interview
-
 -   `fihhmnlabgrs_dv`: total gross household labour income - month before interview
-
 -   `fihhmnnet1_dv` : total household net income - no deductions
-
 -   `fihhmnlabnet_dv` : total net household labour income - month before interview
-
 -   `fihhmnmisc_dv` : total household misc income - month before interview
-
 -   `fihhmnprben_dv` : total household private benefit income - month before interview
-
 -   `fihhmninv_dv`: total household investment income - month before interview
-
 -   `fihhmnpen_dv` : total household pension income - month before interview
-
 -   `fihhmnsben_dv`: total household social benefit income - month before interview
-
 -   `houscost1_dv` : monthly housing costs including mortgage principal payments
-
 -   `ieqmoecd_dv` : modified OECD equivalence scale
-
 -   `fihhmngrs_if` : share of imputed HH total income
 
 # Preparation

@@ -75,11 +75,11 @@ ind_data_standardised <-
 
 **Introduction** The UK has comparatively high rates of working age economic inactivity (EI) due to poor health.
 
-**Methods** This paper uses a novel modelling framework, and data from the UKHLS, to estimate how much of this health-related EI (HREI) may be 'due to' i) poor general health directly, or due to two types of socioeconomic driver of health and inactivity: ii) low qualifications; and iii) low wages. We modelled the individual transition probabilities between seven economic (in)activity states for a broadly representative population from the UKHLS observed pre-pandemic, who were between 25 and 64 years of age when interviewed. We projected how many move between states both under observed circumstances and in a scenario where an adverse driver was fully or largely mitigated, and compared how many more or fewer people were in the economically inactive long term sick state in both scenarios. From this we were able to produce estimates of the amount of HREI that may be 'explained by' these specific drivers. 
+**Methods** This paper uses a novel modelling framework, and data from the UKHLS, to estimate how much of this health-related EI (HREI) may be 'due to' i) poor general health directly, or due to two types of socioeconomic driver of health and inactivity: ii) low qualifications; and iii) low wages. We modelled the individual transition probabilities between seven economic (in)activity states for a broadly representative population from the UKHLS observed pre-pandemic, who were between 25 and 64 years of age when interviewed. We projected how many move between states both under observed circumstances and in a scenario where an adverse driver was fully or largely mitigated, and compared how many more or fewer people were in the economically inactive long term sick state in both scenarios. From this we were able to produce estimates of the amount of HREI that may be 'explained by' these specific drivers.
 
 **Findings** Considering each driver independently, poor general health may explain up to 30% of HREI, whereas low wages may explain up to [UNKNOWN%]{style="color:red"}, and low qualifications may explain up to 17.5% of HREI.
 
-**Discussion** The framework provides a means of estimating the role that such drivers as poor health and low qualifications have on the size of the HREI population. Further work will be required to consider additional drivers, and the effect of multiple drivers in combination. Further work is also required to identify how much known interventions can shift these adverse drivers into HREI in practice. 
+**Discussion** The framework provides a means of estimating the role that such drivers as poor health and low qualifications have on the size of the HREI population. Further work will be required to consider additional drivers, and the effect of multiple drivers in combination. Further work is also required to identify how much known interventions can shift these adverse drivers into HREI in practice.
 
 # [Notes/Todos]{style="color:blue"}
 
@@ -88,24 +88,22 @@ ind_data_standardised <-
 -   [x] Adapt health code and run
 -   [x] Adapt quals code and run
 -   [ ] Create wages code and run
-    -   [X] Look specifically at wages
+    -   [x] Look specifically at wages
     -   [ ] Adapt hhincome code
 
 </ul>
 
-## Questions at this stage 
+## Questions at this stage
 
-- [ ] Should wages be a separate paper (as comparatively complex)?
-    - [ ] Can we really do wages as a single indicator without taking household income into account?
-    - [ ] What does the wage/age curve mean for inequalities in labour market participation? (By age and by wage level)
-    - [ ] What does it mean for participation in training and education?
-    - [ ] Should we include an analysis which just gives a higher hourly **living** wage to everyone, rather than the arbitrary 40% threshold currently used? 
-- [ ] If narrowing to something more health-focused (say), should we look at discrete health states (such as LLTI) as well as continuous health (GHQ-12 MH and PH, as currently?)    
-- [ ] Do we want to do models/scenarios that use measures of **job insecurity** as well as wages?
-    - This is especially important when considering the relationship between low wages and probability of moving to unemployment. Does earning lower wages cause low wage earners to *choose* to leave their job and become unemployed (in search of better paid jobs), *or* do jobs that pay poorly tend to also be insecure work so the probability of becoming unemployed from such jobs is naturally higher?
-    - Is this a specific area where a targetted literature review would help? (Quant/Qual/Reviews etc?)
-
-
+-   [ ] Should wages be a separate paper (as comparatively complex)?
+    -   [ ] Can we really do wages as a single indicator without taking household income into account?
+    -   [ ] What does the wage/age curve mean for inequalities in labour market participation? (By age and by wage level)
+    -   [ ] What does it mean for participation in training and education?
+    -   [ ] Should we include an analysis which just gives a higher hourly **living** wage to everyone, rather than the arbitrary 40% threshold currently used?
+-   [ ] If narrowing to something more health-focused (say), should we look at discrete health states (such as LLTI) as well as continuous health (GHQ-12 MH and PH, as currently?)\
+-   [ ] Do we want to do models/scenarios that use measures of **job insecurity** as well as wages?
+    -   This is especially important when considering the relationship between low wages and probability of moving to unemployment. Does earning lower wages cause low wage earners to *choose* to leave their job and become unemployed (in search of better paid jobs), *or* do jobs that pay poorly tend to also be insecure work so the probability of becoming unemployed from such jobs is naturally higher?
+    -   Is this a specific area where a targetted literature review would help? (Quant/Qual/Reviews etc?)
 
 # Key Findings/Contributions
 
@@ -220,9 +218,9 @@ We simulate three different population groups:
 
 @fig-threestateflow shows the transition probabilities observed throughout the entire vcalid UKHLS dataset between the three states of unemployed, employed, and economically inactive between any two consecutive waves. (This means that the same individual may contribute multiple times, given they may be observed between multiple pairs of waves). With three mutually exclusive states, there are nine possible transitions. Because economic inactivity is so heterogeneous, the models used in practice make use of seven states, leading to 49 transition probabilities.
 
-A node connecting to itself indicates the probability of staying in that state from one wave to the next. In graph theory the nodes are called vertices and the links connecting them are called edges. We can see from the edges connecting a vertex to itself that employment is, overall, the state most likely to 'flow to' itself, with a probability of 95.6% of someone employed at one wave being employed at the next wave. The next most 'sticky' of the three vertices is economically inactive, with an 80.6% probability of remaining inactive from one wave to the next. The least sticky of the three vertices is Unemployed, where there a 43.4% probability of remaining unemployed between two consecutive waves. 
+A node connecting to itself indicates the probability of staying in that state from one wave to the next. In graph theory the nodes are called vertices and the links connecting them are called edges. We can see from the edges connecting a vertex to itself that employment is, overall, the state most likely to 'flow to' itself, with a probability of 95.6% of someone employed at one wave being employed at the next wave. The next most 'sticky' of the three vertices is economically inactive, with an 80.6% probability of remaining inactive from one wave to the next. The least sticky of the three vertices is Unemployed, where there a 43.4% probability of remaining unemployed between two consecutive waves.
 
-There is a 25.7% probability of transitioning from unemployed to inactive, whereas there is only a 2.7% probability of transitioning from employed to inactive. 
+There is a 25.7% probability of transitioning from unemployed to inactive, whereas there is only a 2.7% probability of transitioning from employed to inactive.
 
 ```{r}
 #| label: fig-threestateflow
@@ -975,7 +973,7 @@ tab_04_remain_carer |> knitr::kable()
 
 We can see from @tbl-staybyquals that higher qualification categories are associated with increased probabilities of remaining employed, and reduced probabilities of remaining unemployed or remaining long-term sick, but also reduced probabilities of remaining a full time carer. But we can also see that the extent to which these absolute changes occur is highly dependent on other demographic characteristics.
 
-#### Simulation with wave J data 
+#### Simulation with wave J data
 
 @tbl-nosomequal_counter shows the estimated effect of a counterfactual where those with no qualifications are instead assigned 'some' qualifications. As mentioned only a small proportion of the sample frame have no qualifications so the majority of the observations are unchanged between the baseline and counterfactual scenarios.
 
@@ -1110,18 +1108,15 @@ tbl_mod_both |> knitr::kable()
 
 ### Modelling effects of higher or lower wages
 
-The previous drivers considered are those which apply to persons in any of the economic (in)activity categories modelled. By contrast, it is only reasonable to consider wages as a driver for those in receipt of wages, i.e. those in employment. 
+The previous drivers considered are those which apply to persons in any of the economic (in)activity categories modelled. By contrast, it is only reasonable to consider wages as a driver for those in receipt of wages, i.e. those in employment.
 
 **NOTE: THERE ARE TOO MANY UNCERTAINTIES/RESEARCHER DEGREES OF FREEDOM REGARDING WAGE EFFECT MODELLING TO BE SENSIBLE TO PROCEED, WE THINK, IN THIS FIRST PAPER. INSTEAD, A NOTEBOOK WITH WAGE ANALYSIS WILL BE SHARED ALONGSIDE SOME QUESTION ABOUT HOW BEST TO PROCEED IN THIS AREA**
 
+#### Some interrim findings
 
-#### Some interrim findings 
-
-- Lower wages *are* associated with increased probability of leaving employment
-- These differences do not appear to substantively differ by gender
-- But they do appear to differ by age, with younger adults more sensitive to differences in relative wages than older adults. 
-
-
+-   Lower wages *are* associated with increased probability of leaving employment
+-   These differences do not appear to substantively differ by gender
+-   But they do appear to differ by age, with younger adults more sensitive to differences in relative wages than older adults.
 
 #### Descriptive
 
@@ -1130,46 +1125,43 @@ The previous drivers considered are those which apply to persons in any of the e
 
 # Discussion
 
-## Strengths 
+## Strengths
 
-- Very generalisable and adaptable framework for potentially considering many drivers both individually and in combination. 
+-   Very generalisable and adaptable framework for potentially considering many drivers both individually and in combination.
 
-- Makes use of a large and complex dataset which was initially broadly representative of the UK population. 
+-   Makes use of a large and complex dataset which was initially broadly representative of the UK population.
 
-- UKHLS has both strengths in following individuals and households over time. But on the other hand there is selective retention from wave to wave, so the study sample may become less representative of the general population over time. 
-    - Particular strength is the longitudinal nature of the study. This was essential for allowing transitions at individual level to be modelled, as a first stage to producing estimates of the effects of drivers on the overall populations
+-   UKHLS has both strengths in following individuals and households over time. But on the other hand there is selective retention from wave to wave, so the study sample may become less representative of the general population over time.
 
+    -   Particular strength is the longitudinal nature of the study. This was essential for allowing transitions at individual level to be modelled, as a first stage to producing estimates of the effects of drivers on the overall populations
 
 ## Comparison with other findings
 
-- We haven't looked yet. **A priority to focus on?**
+-   We haven't looked yet. **A priority to focus on?**
 
-## Limitations/Caveats 
+## Limitations/Caveats
 
-- We aren't capturing uncertainty (i) where there are few observations (ii) representativeness of the sample (including sub-groups) (iii) multiplication of uncertainty - more variables, more biased data (iv) computations stop at 100 runs...we could do more for a more precise model. 
+-   We aren't capturing uncertainty (i) where there are few observations (ii) representativeness of the sample (including sub-groups) (iii) multiplication of uncertainty - more variables, more biased data (iv) computations stop at 100 runs...we could do more for a more precise model.
 
-
-
-## Implications 
+## Implications
 
 ### Research
 
-- As more variables are included in a model, there is less complete data available to populate the models. This may bias the results. We could look at methods such as multiple imputation to attempt to reduce this source of bias.
+-   As more variables are included in a model, there is less complete data available to populate the models. This may bias the results. We could look at methods such as multiple imputation to attempt to reduce this source of bias.
 
-- We can attempt to make the results more representative of specific within-UK populations, such as those more representative of Scotland, Northern Ireland, or Wales. Different UK nations differ in terms of their demographic and socioeconomic characteristics and so the same exposures are likely to have different effects in different parts of the UK. 
+-   We can attempt to make the results more representative of specific within-UK populations, such as those more representative of Scotland, Northern Ireland, or Wales. Different UK nations differ in terms of their demographic and socioeconomic characteristics and so the same exposures are likely to have different effects in different parts of the UK.
 
-- We can also use the modelling framework to consider the effect that ageing populations alone will likely have on the proportion of the working age population who are economically active and inactive in different ways.
+-   We can also use the modelling framework to consider the effect that ageing populations alone will likely have on the proportion of the working age population who are economically active and inactive in different ways.
 
-- We can also use the framework to project the effect that modest but sustained interventions on drivers may have over multiple years. 
+-   We can also use the framework to project the effect that modest but sustained interventions on drivers may have over multiple years.
 
-- Will link geographic drivers to provide broader upstream context to movements into and out of different economic (in)activity states. 
-
+-   Will link geographic drivers to provide broader upstream context to movements into and out of different economic (in)activity states.
 
 ### Practice
 
-- These estimates attempt to quantify the amount of HREI 'explained by' specific drivers, based on a PAF-style framing of the questions. This is equivalent to asking what the effect of fully mitigating any driver would be on the population as a whole. However the effectiveness of any real-world intervention is likely to be less, as no adverse driver/exposure is likely to be fully mitigated. As such these estimates likely give an upper bound to the effect of any real-world intervention.
+-   These estimates attempt to quantify the amount of HREI 'explained by' specific drivers, based on a PAF-style framing of the questions. This is equivalent to asking what the effect of fully mitigating any driver would be on the population as a whole. However the effectiveness of any real-world intervention is likely to be less, as no adverse driver/exposure is likely to be fully mitigated. As such these estimates likely give an upper bound to the effect of any real-world intervention.
 
--
+-   
 
 # References
 

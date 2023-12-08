@@ -1,6 +1,15 @@
 ---
 title: "22 Effect of wages on remaining employed"
-format: html
+format: 
+  html:
+    warning: false
+    code-fold: true
+    message: false
+    code-summary: "Show R Code"
+  docx: 
+    warning: false
+    echo: false
+    message: false
 editor: visual
 ---
 

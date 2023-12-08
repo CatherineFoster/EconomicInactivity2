@@ -571,6 +571,6 @@ flowchart TB
 -   jon.will.minton\@gmail.com
 -   jon.minton\@phs.scot
 -   @jonminton on the X social media platform
--   Website: https://jonminton.net 
+-   Website: https://jonminton.net
 
 [Thanks for listening!]{style="color: purple; font-family: cursive; font-size: larger;"}
