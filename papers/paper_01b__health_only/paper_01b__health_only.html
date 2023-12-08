@@ -1415,17 +1415,34 @@ converged</code></pre>
 
 </div>
 </div>
-<p>tbl-genhealth_phbias shows that, in this scenario, a 30.5% reduction in inactivity due to long-term sickness is projected to result. This is slightly larger than the previous maximum relative reduction in this category, of 29.9%, but not appreciably so.</p>
+<p><a href="#tbl-genhealth_phbias">Table&nbsp;7</a> shows that, in this scenario, a 30.5% reduction in inactivity due to long-term sickness is projected to result. This is slightly larger than the previous maximum relative reduction in this category, of 29.9%, but not appreciably so.</p>
 </section>
 </section>
 </section>
 <section id="part-two-effects-of-discrete-and-continuous-changes-to-health-in-distinct-subpopulations" class="level2">
 <h2 class="anchored" data-anchor-id="part-two-effects-of-discrete-and-continuous-changes-to-health-in-distinct-subpopulations">Part two: Effects of discrete and continuous changes to health in distinct subpopulations</h2>
+<p>In part one of this paper, we looked at a range of scenarios in which deleterious health was ‘switched off’ or ‘mitigated’. When looking at health as a continuous quantity, based on SF-12 MH and PH components, we found that improving both PH and MH, but improving PH more so, led to the largest estimated reductions in the size of economic inactivity due to long-term sickness and unemployment.</p>
+<p>In part two of this paper, we explore whether these estimates which apply to the general population are similar in distinct subpopulations. Our subpopulations of interest are:</p>
+<ol type="1">
+<li>Males and females</li>
+<li>Older and younger working age populations</li>
+<li>Household types, focusing on households with children, and within this single parent households</li>
+</ol>
+<p>If there are substantive differences between the estimated effects of poor health in these subpopulations, then it suggests additional influencers and drivers may need to be considered, and also that the effects of improving health on improving labour market outcomes will not be felt equally in all subpopulations.</p>
+<p>For each subpopulation we model the effect of the health change scenario which was associated with the greatest relative change in sickness-related economic inactivity and unemployment, namely scenario 5: the scenario in which MH and PH are both improved, but PH is improved twice as much as MH. This represents the most ‘efficient’ change to health, in terms of the expected outcomes, of those scenarios considered.</p>
 <section id="differences-by-sex" class="level3">
 <h3 class="anchored" data-anchor-id="differences-by-sex">Differences by sex</h3>
+<p>We consider two approaches to looking at differences by sex in the effects of changing health as per scenario 5:</p>
 <ul>
-<li>Approach 1: (More empirical) just use the observed males and females and run separately</li>
+<li><ol type="i">
+<li>Running the models separately for the observed male and female subpopulations in wave J of the UKHLS.</li>
+</ol></li>
+<li><ol start="2" type="i">
+<li>Using all observations in the UKHLS, but artificially ‘changing’ the sex of the observations to male or female for all observations.</li>
+</ol></li>
 </ul>
+<p>The first approach has the advantage of only using real data, but reduced the number of observations in each subpopulation group; the second approach uses the same number of observations for both subpopulations, but relies more heavily on the assumptions built into the best-fitting model.</p>
+<p>The projected results based on approach i) are shown in <a href="#tbl-male_female_separately_observed">Table&nbsp;8</a>, and the projected results based on approach ii) are shown in <a href="#tbl-male_female_separately_modelled">Table&nbsp;9</a>.</p>
 <div>
 <details>
 <summary>Code</summary>
@@ -1701,9 +1718,8 @@ converged</code></pre>
 </div>
 </div>
 </div>
-<ul>
-<li>Approach 2: (More model-based) turn everyone to one particular sex at a time</li>
-</ul>
+<p>Overall, there appear to be few substantive differences between males and females, in terms of the relative effects of this optimal health improvement scenario on the changing size of the economic (in)activity states. The model is not currently set up to determine if the differences observed are statistically significant, as they do not include credible intervals. But substantively, all relatively effects appear to be quite similar. The possible exception to this is the relative change to the size of the inactive care category, which is 3.2% down for females, and 1.6% down for males. However there are very few males observed in this category, and the 1.6% estimate is based on only one male fewer in the counterfactual than the baseline inactive care pool.</p>
+<p>The equivalent results using the more model-based approach is shown in <a href="#tbl-male_female_separately_modelled">Table&nbsp;9</a></p>
 <div>
 <details>
 <summary>Code</summary>
@@ -1979,12 +1995,12 @@ converged</code></pre>
 </div>
 </div>
 </div>
+<p>In general both approaches lead to substantively similar estimates of the effects of the health improvement scenario. In both men and women substantive improvements in employment, unemployment, and inactive long-term sick are observed, and estimated to be of similar magnitudes. When using the more model-based approach, the differences in the effects on inactive care are even greater by sex, being estimated to lead to a 4.1% decline for females and 1.5% decline for males. Other than this, the estimated effects are very similar by both sex, and the estimation approach used.</p>
+<p>Overall, we can conclude that there appear not to be substantive differences by sex in terms of the effect of improving health on labour market participation and economic (in)activity. This suggests that an effective health intervention is likely to have similar effects on improving these economic outcomes for both males and females.</p>
 </section>
 <section id="differences-by-age-group" class="level3">
 <h3 class="anchored" data-anchor-id="differences-by-age-group">Differences by age group</h3>
-<ul>
-<li>For this we can only use approach 1: stratify by age groups</li>
-</ul>
+<p>For looking at differences by age group, we use the equivalent of approach i) only. This is because we have sizeable subpopulations in both working age age groups considered, and because age is itself likely to influence both mental health and physical health. The results of running this subgroup analysis, splitting the observed population in wave J into the two broad age groups, is shown in <a href="#tbl-younger_older_separately_observed">Table&nbsp;10</a></p>
 <div>
 <details>
 <summary>Code</summary>
@@ -2260,9 +2276,1275 @@ converged</code></pre>
 </div>
 </div>
 </div>
+<p>The key differences we observe are:</p>
+<ul>
+<li>For younger adults: greater reductions in unemployment</li>
+<li>For older adults: greater relative increases in being an inactive student. But this is based on a much smaller baseline -probability of being in or moving to this state.</li>
+<li>For older adults: a possibly higher relative effect on increasing employment. (As this is the largest state the absolute effect is important to note.)</li>
+<li>Similar effects on the relative size of economic inactive long-term sick, but possibly a higher proportionate effect in younger adults (albeit from a smaller baseline than for older adults)</li>
+<li>A signal of a small relative increase in early retirement in older adults as a result of improving health.</li>
+<li>There is a larger relative and absolute difference in the estimated pool size of inactive care in younger adults than older adults.</li>
+</ul>
 </section>
 <section id="differences-by-household-composition" class="level3">
 <h3 class="anchored" data-anchor-id="differences-by-household-composition">Differences by household composition</h3>
+<p>In order to model the effects of household composition, we need to extend the existing model to also incorporate household composition as predictor variables. This involves first taking the best-performing model of the effects of mental and physical health, and then adding to that household type as a predictor. We are especially interested in looking at households with children, and for this analysis only used observations of working age adults with children to build our model and test scenarios. We are interested, within these individuals with children, in the following household groups:</p>
+<ul>
+<li>Single parents</li>
+<li>Couples with children</li>
+<li>Other household types with children</li>
+</ul>
+<p>We start by determining whether adding information on these household types, for observations only of working age adults with children, leads to improvements in penalised model fit using AIC and BIC. The comparison of model fit is shown in <a href="#tbl-model_fit_ghq12_hhtype">Table&nbsp;11</a></p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>df_joined <span class="ot">&lt;-</span> </span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_hh_variables</span>(</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">df =</span> ind_data_standardised,</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">varnames =</span> <span class="fu">c</span>(</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>      <span class="st">"hhtype_dv"</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>    ), </span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">vartypes =</span> <span class="fu">c</span>(</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>      <span class="st">"labels"</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>single_couple_parent_df <span class="ot">&lt;-</span> </span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>df_joined <span class="sc">|&gt;</span> </span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a>    simplified_household_lookup, </span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">by =</span> <span class="fu">c</span>(<span class="st">'hhtype_dv'</span> <span class="ot">=</span> <span class="st">'original'</span>)</span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(has_children <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(has_children)) <span class="sc">|&gt;</span> </span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">simplified_category =</span> <span class="fu">case_when</span>(</span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>      recoded <span class="sc">==</span> <span class="st">'Single Parent'</span>  <span class="sc">~</span> <span class="st">"Single Parent"</span>,</span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a>      recoded <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Family with 1-2 Children"</span>, <span class="st">"Family with 3 or more Children"</span>) <span class="sc">~</span> <span class="st">"Two Parent Household"</span>,</span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a>      <span class="cn">TRUE</span> <span class="sc">~</span> <span class="st">"Other HH with children"</span></span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(pidp, wave, age, sex, sf12mcs_dv, sf12pcs_dv, this_status, next_status, <span class="at">parent_hh_type =</span> simplified_category) <span class="sc">|&gt;</span> </span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">parent_hh_type =</span> <span class="fu">factor</span>(parent_hh_type, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Two Parent Household"</span>, <span class="st">"Single Parent"</span>, <span class="st">"Other HH with children"</span>)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>Now build the model</p>
+<p>compare the models</p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>aics <span class="ot">&lt;-</span> <span class="fu">AIC</span>(mod_00, mod_hhtype, mod_phmh_withchildrenonly, mod_hhtype_phmh, mod_hhtype_phmh_demointeraction, mod_hhtype_phmh_healthinteraction)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>bics <span class="ot">&lt;-</span> <span class="fu">BIC</span>(mod_00, mod_hhtype, mod_phmh_withchildrenonly, mod_hhtype_phmh, mod_hhtype_phmh_demointeraction, mod_hhtype_phmh_healthinteraction)</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>aics <span class="sc">|&gt;</span> </span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rownames_to_column</span>(<span class="at">var =</span> <span class="st">"model"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>    bics <span class="sc">|&gt;</span> <span class="fu">rownames_to_column</span>(<span class="at">var=</span><span class="st">"model"</span>)    </span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">aic_rank =</span> <span class="fu">rank</span>(AIC),</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">bic_rank =</span> <span class="fu">rank</span>(BIC)</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div id="tbl-model_fit_ghq12_hhtype" class="anchored">
+<table data-quarto-postprocess="true" class="table table-sm table-striped small">
+<caption>Table&nbsp;11: AIC and BIC for different model specifications for including health and household type as an exposure for working age adults with children</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">model</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">df</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">AIC</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">BIC</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">aic_rank</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">bic_rank</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">mod_00</td>
+<td style="text-align: right;">126</td>
+<td style="text-align: right;">119299.8</td>
+<td style="text-align: right;">120530.8</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">mod_hhtype</td>
+<td style="text-align: right;">138</td>
+<td style="text-align: right;">118813.9</td>
+<td style="text-align: right;">120162.2</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">mod_phmh_withchildrenonly</td>
+<td style="text-align: right;">144</td>
+<td style="text-align: right;">116766.5</td>
+<td style="text-align: right;">118173.5</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">mod_hhtype_phmh</td>
+<td style="text-align: right;">156</td>
+<td style="text-align: right;">116347.0</td>
+<td style="text-align: right;">117871.1</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">mod_hhtype_phmh_demointeraction</td>
+<td style="text-align: right;">312</td>
+<td style="text-align: right;">115822.5</td>
+<td style="text-align: right;">118870.9</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">mod_hhtype_phmh_healthinteraction</td>
+<td style="text-align: right;">192</td>
+<td style="text-align: right;">116382.8</td>
+<td style="text-align: right;">118258.7</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">3</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+
+</div>
+</div>
+<p>This confirms that adding household type information to the model, in addition to health, improved the performance.</p>
+<p>We can now use this model specification to look at differences in the effects of the same change in health in economic (in)activity between couples with children and single parents. This is shown in <a href="#tbl-singleparent_coupleparent_modelled">Table&nbsp;12</a>.</p>
+<div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>econ_cat_levels <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Employed"</span>, <span class="st">"Unemployed"</span>, <span class="st">"Inactive student"</span>, <span class="st">"Inactive care"</span>, <span class="st">"Inactive long term sick"</span>, <span class="st">"Inactive retired"</span>, <span class="st">"Inactive other"</span>)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>df_baseline_singleparent <span class="ot">&lt;-</span> </span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  single_couple_parent_df <span class="sc">|&gt;</span> </span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>    wave <span class="sc">==</span> <span class="st">"j"</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">parent_hh_type =</span> <span class="st">"Single Parent"</span>)</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>df_baseline_coupleparent <span class="ot">&lt;-</span> </span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>  single_couple_parent_df <span class="sc">|&gt;</span> </span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>    wave <span class="sc">==</span> <span class="st">"j"</span></span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">parent_hh_type =</span> <span class="st">"Two Parent Household"</span>)</span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-18"><a href="#cb25-18" aria-hidden="true" tabindex="-1"></a>df_counter_singleparent <span class="ot">&lt;-</span></span>
+<span id="cb25-19"><a href="#cb25-19" aria-hidden="true" tabindex="-1"></a>  df_baseline_singleparent <span class="sc">|&gt;</span> </span>
+<span id="cb25-20"><a href="#cb25-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb25-21"><a href="#cb25-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>),</span>
+<span id="cb25-22"><a href="#cb25-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>)</span>
+<span id="cb25-23"><a href="#cb25-23" aria-hidden="true" tabindex="-1"></a>  )  </span>
+<span id="cb25-24"><a href="#cb25-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-25"><a href="#cb25-25" aria-hidden="true" tabindex="-1"></a>df_counter_coupleparent <span class="ot">&lt;-</span></span>
+<span id="cb25-26"><a href="#cb25-26" aria-hidden="true" tabindex="-1"></a>  df_baseline_coupleparent <span class="sc">|&gt;</span> </span>
+<span id="cb25-27"><a href="#cb25-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb25-28"><a href="#cb25-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>),</span>
+<span id="cb25-29"><a href="#cb25-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>)</span>
+<span id="cb25-30"><a href="#cb25-30" aria-hidden="true" tabindex="-1"></a>  ) </span>
+<span id="cb25-31"><a href="#cb25-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-32"><a href="#cb25-32" aria-hidden="true" tabindex="-1"></a>preds_df_base_single <span class="ot">&lt;-</span> </span>
+<span id="cb25-33"><a href="#cb25-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_baseline_singleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb25-34"><a href="#cb25-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-35"><a href="#cb25-35" aria-hidden="true" tabindex="-1"></a>preds_df_base_couple <span class="ot">&lt;-</span> </span>
+<span id="cb25-36"><a href="#cb25-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_baseline_coupleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb25-37"><a href="#cb25-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-38"><a href="#cb25-38" aria-hidden="true" tabindex="-1"></a>preds_df_counter_single <span class="ot">&lt;-</span> </span>
+<span id="cb25-39"><a href="#cb25-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_counter_singleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb25-40"><a href="#cb25-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-41"><a href="#cb25-41" aria-hidden="true" tabindex="-1"></a>preds_df_counter_couple <span class="ot">&lt;-</span> </span>
+<span id="cb25-42"><a href="#cb25-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_counter_coupleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb25-43"><a href="#cb25-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-44"><a href="#cb25-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-45"><a href="#cb25-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-46"><a href="#cb25-46" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix_single <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb25-47"><a href="#cb25-47" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb25-48"><a href="#cb25-48" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb25-49"><a href="#cb25-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_base_single, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>)),</span>
+<span id="cb25-50"><a href="#cb25-50" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter_single, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>))</span>
+<span id="cb25-51"><a href="#cb25-51" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb25-52"><a href="#cb25-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-53"><a href="#cb25-53" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix_single) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb25-54"><a href="#cb25-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-55"><a href="#cb25-55" aria-hidden="true" tabindex="-1"></a>tbl_mod_singleparent <span class="ot">&lt;-</span> </span>
+<span id="cb25-56"><a href="#cb25-56" aria-hidden="true" tabindex="-1"></a>  predictions_summary_matrix_single <span class="sc">|&gt;</span> </span>
+<span id="cb25-57"><a href="#cb25-57" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb25-58"><a href="#cb25-58" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rownames_to_column</span>(<span class="at">var =</span> <span class="st">"State"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb25-59"><a href="#cb25-59" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb25-60"><a href="#cb25-60" aria-hidden="true" tabindex="-1"></a>        <span class="at">State =</span> <span class="fu">factor</span>(</span>
+<span id="cb25-61"><a href="#cb25-61" aria-hidden="true" tabindex="-1"></a>          State, </span>
+<span id="cb25-62"><a href="#cb25-62" aria-hidden="true" tabindex="-1"></a>          <span class="at">ordered =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb25-63"><a href="#cb25-63" aria-hidden="true" tabindex="-1"></a>          <span class="at">levels =</span> econ_cat_levels</span>
+<span id="cb25-64"><a href="#cb25-64" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb25-65"><a href="#cb25-65" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> </span>
+<span id="cb25-66"><a href="#cb25-66" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(State) <span class="sc">|&gt;</span> </span>
+<span id="cb25-67"><a href="#cb25-67" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb25-68"><a href="#cb25-68" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="ot">=</span> counterfactual <span class="sc">-</span> base,</span>
+<span id="cb25-69"><a href="#cb25-69" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="sc">/</span> base</span>
+<span id="cb25-70"><a href="#cb25-70" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb25-71"><a href="#cb25-71" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb25-72"><a href="#cb25-72" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb25-73"><a href="#cb25-73" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="sc">&gt;</span> <span class="dv">0</span>, </span>
+<span id="cb25-74"><a href="#cb25-74" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(100 * `Relative Change`, 1)}% up"</span> ),</span>
+<span id="cb25-75"><a href="#cb25-75" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(-100 * `Relative Change`, 1)}% down"</span>)</span>
+<span id="cb25-76"><a href="#cb25-76" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb25-77"><a href="#cb25-77" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb25-78"><a href="#cb25-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-79"><a href="#cb25-79" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-80"><a href="#cb25-80" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix_couple <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb25-81"><a href="#cb25-81" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb25-82"><a href="#cb25-82" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb25-83"><a href="#cb25-83" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_base_couple, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>)),</span>
+<span id="cb25-84"><a href="#cb25-84" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter_couple, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>))</span>
+<span id="cb25-85"><a href="#cb25-85" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb25-86"><a href="#cb25-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-87"><a href="#cb25-87" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix_couple) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb25-88"><a href="#cb25-88" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-89"><a href="#cb25-89" aria-hidden="true" tabindex="-1"></a>tbl_mod_coupleparent <span class="ot">&lt;-</span> </span>
+<span id="cb25-90"><a href="#cb25-90" aria-hidden="true" tabindex="-1"></a>  predictions_summary_matrix_couple <span class="sc">|&gt;</span> </span>
+<span id="cb25-91"><a href="#cb25-91" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb25-92"><a href="#cb25-92" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rownames_to_column</span>(<span class="at">var =</span> <span class="st">"State"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb25-93"><a href="#cb25-93" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb25-94"><a href="#cb25-94" aria-hidden="true" tabindex="-1"></a>        <span class="at">State =</span> <span class="fu">factor</span>(</span>
+<span id="cb25-95"><a href="#cb25-95" aria-hidden="true" tabindex="-1"></a>          State, </span>
+<span id="cb25-96"><a href="#cb25-96" aria-hidden="true" tabindex="-1"></a>          <span class="at">ordered =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb25-97"><a href="#cb25-97" aria-hidden="true" tabindex="-1"></a>          <span class="at">levels =</span> econ_cat_levels</span>
+<span id="cb25-98"><a href="#cb25-98" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb25-99"><a href="#cb25-99" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> </span>
+<span id="cb25-100"><a href="#cb25-100" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(State) <span class="sc">|&gt;</span> </span>
+<span id="cb25-101"><a href="#cb25-101" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb25-102"><a href="#cb25-102" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="ot">=</span> counterfactual <span class="sc">-</span> base,</span>
+<span id="cb25-103"><a href="#cb25-103" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="sc">/</span> base</span>
+<span id="cb25-104"><a href="#cb25-104" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb25-105"><a href="#cb25-105" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb25-106"><a href="#cb25-106" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb25-107"><a href="#cb25-107" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="sc">&gt;</span> <span class="dv">0</span>, </span>
+<span id="cb25-108"><a href="#cb25-108" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(100 * `Relative Change`, 1)}% up"</span> ),</span>
+<span id="cb25-109"><a href="#cb25-109" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(-100 * `Relative Change`, 1)}% down"</span>)</span>
+<span id="cb25-110"><a href="#cb25-110" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb25-111"><a href="#cb25-111" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb25-112"><a href="#cb25-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-113"><a href="#cb25-113" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-114"><a href="#cb25-114" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_single <span class="ot">&lt;-</span> tbl_mod_singleparent <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
+<span id="cb25-115"><a href="#cb25-115" aria-hidden="true" tabindex="-1"></a><span class="co"># save_kable(kbl_health, file = here::here("presentations/health_table.html"))</span></span>
+<span id="cb25-116"><a href="#cb25-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-117"><a href="#cb25-117" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_couple <span class="ot">&lt;-</span> tbl_mod_coupleparent <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
+<span id="cb25-118"><a href="#cb25-118" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-119"><a href="#cb25-119" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_single</span>
+<span id="cb25-120"><a href="#cb25-120" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_couple</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tbl-singleparent_coupleparent_modelled" class="cell tbl-parent quarto-layout-panel anchored">
+<div class="panel-caption table-caption">
+<p>Table&nbsp;12: Differences in the optimal health change by whether households with children have one or two parents</p>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div id="tbl-singleparent_coupleparent_modelled-1" class="quarto-layout-cell quarto-layout-cell-subref anchored" data-ref-parent="tbl-singleparent_coupleparent_modelled" style="flex-basis: 100.0%;justify-content: center;">
+<table data-quarto-postprocess="true" class="table table-sm table-striped small">
+<caption>(a) Single Parent</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">State</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">base</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">counterfactual</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Absolute Change</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Relative Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Employed</td>
+<td style="text-align: right;">6614</td>
+<td style="text-align: right;">6806</td>
+<td style="text-align: right;">192</td>
+<td style="text-align: left;">2.9% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unemployed</td>
+<td style="text-align: right;">605</td>
+<td style="text-align: right;">478</td>
+<td style="text-align: right;">-127</td>
+<td style="text-align: left;">21% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive student</td>
+<td style="text-align: right;">856</td>
+<td style="text-align: right;">918</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: left;">7.2% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive care</td>
+<td style="text-align: right;">617</td>
+<td style="text-align: right;">594</td>
+<td style="text-align: right;">-23</td>
+<td style="text-align: left;">3.7% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive long term sick</td>
+<td style="text-align: right;">254</td>
+<td style="text-align: right;">156</td>
+<td style="text-align: right;">-98</td>
+<td style="text-align: left;">38.6% down</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive retired</td>
+<td style="text-align: right;">88</td>
+<td style="text-align: right;">88</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive other</td>
+<td style="text-align: right;">49</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">-7</td>
+<td style="text-align: left;">14.3% down</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 100.0%;justify-content: center;">
+
+
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div id="tbl-singleparent_coupleparent_modelled-2" class="quarto-layout-cell quarto-layout-cell-subref anchored" data-ref-parent="tbl-singleparent_coupleparent_modelled" style="flex-basis: 100.0%;justify-content: center;">
+<table data-quarto-postprocess="true" class="table table-sm table-striped small">
+<caption>(b) Couple Parent</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">State</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">base</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">counterfactual</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Absolute Change</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Relative Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Employed</td>
+<td style="text-align: right;">6794</td>
+<td style="text-align: right;">6952</td>
+<td style="text-align: right;">158</td>
+<td style="text-align: left;">2.3% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unemployed</td>
+<td style="text-align: right;">368</td>
+<td style="text-align: right;">287</td>
+<td style="text-align: right;">-81</td>
+<td style="text-align: left;">22% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive student</td>
+<td style="text-align: right;">826</td>
+<td style="text-align: right;">875</td>
+<td style="text-align: right;">49</td>
+<td style="text-align: left;">5.9% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive care</td>
+<td style="text-align: right;">751</td>
+<td style="text-align: right;">713</td>
+<td style="text-align: right;">-38</td>
+<td style="text-align: left;">5.1% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive long term sick</td>
+<td style="text-align: right;">210</td>
+<td style="text-align: right;">129</td>
+<td style="text-align: right;">-81</td>
+<td style="text-align: left;">38.6% down</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive retired</td>
+<td style="text-align: right;">84</td>
+<td style="text-align: right;">84</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive other</td>
+<td style="text-align: right;">50</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">-8</td>
+<td style="text-align: left;">16% down</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 100.0%;justify-content: center;">
+
+
+</div>
+</div>
+</div>
+</div>
+<p>In <a href="#tbl-singleparent_coupleparent_modelled">Table&nbsp;12</a>, we can see that…</p>
+<div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>econ_cat_levels <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Employed"</span>, <span class="st">"Unemployed"</span>, <span class="st">"Inactive student"</span>, <span class="st">"Inactive care"</span>, <span class="st">"Inactive long term sick"</span>, <span class="st">"Inactive retired"</span>, <span class="st">"Inactive other"</span>)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>df_baseline_singleparent <span class="ot">&lt;-</span> </span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  single_couple_parent_df <span class="sc">|&gt;</span> </span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>    wave <span class="sc">==</span> <span class="st">"j"</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">parent_hh_type =</span> <span class="st">"Single Parent"</span>)</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>df_baseline_coupleparent <span class="ot">&lt;-</span> </span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>  single_couple_parent_df <span class="sc">|&gt;</span> </span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>    wave <span class="sc">==</span> <span class="st">"j"</span></span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">parent_hh_type =</span> <span class="st">"Two Parent Household"</span>)</span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a>df_counter_singleparent <span class="ot">&lt;-</span></span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a>  df_baseline_singleparent <span class="sc">|&gt;</span> </span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>),</span>
+<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>)</span>
+<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a>  )  </span>
+<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-25"><a href="#cb26-25" aria-hidden="true" tabindex="-1"></a>df_counter_coupleparent <span class="ot">&lt;-</span></span>
+<span id="cb26-26"><a href="#cb26-26" aria-hidden="true" tabindex="-1"></a>  df_baseline_coupleparent <span class="sc">|&gt;</span> </span>
+<span id="cb26-27"><a href="#cb26-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb26-28"><a href="#cb26-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>),</span>
+<span id="cb26-29"><a href="#cb26-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>)</span>
+<span id="cb26-30"><a href="#cb26-30" aria-hidden="true" tabindex="-1"></a>  ) </span>
+<span id="cb26-31"><a href="#cb26-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-32"><a href="#cb26-32" aria-hidden="true" tabindex="-1"></a>preds_df_base_single <span class="ot">&lt;-</span> </span>
+<span id="cb26-33"><a href="#cb26-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh_demointeraction, <span class="at">newdata =</span> df_baseline_singleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb26-34"><a href="#cb26-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-35"><a href="#cb26-35" aria-hidden="true" tabindex="-1"></a>preds_df_base_couple <span class="ot">&lt;-</span> </span>
+<span id="cb26-36"><a href="#cb26-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh_demointeraction, <span class="at">newdata =</span> df_baseline_coupleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb26-37"><a href="#cb26-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-38"><a href="#cb26-38" aria-hidden="true" tabindex="-1"></a>preds_df_counter_single <span class="ot">&lt;-</span> </span>
+<span id="cb26-39"><a href="#cb26-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh_demointeraction, <span class="at">newdata =</span> df_counter_singleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb26-40"><a href="#cb26-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-41"><a href="#cb26-41" aria-hidden="true" tabindex="-1"></a>preds_df_counter_couple <span class="ot">&lt;-</span> </span>
+<span id="cb26-42"><a href="#cb26-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh_demointeraction, <span class="at">newdata =</span> df_counter_coupleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb26-43"><a href="#cb26-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-44"><a href="#cb26-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-45"><a href="#cb26-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-46"><a href="#cb26-46" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix_single <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb26-47"><a href="#cb26-47" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb26-48"><a href="#cb26-48" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb26-49"><a href="#cb26-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_base_single, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>)),</span>
+<span id="cb26-50"><a href="#cb26-50" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter_single, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>))</span>
+<span id="cb26-51"><a href="#cb26-51" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb26-52"><a href="#cb26-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-53"><a href="#cb26-53" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix_single) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb26-54"><a href="#cb26-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-55"><a href="#cb26-55" aria-hidden="true" tabindex="-1"></a>tbl_mod_singleparent <span class="ot">&lt;-</span> </span>
+<span id="cb26-56"><a href="#cb26-56" aria-hidden="true" tabindex="-1"></a>  predictions_summary_matrix_single <span class="sc">|&gt;</span> </span>
+<span id="cb26-57"><a href="#cb26-57" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb26-58"><a href="#cb26-58" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rownames_to_column</span>(<span class="at">var =</span> <span class="st">"State"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb26-59"><a href="#cb26-59" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb26-60"><a href="#cb26-60" aria-hidden="true" tabindex="-1"></a>        <span class="at">State =</span> <span class="fu">factor</span>(</span>
+<span id="cb26-61"><a href="#cb26-61" aria-hidden="true" tabindex="-1"></a>          State, </span>
+<span id="cb26-62"><a href="#cb26-62" aria-hidden="true" tabindex="-1"></a>          <span class="at">ordered =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb26-63"><a href="#cb26-63" aria-hidden="true" tabindex="-1"></a>          <span class="at">levels =</span> econ_cat_levels</span>
+<span id="cb26-64"><a href="#cb26-64" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb26-65"><a href="#cb26-65" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> </span>
+<span id="cb26-66"><a href="#cb26-66" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(State) <span class="sc">|&gt;</span> </span>
+<span id="cb26-67"><a href="#cb26-67" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb26-68"><a href="#cb26-68" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="ot">=</span> counterfactual <span class="sc">-</span> base,</span>
+<span id="cb26-69"><a href="#cb26-69" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="sc">/</span> base</span>
+<span id="cb26-70"><a href="#cb26-70" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb26-71"><a href="#cb26-71" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb26-72"><a href="#cb26-72" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb26-73"><a href="#cb26-73" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="sc">&gt;</span> <span class="dv">0</span>, </span>
+<span id="cb26-74"><a href="#cb26-74" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(100 * `Relative Change`, 1)}% up"</span> ),</span>
+<span id="cb26-75"><a href="#cb26-75" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(-100 * `Relative Change`, 1)}% down"</span>)</span>
+<span id="cb26-76"><a href="#cb26-76" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb26-77"><a href="#cb26-77" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb26-78"><a href="#cb26-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-79"><a href="#cb26-79" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-80"><a href="#cb26-80" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix_couple <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb26-81"><a href="#cb26-81" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb26-82"><a href="#cb26-82" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb26-83"><a href="#cb26-83" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_base_couple, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>)),</span>
+<span id="cb26-84"><a href="#cb26-84" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter_couple, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>))</span>
+<span id="cb26-85"><a href="#cb26-85" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb26-86"><a href="#cb26-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-87"><a href="#cb26-87" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix_couple) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb26-88"><a href="#cb26-88" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-89"><a href="#cb26-89" aria-hidden="true" tabindex="-1"></a>tbl_mod_coupleparent <span class="ot">&lt;-</span> </span>
+<span id="cb26-90"><a href="#cb26-90" aria-hidden="true" tabindex="-1"></a>  predictions_summary_matrix_couple <span class="sc">|&gt;</span> </span>
+<span id="cb26-91"><a href="#cb26-91" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb26-92"><a href="#cb26-92" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rownames_to_column</span>(<span class="at">var =</span> <span class="st">"State"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb26-93"><a href="#cb26-93" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb26-94"><a href="#cb26-94" aria-hidden="true" tabindex="-1"></a>        <span class="at">State =</span> <span class="fu">factor</span>(</span>
+<span id="cb26-95"><a href="#cb26-95" aria-hidden="true" tabindex="-1"></a>          State, </span>
+<span id="cb26-96"><a href="#cb26-96" aria-hidden="true" tabindex="-1"></a>          <span class="at">ordered =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb26-97"><a href="#cb26-97" aria-hidden="true" tabindex="-1"></a>          <span class="at">levels =</span> econ_cat_levels</span>
+<span id="cb26-98"><a href="#cb26-98" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb26-99"><a href="#cb26-99" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> </span>
+<span id="cb26-100"><a href="#cb26-100" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(State) <span class="sc">|&gt;</span> </span>
+<span id="cb26-101"><a href="#cb26-101" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb26-102"><a href="#cb26-102" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="ot">=</span> counterfactual <span class="sc">-</span> base,</span>
+<span id="cb26-103"><a href="#cb26-103" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="sc">/</span> base</span>
+<span id="cb26-104"><a href="#cb26-104" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb26-105"><a href="#cb26-105" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb26-106"><a href="#cb26-106" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb26-107"><a href="#cb26-107" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="sc">&gt;</span> <span class="dv">0</span>, </span>
+<span id="cb26-108"><a href="#cb26-108" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(100 * `Relative Change`, 1)}% up"</span> ),</span>
+<span id="cb26-109"><a href="#cb26-109" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(-100 * `Relative Change`, 1)}% down"</span>)</span>
+<span id="cb26-110"><a href="#cb26-110" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb26-111"><a href="#cb26-111" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb26-112"><a href="#cb26-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-113"><a href="#cb26-113" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-114"><a href="#cb26-114" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_single <span class="ot">&lt;-</span> tbl_mod_singleparent <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
+<span id="cb26-115"><a href="#cb26-115" aria-hidden="true" tabindex="-1"></a><span class="co"># save_kable(kbl_health, file = here::here("presentations/health_table.html"))</span></span>
+<span id="cb26-116"><a href="#cb26-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-117"><a href="#cb26-117" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_couple <span class="ot">&lt;-</span> tbl_mod_coupleparent <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
+<span id="cb26-118"><a href="#cb26-118" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-119"><a href="#cb26-119" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_single</span>
+<span id="cb26-120"><a href="#cb26-120" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_couple</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tbl-singleparent_coupleparent_modelled_demoint" class="cell tbl-parent quarto-layout-panel anchored">
+<div class="panel-caption table-caption">
+<p>Table&nbsp;13: Differences in the optimal health change by whether households with children have one or two parents (with additional demographic interaction)</p>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div id="tbl-singleparent_coupleparent_modelled_demoint-1" class="quarto-layout-cell quarto-layout-cell-subref anchored" data-ref-parent="tbl-singleparent_coupleparent_modelled_demoint" style="flex-basis: 100.0%;justify-content: center;">
+<table data-quarto-postprocess="true" class="table table-sm table-striped small">
+<caption>(a) Single Parent</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">State</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">base</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">counterfactual</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Absolute Change</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Relative Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Employed</td>
+<td style="text-align: right;">6553</td>
+<td style="text-align: right;">6762</td>
+<td style="text-align: right;">209</td>
+<td style="text-align: left;">3.2% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unemployed</td>
+<td style="text-align: right;">654</td>
+<td style="text-align: right;">510</td>
+<td style="text-align: right;">-144</td>
+<td style="text-align: left;">22% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive student</td>
+<td style="text-align: right;">843</td>
+<td style="text-align: right;">907</td>
+<td style="text-align: right;">64</td>
+<td style="text-align: left;">7.6% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive care</td>
+<td style="text-align: right;">623</td>
+<td style="text-align: right;">607</td>
+<td style="text-align: right;">-16</td>
+<td style="text-align: left;">2.6% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive long term sick</td>
+<td style="text-align: right;">267</td>
+<td style="text-align: right;">163</td>
+<td style="text-align: right;">-104</td>
+<td style="text-align: left;">39% down</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive retired</td>
+<td style="text-align: right;">97</td>
+<td style="text-align: right;">95</td>
+<td style="text-align: right;">-2</td>
+<td style="text-align: left;">2.1% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive other</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">39</td>
+<td style="text-align: right;">-6</td>
+<td style="text-align: left;">13.3% down</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 100.0%;justify-content: center;">
+
+
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div id="tbl-singleparent_coupleparent_modelled_demoint-2" class="quarto-layout-cell quarto-layout-cell-subref anchored" data-ref-parent="tbl-singleparent_coupleparent_modelled_demoint" style="flex-basis: 100.0%;justify-content: center;">
+<table data-quarto-postprocess="true" class="table table-sm table-striped small">
+<caption>(b) Couple Parent</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">State</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">base</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">counterfactual</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Absolute Change</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Relative Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Employed</td>
+<td style="text-align: right;">6785</td>
+<td style="text-align: right;">6947</td>
+<td style="text-align: right;">162</td>
+<td style="text-align: left;">2.4% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unemployed</td>
+<td style="text-align: right;">367</td>
+<td style="text-align: right;">286</td>
+<td style="text-align: right;">-81</td>
+<td style="text-align: left;">22.1% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive student</td>
+<td style="text-align: right;">829</td>
+<td style="text-align: right;">881</td>
+<td style="text-align: right;">52</td>
+<td style="text-align: left;">6.3% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive care</td>
+<td style="text-align: right;">756</td>
+<td style="text-align: right;">713</td>
+<td style="text-align: right;">-43</td>
+<td style="text-align: left;">5.7% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive long term sick</td>
+<td style="text-align: right;">211</td>
+<td style="text-align: right;">130</td>
+<td style="text-align: right;">-81</td>
+<td style="text-align: left;">38.4% down</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive retired</td>
+<td style="text-align: right;">83</td>
+<td style="text-align: right;">83</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive other</td>
+<td style="text-align: right;">52</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">-8</td>
+<td style="text-align: left;">15.4% down</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 100.0%;justify-content: center;">
+
+
+</div>
+</div>
+</div>
+</div>
+<p>The model with demographic interaction effects shows more difference in terms of the effect of the health change than the model without such interaction effects. In particular a larger effect on the relative size of the inactice care pool is predicted for parents in a couple than single parents. Also a larger difference in the relative size of the employed population is predicted for single parents than couples. However, the change in the relative size of inactive long-term sick, and unemployment, is similar even with this more complex model specification.</p>
+<hr>
+<p>The other approach is to only look at the observed values</p>
+<div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>econ_cat_levels <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Employed"</span>, <span class="st">"Unemployed"</span>, <span class="st">"Inactive student"</span>, <span class="st">"Inactive care"</span>, <span class="st">"Inactive long term sick"</span>, <span class="st">"Inactive retired"</span>, <span class="st">"Inactive other"</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>df_baseline_singleparent <span class="ot">&lt;-</span> </span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  single_couple_parent_df <span class="sc">|&gt;</span> </span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    wave <span class="sc">==</span> <span class="st">"j"</span>,</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>    parent_hh_type <span class="sc">==</span> <span class="st">"Single Parent"</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  ) </span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>df_baseline_coupleparent <span class="ot">&lt;-</span> </span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>  single_couple_parent_df <span class="sc">|&gt;</span> </span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>    wave <span class="sc">==</span> <span class="st">"j"</span>,</span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>    parent_hh_type <span class="sc">==</span> <span class="st">"Two Parent Household"</span></span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>  ) </span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>df_counter_singleparent <span class="ot">&lt;-</span></span>
+<span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a>  df_baseline_singleparent <span class="sc">|&gt;</span> </span>
+<span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb27-20"><a href="#cb27-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>),</span>
+<span id="cb27-21"><a href="#cb27-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>)</span>
+<span id="cb27-22"><a href="#cb27-22" aria-hidden="true" tabindex="-1"></a>  )  </span>
+<span id="cb27-23"><a href="#cb27-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-24"><a href="#cb27-24" aria-hidden="true" tabindex="-1"></a>df_counter_coupleparent <span class="ot">&lt;-</span></span>
+<span id="cb27-25"><a href="#cb27-25" aria-hidden="true" tabindex="-1"></a>  df_baseline_coupleparent <span class="sc">|&gt;</span> </span>
+<span id="cb27-26"><a href="#cb27-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb27-27"><a href="#cb27-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>),</span>
+<span id="cb27-28"><a href="#cb27-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>)</span>
+<span id="cb27-29"><a href="#cb27-29" aria-hidden="true" tabindex="-1"></a>  ) </span>
+<span id="cb27-30"><a href="#cb27-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-31"><a href="#cb27-31" aria-hidden="true" tabindex="-1"></a>preds_df_base_single <span class="ot">&lt;-</span> </span>
+<span id="cb27-32"><a href="#cb27-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_baseline_singleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb27-33"><a href="#cb27-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-34"><a href="#cb27-34" aria-hidden="true" tabindex="-1"></a>preds_df_base_couple <span class="ot">&lt;-</span> </span>
+<span id="cb27-35"><a href="#cb27-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_baseline_coupleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb27-36"><a href="#cb27-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-37"><a href="#cb27-37" aria-hidden="true" tabindex="-1"></a>preds_df_counter_single <span class="ot">&lt;-</span> </span>
+<span id="cb27-38"><a href="#cb27-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_counter_singleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb27-39"><a href="#cb27-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-40"><a href="#cb27-40" aria-hidden="true" tabindex="-1"></a>preds_df_counter_couple <span class="ot">&lt;-</span> </span>
+<span id="cb27-41"><a href="#cb27-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_counter_coupleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb27-42"><a href="#cb27-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-43"><a href="#cb27-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-44"><a href="#cb27-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-45"><a href="#cb27-45" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix_single <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb27-46"><a href="#cb27-46" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb27-47"><a href="#cb27-47" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb27-48"><a href="#cb27-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_base_single, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>)),</span>
+<span id="cb27-49"><a href="#cb27-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter_single, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>))</span>
+<span id="cb27-50"><a href="#cb27-50" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb27-51"><a href="#cb27-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-52"><a href="#cb27-52" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix_single) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb27-53"><a href="#cb27-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-54"><a href="#cb27-54" aria-hidden="true" tabindex="-1"></a>tbl_mod_singleparent <span class="ot">&lt;-</span> </span>
+<span id="cb27-55"><a href="#cb27-55" aria-hidden="true" tabindex="-1"></a>  predictions_summary_matrix_single <span class="sc">|&gt;</span> </span>
+<span id="cb27-56"><a href="#cb27-56" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb27-57"><a href="#cb27-57" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rownames_to_column</span>(<span class="at">var =</span> <span class="st">"State"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb27-58"><a href="#cb27-58" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb27-59"><a href="#cb27-59" aria-hidden="true" tabindex="-1"></a>        <span class="at">State =</span> <span class="fu">factor</span>(</span>
+<span id="cb27-60"><a href="#cb27-60" aria-hidden="true" tabindex="-1"></a>          State, </span>
+<span id="cb27-61"><a href="#cb27-61" aria-hidden="true" tabindex="-1"></a>          <span class="at">ordered =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb27-62"><a href="#cb27-62" aria-hidden="true" tabindex="-1"></a>          <span class="at">levels =</span> econ_cat_levels</span>
+<span id="cb27-63"><a href="#cb27-63" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb27-64"><a href="#cb27-64" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> </span>
+<span id="cb27-65"><a href="#cb27-65" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(State) <span class="sc">|&gt;</span> </span>
+<span id="cb27-66"><a href="#cb27-66" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb27-67"><a href="#cb27-67" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="ot">=</span> counterfactual <span class="sc">-</span> base,</span>
+<span id="cb27-68"><a href="#cb27-68" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="sc">/</span> base</span>
+<span id="cb27-69"><a href="#cb27-69" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb27-70"><a href="#cb27-70" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb27-71"><a href="#cb27-71" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb27-72"><a href="#cb27-72" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="sc">&gt;</span> <span class="dv">0</span>, </span>
+<span id="cb27-73"><a href="#cb27-73" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(100 * `Relative Change`, 1)}% up"</span> ),</span>
+<span id="cb27-74"><a href="#cb27-74" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(-100 * `Relative Change`, 1)}% down"</span>)</span>
+<span id="cb27-75"><a href="#cb27-75" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb27-76"><a href="#cb27-76" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb27-77"><a href="#cb27-77" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-78"><a href="#cb27-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-79"><a href="#cb27-79" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix_couple <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb27-80"><a href="#cb27-80" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb27-81"><a href="#cb27-81" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb27-82"><a href="#cb27-82" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_base_couple, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>)),</span>
+<span id="cb27-83"><a href="#cb27-83" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter_couple, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>))</span>
+<span id="cb27-84"><a href="#cb27-84" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb27-85"><a href="#cb27-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-86"><a href="#cb27-86" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix_couple) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb27-87"><a href="#cb27-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-88"><a href="#cb27-88" aria-hidden="true" tabindex="-1"></a>tbl_mod_coupleparent <span class="ot">&lt;-</span> </span>
+<span id="cb27-89"><a href="#cb27-89" aria-hidden="true" tabindex="-1"></a>  predictions_summary_matrix_couple <span class="sc">|&gt;</span> </span>
+<span id="cb27-90"><a href="#cb27-90" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb27-91"><a href="#cb27-91" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rownames_to_column</span>(<span class="at">var =</span> <span class="st">"State"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb27-92"><a href="#cb27-92" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb27-93"><a href="#cb27-93" aria-hidden="true" tabindex="-1"></a>        <span class="at">State =</span> <span class="fu">factor</span>(</span>
+<span id="cb27-94"><a href="#cb27-94" aria-hidden="true" tabindex="-1"></a>          State, </span>
+<span id="cb27-95"><a href="#cb27-95" aria-hidden="true" tabindex="-1"></a>          <span class="at">ordered =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb27-96"><a href="#cb27-96" aria-hidden="true" tabindex="-1"></a>          <span class="at">levels =</span> econ_cat_levels</span>
+<span id="cb27-97"><a href="#cb27-97" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb27-98"><a href="#cb27-98" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> </span>
+<span id="cb27-99"><a href="#cb27-99" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(State) <span class="sc">|&gt;</span> </span>
+<span id="cb27-100"><a href="#cb27-100" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb27-101"><a href="#cb27-101" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="ot">=</span> counterfactual <span class="sc">-</span> base,</span>
+<span id="cb27-102"><a href="#cb27-102" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="sc">/</span> base</span>
+<span id="cb27-103"><a href="#cb27-103" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb27-104"><a href="#cb27-104" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb27-105"><a href="#cb27-105" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb27-106"><a href="#cb27-106" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="sc">&gt;</span> <span class="dv">0</span>, </span>
+<span id="cb27-107"><a href="#cb27-107" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(100 * `Relative Change`, 1)}% up"</span> ),</span>
+<span id="cb27-108"><a href="#cb27-108" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(-100 * `Relative Change`, 1)}% down"</span>)</span>
+<span id="cb27-109"><a href="#cb27-109" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb27-110"><a href="#cb27-110" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb27-111"><a href="#cb27-111" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-112"><a href="#cb27-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-113"><a href="#cb27-113" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_single <span class="ot">&lt;-</span> tbl_mod_singleparent <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
+<span id="cb27-114"><a href="#cb27-114" aria-hidden="true" tabindex="-1"></a><span class="co"># save_kable(kbl_health, file = here::here("presentations/health_table.html"))</span></span>
+<span id="cb27-115"><a href="#cb27-115" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-116"><a href="#cb27-116" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_couple <span class="ot">&lt;-</span> tbl_mod_coupleparent <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
+<span id="cb27-117"><a href="#cb27-117" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-118"><a href="#cb27-118" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_single</span>
+<span id="cb27-119"><a href="#cb27-119" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_couple</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tbl-singleparent_coupleparent_observed" class="cell tbl-parent quarto-layout-panel anchored">
+<div class="panel-caption table-caption">
+<p>Table&nbsp;14: Differences in the optimal health change by whether households with children have one or two parents (observed values</p>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div id="tbl-singleparent_coupleparent_observed-1" class="quarto-layout-cell quarto-layout-cell-subref anchored" data-ref-parent="tbl-singleparent_coupleparent_observed" style="flex-basis: 100.0%;justify-content: center;">
+<table data-quarto-postprocess="true" class="table table-sm table-striped small">
+<caption>(a) Single Parent</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">State</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">base</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">counterfactual</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Absolute Change</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Relative Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Employed</td>
+<td style="text-align: right;">442</td>
+<td style="text-align: right;">462</td>
+<td style="text-align: right;">20</td>
+<td style="text-align: left;">4.5% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unemployed</td>
+<td style="text-align: right;">65</td>
+<td style="text-align: right;">55</td>
+<td style="text-align: right;">-10</td>
+<td style="text-align: left;">15.4% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive student</td>
+<td style="text-align: right;">79</td>
+<td style="text-align: right;">85</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">7.6% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive care</td>
+<td style="text-align: right;">71</td>
+<td style="text-align: right;">70</td>
+<td style="text-align: right;">-1</td>
+<td style="text-align: left;">1.4% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive long term sick</td>
+<td style="text-align: right;">45</td>
+<td style="text-align: right;">29</td>
+<td style="text-align: right;">-16</td>
+<td style="text-align: left;">35.6% down</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive retired</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">20% up</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive other</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0% down</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 100.0%;justify-content: center;">
+
+
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div id="tbl-singleparent_coupleparent_observed-2" class="quarto-layout-cell quarto-layout-cell-subref anchored" data-ref-parent="tbl-singleparent_coupleparent_observed" style="flex-basis: 100.0%;justify-content: center;">
+<table data-quarto-postprocess="true" class="table table-sm table-striped small">
+<caption>(b) Couple Parent</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">State</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">base</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">counterfactual</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Absolute Change</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Relative Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Employed</td>
+<td style="text-align: right;">4467</td>
+<td style="text-align: right;">4555</td>
+<td style="text-align: right;">88</td>
+<td style="text-align: left;">2% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unemployed</td>
+<td style="text-align: right;">178</td>
+<td style="text-align: right;">136</td>
+<td style="text-align: right;">-42</td>
+<td style="text-align: left;">23.6% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive student</td>
+<td style="text-align: right;">321</td>
+<td style="text-align: right;">339</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: left;">5.6% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive care</td>
+<td style="text-align: right;">440</td>
+<td style="text-align: right;">415</td>
+<td style="text-align: right;">-25</td>
+<td style="text-align: left;">5.7% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive long term sick</td>
+<td style="text-align: right;">87</td>
+<td style="text-align: right;">52</td>
+<td style="text-align: right;">-35</td>
+<td style="text-align: left;">40.2% down</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive retired</td>
+<td style="text-align: right;">31</td>
+<td style="text-align: right;">31</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive other</td>
+<td style="text-align: right;">25</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">-4</td>
+<td style="text-align: left;">16% down</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 100.0%;justify-content: center;">
+
+
+</div>
+</div>
+</div>
+</div>
+<p>Finally (for now) let’s look at this for females only</p>
+<div>
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>econ_cat_levels <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Employed"</span>, <span class="st">"Unemployed"</span>, <span class="st">"Inactive student"</span>, <span class="st">"Inactive care"</span>, <span class="st">"Inactive long term sick"</span>, <span class="st">"Inactive retired"</span>, <span class="st">"Inactive other"</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>df_baseline_singleparent <span class="ot">&lt;-</span> </span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  single_couple_parent_df <span class="sc">|&gt;</span> </span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>    wave <span class="sc">==</span> <span class="st">"j"</span>,</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>    parent_hh_type <span class="sc">==</span> <span class="st">"Single Parent"</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(sex <span class="sc">==</span> <span class="st">"female"</span>)</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>df_baseline_coupleparent <span class="ot">&lt;-</span> </span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>  single_couple_parent_df <span class="sc">|&gt;</span> </span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>    wave <span class="sc">==</span> <span class="st">"j"</span>,</span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>    parent_hh_type <span class="sc">==</span> <span class="st">"Two Parent Household"</span></span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(sex <span class="sc">==</span> <span class="st">"female"</span>)</span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>df_counter_singleparent <span class="ot">&lt;-</span></span>
+<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a>  df_baseline_singleparent <span class="sc">|&gt;</span> </span>
+<span id="cb28-21"><a href="#cb28-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb28-22"><a href="#cb28-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>),</span>
+<span id="cb28-23"><a href="#cb28-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>)</span>
+<span id="cb28-24"><a href="#cb28-24" aria-hidden="true" tabindex="-1"></a>  )  </span>
+<span id="cb28-25"><a href="#cb28-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-26"><a href="#cb28-26" aria-hidden="true" tabindex="-1"></a>df_counter_coupleparent <span class="ot">&lt;-</span></span>
+<span id="cb28-27"><a href="#cb28-27" aria-hidden="true" tabindex="-1"></a>  df_baseline_coupleparent <span class="sc">|&gt;</span> </span>
+<span id="cb28-28"><a href="#cb28-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb28-29"><a href="#cb28-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12mcs_dv =</span> sf12mcs_dv <span class="sc">+</span> <span class="dv">1</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>),</span>
+<span id="cb28-30"><a href="#cb28-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">sf12pcs_dv =</span> sf12pcs_dv <span class="sc">+</span> <span class="dv">2</span> <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="dv">5</span>)</span>
+<span id="cb28-31"><a href="#cb28-31" aria-hidden="true" tabindex="-1"></a>  ) </span>
+<span id="cb28-32"><a href="#cb28-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-33"><a href="#cb28-33" aria-hidden="true" tabindex="-1"></a>preds_df_base_single <span class="ot">&lt;-</span> </span>
+<span id="cb28-34"><a href="#cb28-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_baseline_singleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb28-35"><a href="#cb28-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-36"><a href="#cb28-36" aria-hidden="true" tabindex="-1"></a>preds_df_base_couple <span class="ot">&lt;-</span> </span>
+<span id="cb28-37"><a href="#cb28-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_baseline_coupleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb28-38"><a href="#cb28-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-39"><a href="#cb28-39" aria-hidden="true" tabindex="-1"></a>preds_df_counter_single <span class="ot">&lt;-</span> </span>
+<span id="cb28-40"><a href="#cb28-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_counter_singleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb28-41"><a href="#cb28-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-42"><a href="#cb28-42" aria-hidden="true" tabindex="-1"></a>preds_df_counter_couple <span class="ot">&lt;-</span> </span>
+<span id="cb28-43"><a href="#cb28-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict</span>(mod_hhtype_phmh, <span class="at">newdata =</span> df_counter_coupleparent, <span class="at">type =</span> <span class="st">"probs"</span>)</span>
+<span id="cb28-44"><a href="#cb28-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-45"><a href="#cb28-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-46"><a href="#cb28-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-47"><a href="#cb28-47" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix_single <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb28-48"><a href="#cb28-48" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb28-49"><a href="#cb28-49" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb28-50"><a href="#cb28-50" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_base_single, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>)),</span>
+<span id="cb28-51"><a href="#cb28-51" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter_single, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>))</span>
+<span id="cb28-52"><a href="#cb28-52" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb28-53"><a href="#cb28-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-54"><a href="#cb28-54" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix_single) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb28-55"><a href="#cb28-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-56"><a href="#cb28-56" aria-hidden="true" tabindex="-1"></a>tbl_mod_singleparent <span class="ot">&lt;-</span> </span>
+<span id="cb28-57"><a href="#cb28-57" aria-hidden="true" tabindex="-1"></a>  predictions_summary_matrix_single <span class="sc">|&gt;</span> </span>
+<span id="cb28-58"><a href="#cb28-58" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb28-59"><a href="#cb28-59" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rownames_to_column</span>(<span class="at">var =</span> <span class="st">"State"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb28-60"><a href="#cb28-60" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb28-61"><a href="#cb28-61" aria-hidden="true" tabindex="-1"></a>        <span class="at">State =</span> <span class="fu">factor</span>(</span>
+<span id="cb28-62"><a href="#cb28-62" aria-hidden="true" tabindex="-1"></a>          State, </span>
+<span id="cb28-63"><a href="#cb28-63" aria-hidden="true" tabindex="-1"></a>          <span class="at">ordered =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb28-64"><a href="#cb28-64" aria-hidden="true" tabindex="-1"></a>          <span class="at">levels =</span> econ_cat_levels</span>
+<span id="cb28-65"><a href="#cb28-65" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb28-66"><a href="#cb28-66" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> </span>
+<span id="cb28-67"><a href="#cb28-67" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(State) <span class="sc">|&gt;</span> </span>
+<span id="cb28-68"><a href="#cb28-68" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb28-69"><a href="#cb28-69" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="ot">=</span> counterfactual <span class="sc">-</span> base,</span>
+<span id="cb28-70"><a href="#cb28-70" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="sc">/</span> base</span>
+<span id="cb28-71"><a href="#cb28-71" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb28-72"><a href="#cb28-72" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb28-73"><a href="#cb28-73" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb28-74"><a href="#cb28-74" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="sc">&gt;</span> <span class="dv">0</span>, </span>
+<span id="cb28-75"><a href="#cb28-75" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(100 * `Relative Change`, 1)}% up"</span> ),</span>
+<span id="cb28-76"><a href="#cb28-76" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(-100 * `Relative Change`, 1)}% down"</span>)</span>
+<span id="cb28-77"><a href="#cb28-77" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb28-78"><a href="#cb28-78" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb28-79"><a href="#cb28-79" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-80"><a href="#cb28-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-81"><a href="#cb28-81" aria-hidden="true" tabindex="-1"></a>predictions_summary_matrix_couple <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb28-82"><a href="#cb28-82" aria-hidden="true" tabindex="-1"></a>  <span class="co"># The number 2 indicates do the sum function for each column.</span></span>
+<span id="cb28-83"><a href="#cb28-83" aria-hidden="true" tabindex="-1"></a>  <span class="co"># If it were 1 then this would sum for each row (which should add up to 1 in call cases)</span></span>
+<span id="cb28-84"><a href="#cb28-84" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_base_couple, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>)),</span>
+<span id="cb28-85"><a href="#cb28-85" aria-hidden="true" tabindex="-1"></a>  <span class="fu">apply</span>(preds_df_counter_couple, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">round</span>(<span class="fu">sum</span>(x), <span class="dv">0</span>))</span>
+<span id="cb28-86"><a href="#cb28-86" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb28-87"><a href="#cb28-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-88"><a href="#cb28-88" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(predictions_summary_matrix_couple) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"base"</span>, <span class="st">"counterfactual"</span>)</span>
+<span id="cb28-89"><a href="#cb28-89" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-90"><a href="#cb28-90" aria-hidden="true" tabindex="-1"></a>tbl_mod_coupleparent <span class="ot">&lt;-</span> </span>
+<span id="cb28-91"><a href="#cb28-91" aria-hidden="true" tabindex="-1"></a>  predictions_summary_matrix_couple <span class="sc">|&gt;</span> </span>
+<span id="cb28-92"><a href="#cb28-92" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb28-93"><a href="#cb28-93" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rownames_to_column</span>(<span class="at">var =</span> <span class="st">"State"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb28-94"><a href="#cb28-94" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb28-95"><a href="#cb28-95" aria-hidden="true" tabindex="-1"></a>        <span class="at">State =</span> <span class="fu">factor</span>(</span>
+<span id="cb28-96"><a href="#cb28-96" aria-hidden="true" tabindex="-1"></a>          State, </span>
+<span id="cb28-97"><a href="#cb28-97" aria-hidden="true" tabindex="-1"></a>          <span class="at">ordered =</span> <span class="cn">TRUE</span>, </span>
+<span id="cb28-98"><a href="#cb28-98" aria-hidden="true" tabindex="-1"></a>          <span class="at">levels =</span> econ_cat_levels</span>
+<span id="cb28-99"><a href="#cb28-99" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb28-100"><a href="#cb28-100" aria-hidden="true" tabindex="-1"></a>      ) <span class="sc">|&gt;</span> </span>
+<span id="cb28-101"><a href="#cb28-101" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(State) <span class="sc">|&gt;</span> </span>
+<span id="cb28-102"><a href="#cb28-102" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb28-103"><a href="#cb28-103" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="ot">=</span> counterfactual <span class="sc">-</span> base,</span>
+<span id="cb28-104"><a href="#cb28-104" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Absolute Change</span><span class="st">`</span> <span class="sc">/</span> base</span>
+<span id="cb28-105"><a href="#cb28-105" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> </span>
+<span id="cb28-106"><a href="#cb28-106" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb28-107"><a href="#cb28-107" aria-hidden="true" tabindex="-1"></a>      <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">ifelse</span>(</span>
+<span id="cb28-108"><a href="#cb28-108" aria-hidden="true" tabindex="-1"></a>        <span class="st">`</span><span class="at">Relative Change</span><span class="st">`</span> <span class="sc">&gt;</span> <span class="dv">0</span>, </span>
+<span id="cb28-109"><a href="#cb28-109" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(100 * `Relative Change`, 1)}% up"</span> ),</span>
+<span id="cb28-110"><a href="#cb28-110" aria-hidden="true" tabindex="-1"></a>        glue<span class="sc">::</span><span class="fu">glue</span>(<span class="st">"{round(-100 * `Relative Change`, 1)}% down"</span>)</span>
+<span id="cb28-111"><a href="#cb28-111" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb28-112"><a href="#cb28-112" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb28-113"><a href="#cb28-113" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-114"><a href="#cb28-114" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-115"><a href="#cb28-115" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_single <span class="ot">&lt;-</span> tbl_mod_singleparent <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
+<span id="cb28-116"><a href="#cb28-116" aria-hidden="true" tabindex="-1"></a><span class="co"># save_kable(kbl_health, file = here::here("presentations/health_table.html"))</span></span>
+<span id="cb28-117"><a href="#cb28-117" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-118"><a href="#cb28-118" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_couple <span class="ot">&lt;-</span> tbl_mod_coupleparent <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
+<span id="cb28-119"><a href="#cb28-119" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-120"><a href="#cb28-120" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_single</span>
+<span id="cb28-121"><a href="#cb28-121" aria-hidden="true" tabindex="-1"></a>kbl_health_phbias_couple</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div id="tbl-singlemother_couplemother_observed" class="cell tbl-parent quarto-layout-panel anchored">
+<div class="panel-caption table-caption">
+<p>Table&nbsp;15: Differences in the optimal health change by whether mothers with children are single parents or parenting</p>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div id="tbl-singlemother_couplemother_observed-1" class="quarto-layout-cell quarto-layout-cell-subref anchored" data-ref-parent="tbl-singlemother_couplemother_observed" style="flex-basis: 100.0%;justify-content: center;">
+<table data-quarto-postprocess="true" class="table table-sm table-striped small">
+<caption>(a) Single Mother</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">State</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">base</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">counterfactual</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Absolute Change</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Relative Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Employed</td>
+<td style="text-align: right;">409</td>
+<td style="text-align: right;">428</td>
+<td style="text-align: right;">19</td>
+<td style="text-align: left;">4.6% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unemployed</td>
+<td style="text-align: right;">52</td>
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">-8</td>
+<td style="text-align: left;">15.4% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive student</td>
+<td style="text-align: right;">39</td>
+<td style="text-align: right;">42</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">7.7% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive care</td>
+<td style="text-align: right;">69</td>
+<td style="text-align: right;">69</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive long term sick</td>
+<td style="text-align: right;">38</td>
+<td style="text-align: right;">25</td>
+<td style="text-align: right;">-13</td>
+<td style="text-align: left;">34.2% down</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive retired</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive other</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0% down</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 100.0%;justify-content: center;">
+
+
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div id="tbl-singlemother_couplemother_observed-2" class="quarto-layout-cell quarto-layout-cell-subref anchored" data-ref-parent="tbl-singlemother_couplemother_observed" style="flex-basis: 100.0%;justify-content: center;">
+<table data-quarto-postprocess="true" class="table table-sm table-striped small">
+<caption>(b) Mother in couple</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">State</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">base</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">counterfactual</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Absolute Change</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Relative Change</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Employed</td>
+<td style="text-align: right;">2224</td>
+<td style="text-align: right;">2282</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: left;">2.6% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Unemployed</td>
+<td style="text-align: right;">89</td>
+<td style="text-align: right;">69</td>
+<td style="text-align: right;">-20</td>
+<td style="text-align: left;">22.5% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive student</td>
+<td style="text-align: right;">177</td>
+<td style="text-align: right;">186</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">5.1% up</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive care</td>
+<td style="text-align: right;">416</td>
+<td style="text-align: right;">392</td>
+<td style="text-align: right;">-24</td>
+<td style="text-align: left;">5.8% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive long term sick</td>
+<td style="text-align: right;">51</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">-21</td>
+<td style="text-align: left;">41.2% down</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Inactive retired</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">0% down</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Inactive other</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">-2</td>
+<td style="text-align: left;">13.3% down</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 100.0%;justify-content: center;">
+
+
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="summary-of-part-two" class="level3">
+<h3 class="anchored" data-anchor-id="summary-of-part-two">Summary of part two</h3>
+<p>The impact of improving health had a similar effect on reducing the size of the inactive long-term sick population and unemployed populations. However there were some differences by subpopulations in terms of relative changes in other economic activity states.</p>
+<p>For sex differences:</p>
+<ul>
+<li>Improving health had a larger effect in women in reducing the size of the economically inactive carer popualtion</li>
+</ul>
+<p>For age differences:</p>
+<ul>
+<li>Improving health may lead to a greater relative reduction in the unemployed population for younger adults, and a greater increase in the relative size of the employed population for older adults.</li>
+</ul>
+<p>For households with children, and single parents and couples within this group:</p>
+<ul>
+<li>A simpler but well performing model specification incorporating household type did not indicate substantive differences between single parents and couples with children in the effect of health</li>
+<li>However a more complex model with demographic interactions suggested there may be differences in how health affects economic (in)activity. In particular, there may be a larger relative impact on employment for single parents than parents in a couple, and larger relative reductions in inactive care populations in working age parents in a couple.</li>
+</ul>
 </section>
 </section>
 </section>
