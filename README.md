@@ -17,12 +17,19 @@ To set up this project in the way expected by the package functions:
     -   Within `UKDA-6615-stata`, there should be the following files and folders:
         -   `6614_file_information.rtf`
         -   `read6614.htm`
-        -   `mrdoc`, containing further documentation 
+        -   `mrdoc`, containing further documentation
         -   `stata`, containing the data files themselves
-- Once the data files are in the appropriate relative location, open up the RStudio project by double clicking on the `economic_inactivity.rproj` file, or selecting the project from within RStudio
-- To load the package, while within RStudio, run `devtools::load_all(".")` in the console. If devtools is installed correctly, you should also be able to run the above with the keyboard shortcut `SHIFT + cmd/cntrl + L` 
+-   Once the data files are in the appropriate relative location, open up the RStudio project by double clicking on the `economic_inactivity.rproj` file, or selecting the project from within RStudio
+-   To load the package, while within RStudio, run `devtools::load_all(".")` in the console. If devtools is installed correctly, you should also be able to run the above with the keyboard shortcut `SHIFT + cmd/cntrl + L`
 
+## Function documentation and test suite.
+
+The functions created as part of this project are visible by selecting `package:economic_inactivity` in the drop-down menu near the top of the environment pane in RStudio. Each of these functions contains some documentation but not all is complete. More than 100 unit tests relating to the functions are currently included in the package and at the time of writing all pass!
 
 ## Note
 
-* This repo is provided as-is, and is frequently updated. 
+-   This repo is provided as-is, and is frequently updated. At present, the repository is both a package and an active workspace. In due course I may aim to separate these two roles more explicitly.
+
+## Further information
+
+For further information please contact me at [jon.minton\@phs.scot](mailto:jon.minton@phs.scot){.email}
