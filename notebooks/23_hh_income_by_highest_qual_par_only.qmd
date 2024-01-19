@@ -1,0 +1,287 @@
+---
+title: "23 Average household income by highest qualification"
+format: 
+  html:
+    warning: false
+    code-fold: true
+    message: false
+    code-summary: "Show R Code"
+  docx: 
+    warning: false
+    echo: false
+    message: false
+editor: visual
+---
+
+## The ask
+
+> I was wondering whether you'd be able to produce a descriptive table, showing:average household income by highest qualification, for all households with dependent children, from Understanding Society. Is that ok?
+
+## Preparation
+
+Thinking
+
+-   We need to link ind level to hh level
+-   should we use for all individuals with quals, or highest qual in hh?
+-   eq hh income
+-   what about single/dual earner distinction?
+-   Individuals or hhs?
+-   which wave or waves?
+
+Code
+
+```{r}
+
+
+library(tidyverse)
+library(haven)
+library(here)
+library(nnet)
+
+devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+
+```
+
+
+```{r}
+
+# Individual level characteristics 
+varnames <-  c(
+  "jbstat", "dvage", "sex", "hiqual_dv"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+
+ind_data <- get_ind_level_vars_for_selected_waves(
+  varnames = varnames, vartypes = extract_what
+)
+
+# household level characteristics 
+
+vars_types_hh <- tribble(
+  ~var_name, ~var_type, 
+  "numadult", "values",
+  "numchild", "values",
+  "hhsize", "values",
+  "fihhmnnet1_dv", "values",
+  "ieqmoecd_dv", "values",
+  "hhtype_dv", "labels"
+)
+
+dta_joined <- 
+  add_hh_variables(
+    ind_data, 
+    varnames = vars_types_hh$var_name, 
+    vartypes = vars_types_hh$var_type
+  )
+
+rm(ind_data)
+
+dta_joined
+```
+
+We now want:
+
+- only hh with children
+- highqual_dv 
+- fihhmnnet1_dv : total household net income - no deductions
+- ieqmoecd_dv
+
+```{r}
+
+simplified_household_lookup <- tribble(
+  ~original, ~recoded, ~has_children, ~has_pensioners, ~has_couple,
+   "1 adult under pensionable age, no children",  "Single Adult", FALSE, FALSE, FALSE,                         
+ "Couple with 2 children", "Family with 1-2 Children",  TRUE, FALSE, TRUE,                                            
+ "1 female, age 60+, no children", "Single Pensioner",  FALSE, TRUE, FALSE,                                    
+ "3 or more adults, no children, incl. at least one couple", "Other Households", FALSE, NA, TRUE,             
+ "Couple both under pensionable age, no children", "Small Adult", FALSE, FALSE, TRUE,                       
+ "2 adults, not a couple, both under pensionable age, no children", "Other Households", FALSE, FALSE, FALSE,      
+ "1 adult, 2 or more children", "Single Parent",  TRUE, FALSE, FALSE,                                       
+ "Couple with 1 child", "Family with 1-2 Children", TRUE, FALSE, TRUE,                                                 
+ "Couple with 3 or more children", "Family with 3 or more Children",  TRUE, FALSE, TRUE,                                  "1 adult, 1 child", "Single Parent", TRUE, FALSE, FALSE,                                                    
+"1 male, aged 65+, no children", "Single Pensioner", FALSE, TRUE, FALSE,                                        
+"Couple 1 or more over pensionable age,no children", "Pensioner Couple", FALSE, TRUE, TRUE,                    
+"2 adults, not a couple, one or more over pensionable age, no children", "Other Households", FALSE, TRUE, FALSE,
+"3 or more adults, 1-2 children, incl. at least one couple", "Other Households", TRUE, FALSE, TRUE,            
+"2 adults, not a couple, 1 or more children", "Other Households",  TRUE, FALSE, FALSE,                         
+"3 or more adults, 1 or more children, excl. any couples", "Other Households", TRUE, FALSE, FALSE,              
+"3 or more adults, no children, excl. any couples", "Other Households",  FALSE, FALSE, FALSE,                   
+"3 or more adults, >2 children, incl. at least one couple", "Other Households", TRUE, FALSE, TRUE,           
+"missing", NA, NA, NA, NA
+)
+
+
+
+
+dta_joined |> 
+  left_join(simplified_household_lookup, 
+            by = c("hhtype_dv" = "original")
+  ) |> 
+  filter(has_children) |> 
+  mutate(
+    eq_net_income = fihhmnnet1_dv / ieqmoecd_dv
+  ) |> 
+  filter(wave == 'j') |> 
+  group_by(hiqual_dv) |> 
+  summarise(
+    mean_inc_eq = mean(eq_net_income, na.rm = TRUE),
+    median_inc_eq = median(eq_net_income, na.rm = TRUE),
+    mean_inc_raw = mean(fihhmnnet1_dv, na.rm = TRUE),
+    median_inc_raw = median(fihhmnnet1_dv, na.rm = TRUE)
+  ) |> 
+  ungroup()
+
+```
+What we want
+
+- Number of observations in each group 
+- Exclude inapplicable and missing 
+
+
+```{r}
+dta_joined |> 
+  left_join(simplified_household_lookup, 
+            by = c("hhtype_dv" = "original")
+  ) |> 
+  filter(has_children) |> 
+  mutate(
+    eq_net_income = fihhmnnet1_dv / ieqmoecd_dv
+  ) |> 
+  filter(wave == 'j') |> 
+  group_by(hiqual_dv) |> 
+  summarise(
+    n_obs = length(hiqual_dv),
+    mean_inc_eq = mean(eq_net_income, na.rm = TRUE),
+    median_inc_eq = median(eq_net_income, na.rm = TRUE),
+    mean_inc_raw = mean(fihhmnnet1_dv, na.rm = TRUE),
+    median_inc_raw = median(fihhmnnet1_dv, na.rm = TRUE)
+  ) |> 
+  ungroup()
+
+```
+We'll exclude inapplicable and missing
+
+Remaining groups should be: 
+
+- No qualification
+- GCSE etc and other qualification
+- A-level etc
+- Degree and Other higher degree
+
+
+```{r}
+dta_joined |> 
+  left_join(simplified_household_lookup, 
+            by = c("hhtype_dv" = "original")
+  ) |> 
+  filter(has_children) |> 
+  mutate(
+    qual_new_grouping = case_when(
+      hiqual_dv == "No qualification" ~ "None",
+      hiqual_dv %in% c("GCSE etc", "Other qualification") ~ "GCSE or equivalent",
+      hiqual_dv == "A-level etc" ~ "A level or equivalent",
+      hiqual_dv %in% c("Degree", "Other higher degree") ~ "Degree",
+      TRUE ~ NA_character_
+    )
+  ) |> 
+  filter(!is.na(qual_new_grouping)) |> 
+  mutate(
+    qual_new_grouping = factor(qual_new_grouping, 
+                               levels = c("None", "GCSE or equivalent", "A level or equivalent", "Degree"))
+  ) |> 
+  mutate(
+    eq_net_income = fihhmnnet1_dv / ieqmoecd_dv
+  ) |> 
+  filter(wave == 'j') |> 
+  group_by(qual_new_grouping) |> 
+  summarise(
+    n_obs = length(qual_new_grouping),
+    mean_inc_eq = mean(eq_net_income, na.rm = TRUE),
+    median_inc_eq = median(eq_net_income, na.rm = TRUE),
+    mean_inc_raw = mean(fihhmnnet1_dv, na.rm = TRUE),
+    median_inc_raw = median(fihhmnnet1_dv, na.rm = TRUE)
+  ) |> 
+  ungroup()
+```
+
+Now to look at a distribution
+
+```{r}
+dta_joined |> 
+  left_join(simplified_household_lookup, 
+            by = c("hhtype_dv" = "original")
+  ) |> 
+  filter(has_children) |> 
+  mutate(
+    qual_new_grouping = case_when(
+      hiqual_dv == "No qualification" ~ "None",
+      hiqual_dv %in% c("GCSE etc", "Other qualification") ~ "GCSE or equivalent",
+      hiqual_dv == "A-level etc" ~ "A level or equivalent",
+      hiqual_dv %in% c("Degree", "Other higher degree") ~ "Degree",
+      TRUE ~ NA_character_
+    )
+  ) |> 
+  filter(!is.na(qual_new_grouping)) |> 
+  mutate(
+    qual_new_grouping = factor(qual_new_grouping, 
+                               levels = c("None", "GCSE or equivalent", "A level or equivalent", "Degree"))
+  ) |> 
+  mutate(
+    eq_net_income = fihhmnnet1_dv / ieqmoecd_dv
+  ) |> 
+  filter(wave == 'j') |> 
+  ggplot(aes(x = eq_net_income, y = qual_new_grouping)) + 
+  geom_boxplot() +
+  scale_x_continuous(limits = c(0, 5000))
+
+```
+
+Now just as a table 
+
+```{r}
+inc_by_qual_j <- 
+dta_joined |> 
+  left_join(simplified_household_lookup, 
+            by = c("hhtype_dv" = "original")
+  ) |> 
+  filter(has_children) |> 
+  mutate(
+    qual_new_grouping = case_when(
+      hiqual_dv == "No qualification" ~ "None",
+      hiqual_dv %in% c("GCSE etc", "Other qualification") ~ "GCSE or equivalent",
+      hiqual_dv == "A-level etc" ~ "A level or equivalent",
+      hiqual_dv %in% c("Degree", "Other higher degree") ~ "Degree",
+      TRUE ~ NA_character_
+    )
+  ) |> 
+  filter(!is.na(qual_new_grouping)) |> 
+  mutate(
+    qual_new_grouping = factor(qual_new_grouping, 
+                               levels = c("None", "GCSE or equivalent", "A level or equivalent", "Degree"))
+  ) |> 
+  mutate(
+    eq_net_income = fihhmnnet1_dv / ieqmoecd_dv
+  ) |> 
+  filter(wave == 'j') |> 
+  select(eq_net_income, qual_new_grouping)
+
+# Using suggestion here https://stackoverflow.com/questions/57975212/how-to-get-quantiles-to-work-with-summarise-at-and-group-by-dplyr
+
+seven_num_sum <- 
+  inc_by_qual_j %>% 
+    group_by(qual_new_grouping) %>% 
+    summarise(across(eq_net_income, list(n_obs = length, min=min, Q1=~quantile(., probs = 0.25),
+                      median=median, Q3=~quantile(., probs = 0.75),
+                      max=max, mean = mean, sd = sd),  .names = "{.fn}"))
+
+write.csv(seven_num_sum, here::here("data", "eq_income_by_highest_qual.csv"))
+seven_num_sum
+```
+

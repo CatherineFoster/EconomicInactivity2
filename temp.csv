@@ -1,0 +1,29 @@
+,age,parent_hh_type,sf12mcs_dv,sf12pcs_dv,this_status,predicted_status,female,male,abs_diff ,rel diff
+1,25,Two Parent Household,0.4,0.4,Employed,Employed,92.7%,96.6%,3.9%,0.04
+2,25,Two Parent Household,0.4,0.4,Employed,Inactive care,4.4%,0.3%,-4.1%,-14.13
+3,25,Two Parent Household,0.4,0.4,Employed,Inactive long term sick,0.1%,0.1%,0.0%,-0.18
+4,25,Two Parent Household,0.4,0.4,Employed,Inactive other,0.1%,0.1%,0.0%,-0.43
+5,25,Two Parent Household,0.4,0.4,Employed,Inactive retired,0.0%,0.0%,0.0%,0.01
+6,25,Two Parent Household,0.4,0.4,Employed,Inactive student,1.0%,0.5%,-0.5%,-1.12
+7,25,Two Parent Household,0.4,0.4,Employed,Unemployed,1.6%,2.4%,0.7%,0.31
+8,25,Single Parent,0.4,0.4,Employed,Employed,91.7%,89.2%,-2.5%,-0.03
+9,25,Single Parent,0.4,0.4,Employed,Inactive care,2.4%,0.9%,-1.5%,-1.71
+10,25,Single Parent,0.4,0.4,Employed,Inactive long term sick,0.1%,0.4%,0.2%,0.65
+11,25,Single Parent,0.4,0.4,Employed,Inactive other,0.2%,0.1%,0.0%,-0.30
+12,25,Single Parent,0.4,0.4,Employed,Inactive retired,0.0%,0.0%,0.0%,0.66
+13,25,Single Parent,0.4,0.4,Employed,Inactive student,2.1%,1.9%,-0.2%,-0.10
+14,25,Single Parent,0.4,0.4,Employed,Unemployed,3.4%,7.4%,4.0%,0.54
+15,35,Two Parent Household,0.4,0.4,Employed,Employed,95.4%,98.0%,2.5%,0.03
+16,35,Two Parent Household,0.4,0.4,Employed,Inactive care,2.9%,0.2%,-2.7%,-14.37
+17,35,Two Parent Household,0.4,0.4,Employed,Inactive long term sick,0.1%,0.1%,0.0%,-0.20
+18,35,Two Parent Household,0.4,0.4,Employed,Inactive other,0.1%,0.1%,0.0%,-0.45
+19,35,Two Parent Household,0.4,0.4,Employed,Inactive retired,0.0%,0.0%,0.0%,-0.01
+20,35,Two Parent Household,0.4,0.4,Employed,Inactive student,0.4%,0.2%,-0.2%,-1.15
+21,35,Two Parent Household,0.4,0.4,Employed,Unemployed,1.0%,1.5%,0.4%,0.30
+22,35,Single Parent,0.4,0.4,Employed,Employed,95.1%,93.3%,-1.7%,-0.02
+23,35,Single Parent,0.4,0.4,Employed,Inactive care,1.6%,0.6%,-1.0%,-1.68
+24,35,Single Parent,0.4,0.4,Employed,Inactive long term sick,0.1%,0.4%,0.2%,0.65
+25,35,Single Parent,0.4,0.4,Employed,Inactive other,0.2%,0.1%,0.0%,-0.28
+26,35,Single Parent,0.4,0.4,Employed,Inactive retired,0.0%,0.0%,0.0%,0.66
+27,35,Single Parent,0.4,0.4,Employed,Inactive student,0.9%,0.8%,-0.1%,-0.09
+28,35,Single Parent,0.4,0.4,Employed,Unemployed,2.2%,4.8%,2.6%,0.54

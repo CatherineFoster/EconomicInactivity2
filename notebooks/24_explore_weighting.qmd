@@ -1,0 +1,498 @@
+---
+title: "Exploring weighting using UKHLS variables"
+author:
+  - "Jon Minton"
+  - "Martin Taulbut"
+format: 
+  wordcount-html:
+    warning: false
+    code-fold: true
+    message: false
+    code-summary: "Show R Code"
+  docx: 
+    warning: false
+    echo: false
+    message: false
+editor: visual
+prefer-html: true
+bibliography: references.bib
+---
+
+# Introduction 
+
+This notebook explores how to weight data used to make projections using our model framework, and what impact weighting has on the outputs
+
+
+# Prereqs
+
+```{r}
+devtools::load_all(here::here("R"))
+
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+library(tidyverse)
+library(nnet)
+library(knitr)
+library(kableExtra)
+library(DiagrammeR)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+ind_data <- get_ind_level_vars_for_selected_waves(
+  varnames = varnames, vartypes = extract_what
+)
+
+ind_data_standardised <- 
+  ind_data |> 
+  rename(age = dvage) |> 
+  mutate(across(c(age, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  filter(between(age, 16, 64)) %>%
+  filter(complete.cases(.))
+
+```
+
+Now we want, for wave j only, to extract the variable `j_indinui_xw`
+
+```{r}
+
+waveJIndData <- haven::read_dta(
+  here::here(
+    "big_data/UKDA-6614-stata/stata/stata13_se/ukhls/j_indresp.dta"
+  )
+)
+
+```
+
+Let's look for variables that end `_xw`
+
+```{r}
+
+varnamesWaveJ <- names(waveJIndData)
+
+varnamesWaveJ[str_detect(varnamesWaveJ, "_xw$")]
+```
+This contains the variable we hoped to find
+
+Let's now just get pid and this variables 
+
+```{r}
+xs_weighting_lookup_j <- waveJIndData |> 
+  select(pidp, j_indinui_xw)
+```
+
+We can now calibrate the model as before (to consider), but using weighting for the production of a representative simulated population
+
+```{r}
+ind_data_standardised
+
+mod_phmh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
+    data = ind_data_standardised,
+    maxit = 200
+)
+
+```
+
+
+Now to apply the weighting from the predicted probabilities
+
+```{r}
+
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+# No weighting example
+
+df_baseline <- ind_data_standardised |> 
+  filter(wave == 'j')
+
+df_counterfactual <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 2 / sqrt(5)
+  )
+
+
+preds_df_baseline <- 
+  predict(mod_phmh, newdata = df_baseline, type = "probs")
+
+preds_df_counterfactual <- 
+  predict(mod_phmh, newdata = df_counterfactual, type = "probs")
+
+predictions_predictors_baseline_unweighted <- 
+  df_baseline |> 
+    bind_cols(preds_df_baseline) 
+
+
+predictions_predictors_counterfactual_unweighted <- 
+  df_counterfactual |> 
+    bind_cols(preds_df_counterfactual)
+
+
+aggregate_predictions_unweighted_baseline_scenario <- 
+  predictions_predictors_baseline_unweighted |> 
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |> 
+    group_by(status) |> 
+    summarise(total_persons = sum(statistical_persons)) |> 
+    ungroup() |> 
+    mutate(scenario = "baseline") |> 
+    mutate(weighting = "unweighted")
+  
+aggregate_predictions_unweighted_counterfactual_scenario <- 
+  predictions_predictors_counterfactual_unweighted |> 
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |> 
+    group_by(status) |> 
+    summarise(total_persons = sum(statistical_persons)) |> 
+    ungroup() |> 
+    mutate(scenario = "counterfactual") |> 
+    mutate(weighting = "unweighted")
+  
+aggregate_differences_unweighted <- 
+  aggregate_predictions_unweighted_baseline_scenario |> 
+    bind_rows(
+      aggregate_predictions_unweighted_counterfactual_scenario
+    ) |> 
+    pivot_wider(
+      names_from = scenario,
+      values_from = total_persons
+    ) |> 
+    mutate(
+      abs_diff = counterfactual - baseline, 
+      rel_diff = abs_diff / baseline
+    )
+
+
+# Weighting example 
+
+
+df_baseline_weighted <- ind_data_standardised |> 
+  filter(wave == 'j') |> 
+  left_join(
+    xs_weighting_lookup_j
+  )
+# Now need to adjust the weighting so the sum of weights is the number of rows in this dataset 
+
+n_obs <- nrow(df_baseline_weighted)
+sum_weights <- df_baseline_weighted$j_indinui_xw |> sum()
+
+df_baseline_weighted <- 
+  df_baseline_weighted |> 
+  mutate(
+    bespoke_weight = j_indinui_xw / (sum_weights / n_obs)
+  )
+
+df_counterfactual_weighted <- 
+  df_baseline_weighted |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 / sqrt(5),
+    sf12pcs_dv = sf12pcs_dv + 2 / sqrt(5)
+  )
+
+
+preds_df_baseline_weighted <- 
+  predict(mod_phmh, newdata = df_baseline_weighted, type = "probs")
+
+preds_df_counterfactual_weighted <- 
+  predict(mod_phmh, newdata = df_counterfactual_weighted, type = "probs")
+
+predictions_predictors_baseline_weighted <- 
+  df_baseline_weighted |> 
+    bind_cols(preds_df_baseline_weighted) |> 
+    mutate(across(Employed:Unemployed, function(x) {x * bespoke_weight}))
+
+predictions_predictors_counterfactual_weighted <- 
+  df_counterfactual_weighted |> 
+    bind_cols(preds_df_counterfactual_weighted) |> 
+    mutate(across(Employed:Unemployed, function(x) {x * bespoke_weight}))
+
+# Now to get the expected sums (after weighting from both scenarios) 
+
+aggregate_predictions_weighted_baseline_scenario <- 
+  predictions_predictors_baseline_weighted |> 
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |> 
+    group_by(status) |> 
+    summarise(total_persons = sum(statistical_persons)) |> 
+    ungroup() |> 
+    mutate(scenario = "baseline") |> 
+    mutate(weighting = "weighted")
+  
+aggregate_predictions_weighted_counterfactual_scenario <- 
+  predictions_predictors_counterfactual_weighted |> 
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |> 
+    group_by(status) |> 
+    summarise(total_persons = sum(statistical_persons)) |> 
+    ungroup() |> 
+    mutate(scenario = "counterfactual") |> 
+    mutate(weighting = "weighted")
+
+aggregate_differences_weighted <- 
+aggregate_predictions_weighted_baseline_scenario |> 
+  bind_rows(
+    aggregate_predictions_weighted_counterfactual_scenario
+  ) |> 
+  pivot_wider(
+    names_from = scenario,
+    values_from = total_persons
+  ) |> 
+  mutate(
+    abs_diff = counterfactual - baseline, 
+    rel_diff = abs_diff / baseline
+  )
+#####
+
+aggregate_differences_weighted |> 
+  bind_rows(
+    aggregate_differences_unweighted
+  )
+```
+
+
+It appears from the above that, for the overall sample frame in wave j, there is an effect of weighting, but that this does not appear to change the aggregate predictions/projections substantially. 
+
+
+We will now consider the effect of weighting on adults in households with children, and differences by household type 
+
+
+```{r}
+df_joined <- 
+  add_hh_variables(
+    df = ind_data_standardised,
+    varnames = c(
+      "hhtype_dv"
+    ), 
+    vartypes = c(
+      "labels"
+    )
+  )
+
+
+single_couple_parent_df <- 
+df_joined |> 
+  left_join(
+    simplified_household_lookup, 
+    by = c('hhtype_dv' = 'original')
+  ) |> 
+  filter(has_children & !is.na(has_children)) |> 
+  mutate(
+    simplified_category = case_when(
+      recoded == 'Single Parent'  ~ "Single Parent",
+      recoded %in% c("Family with 1-2 Children", "Family with 3 or more Children") ~ "Two Parent Household",
+      TRUE ~ "Other HH with children"
+    )
+  ) |> 
+  select(pidp, wave, age, sex, sf12mcs_dv, sf12pcs_dv, this_status, next_status, parent_hh_type = simplified_category) |> 
+  mutate(parent_hh_type = factor(parent_hh_type, levels = c("Two Parent Household", "Single Parent", "Other HH with children")))
+
+```
+
+```{r}
+par_mod_hhtype_phmh_demointeraction <- 
+  nnet::multinom(
+    next_status ~ this_status * sex * parent_hh_type  + splines::bs(age, 5) +  sf12pcs_dv*sf12mcs_dv,
+    data = single_couple_parent_df,
+    maxit = 250
+)
+```
+
+We then want to look at how parent_hh_type could interact with sex, especially whether there may be a different magnitude or direction of effect for couple hhs by sex? 
+
+What are the scenarios to consider?
+
+- All HHs with children (with and without weighting?)
+- All Single parent HHs (with and without weighting)
+- All couple parent HHs (with and without weighting)
+    - By sex? 
+
+Just baseline scenarios to start with? 
+
+
+All HH with children - effect of weighting 
+
+```{r}
+econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
+
+# No weighting example
+
+df_baseline <- single_couple_parent_df |>
+  filter(wave == 'j')
+# 
+# 
+preds_df_baseline <-
+  predict(par_mod_hhtype_phmh_demointeraction, newdata = df_baseline, type = "probs")
+
+predictions_predictors_baseline_unweighted <-
+  df_baseline |>
+    bind_cols(preds_df_baseline)
+# 
+aggregate_predictions_unweighted_baseline_scenario <-
+  predictions_predictors_baseline_unweighted |>
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |>
+    group_by(status) |>
+    summarise(total_persons = sum(statistical_persons)) |>
+    ungroup() |>
+    mutate(scenario = "baseline") |>
+    mutate(weighting = "unweighted")
+
+
+
+
+# Weighting example
+# 
+# 
+df_baseline_weighted <- single_couple_parent_df |>
+  filter(wave == 'j') |>
+  left_join(
+    xs_weighting_lookup_j
+  )
+# # Now need to adjust the weighting so the sum of weights is the number of rows in this dataset 
+# 
+n_obs <- nrow(df_baseline_weighted)
+sum_weights <- df_baseline_weighted$j_indinui_xw |> sum()
+# 
+df_baseline_weighted <-
+  df_baseline_weighted |>
+  mutate(
+    bespoke_weight = j_indinui_xw / (sum_weights / n_obs)
+  )
+# 
+preds_df_baseline_weighted <-
+  predict(mod_phmh, newdata = df_baseline_weighted, type = "probs")
+
+predictions_predictors_baseline_weighted <-
+  df_baseline_weighted |>
+    bind_cols(preds_df_baseline_weighted) |>
+    mutate(across(Employed:Unemployed, function(x) {x * bespoke_weight}))
+
+# Now to get the expected sums (after weighting from both scenarios)
+
+aggregate_predictions_weighted_baseline_scenario <-
+  predictions_predictors_baseline_weighted |>
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |>
+    group_by(status) |>
+    summarise(total_persons = sum(statistical_persons)) |>
+    ungroup() |>
+    mutate(scenario = "baseline") |>
+    mutate(weighting = "weighted")
+
+aggregate_differences_from_weighting <-
+aggregate_predictions_weighted_baseline_scenario |>
+  bind_rows(
+    aggregate_predictions_unweighted_baseline_scenario
+  ) |>
+  pivot_wider(
+    names_from = weighting,
+    values_from = total_persons
+  ) |>
+  mutate(
+    abs_diff = weighted - unweighted,
+    rel_diff = abs_diff / unweighted
+  )
+```
+
+In the above, we have used the ukhls sample weights from wave j to attempt to make the sample frame of parents only more representative of the UK population for that wave. 
+**This may not be what we are most interested in doing!**
+
+The effect of reweighting is to slightly decrease the share projected to move to employment, increase the share moving to unemployment, reduce the share who are inactive carers (substantially, by around 21%), and to increase the share who are long term sick. Also the share of students and retired is uprated. 
+
+So, although this works as a proof of principle that the effect of weighting can lead to substantive differences from unweighted analyses, the weighting used may not be appropriate for the types of problem which we are more interested in this subanalysis. 
+
+
+Now we want to know the following:
+
+- Is the effect of improving health with a bias towards physical health different for men in couples with children than females in couples in children?
+    - Prior expection: it is
+    
+```{r}
+predictors_df_vignettes <- 
+  expand_grid(
+    age = 25:50,
+    parent_hh_type = c("Two Parent Household", "Single Parent"),
+    sex = c("female", "male"),
+    sf12mcs_dv = seq(-1.5, 1.5, by = 0.1),
+    sf12pcs_dv = seq(-1.5, 1.5, by = 0.1),
+    this_status = c("Employed", "Unemployed", "Inactive care", "Inactive long term sick")
+  )
+
+predictions_df_vignettes <-
+  predict(par_mod_hhtype_phmh_demointeraction, newdata = predictors_df_vignettes, type = "probs")
+
+preds_pred_vignettes <- 
+  bind_cols(predictors_df_vignettes, predictions_df_vignettes) |> 
+  pivot_longer(Employed:Unemployed, names_to = "predicted_status", values_to = "probability")
+
+```
+
+We can ask some specific questions from the long number of vignettes above
+
+```{r}
+
+# Compare 25 yo male and female, two parent hh, Employed, with slightly above avg health
+preds_pred_vignettes |> 
+  filter(age == 25, between(sf12mcs_dv, 0.39, 0.41),  between(sf12pcs_dv, 0.39, 0.41),
+         this_status == "Employed", parent_hh_type == "Two Parent Household") |> 
+  pivot_wider(names_from = "sex", values_from = "probability")
+
+```
+
+Now the same sort of thing but for lone-parent households
+
+```{r}
+# Compare 25 yo male and female, lone parent hh, Employed, with slightly above avg health
+preds_pred_vignettes |> 
+  filter(age == 25, between(sf12mcs_dv, 0.39, 0.41),  between(sf12pcs_dv, 0.39, 0.41),
+         this_status == "Employed", parent_hh_type == "Single Parent") |> 
+  pivot_wider(names_from = "sex", values_from = "probability")
+
+
+```
+Let's do both at once
+
+```{r}
+# Compare 25 and 35 yo yo male and female, lone parent hh and two parent HH, Employed, with slightly above avg health
+preds_pred_vignettes |> 
+  filter(age %in% c(25, 35), between(sf12mcs_dv, 0.39, 0.41),  between(sf12pcs_dv, 0.39, 0.41),
+         this_status == "Employed", parent_hh_type %in% c("Two Parent Household", "Single Parent")) |> 
+  pivot_wider(names_from = "sex", values_from = "probability")
+
+
+```
+
+In the above we've kept health constant for comparison
+
+But we know health differs by HH status (lone parents have poorer health, we expect)
+
+Let's get an estimate (rough) of health by sex and parent_hh_type
+
+```{r}
+single_couple_parent_df |> 
+  filter(
+    between(age, 20, 30), 
+    wave == "j"
+  ) |> 
+  group_by(sex, parent_hh_type) |> 
+  summarise(
+    mean_mh = mean(sf12mcs_dv),
+    mean_ph = mean(sf12pcs_dv)
+  ) |> 
+  ungroup()
+
+
+```
+
+Summary of thoughts so far
+
+- Improving health has a similar relative effect on different parent hh types
+- But different parent hh types start from very different positions in terms of sex composition, age, starting mh and ph, and economic status before any hypothetical intervention
+- We should therefore think carefully about absolute changes projected as well as the relative effects, even though the relative effects are closest to quantifying drivers in a PAF-like way
+- future work might consider the effect of weighting the UKHLS dataset to be more representative of the known composition of lone parents (and couple parents) observed in (especially) the lfs and aps
+
+
+
+
