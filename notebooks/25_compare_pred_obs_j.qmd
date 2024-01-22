@@ -1,0 +1,197 @@
+---
+title: "Comparison between model predicted and observed distributions, wave j"
+author:
+  - "Jon Minton"
+  - "Martin Taulbut"
+format: 
+  html:
+    warning: false
+    code-fold: true
+    message: false
+    code-summary: "Show R Code"
+  docx: 
+    warning: false
+    echo: false
+    message: false
+editor: visual
+prefer-html: true
+
+---
+
+# Aim 
+
+The aim of this document is to see how the distribution of states, for a broadly representative sample at wave i, as projected to wave j, compares to what's observed in wave j. 
+
+We will do this for two different model specifications:
+
+- Foundational model: age, sex, current state
+- Health model: Foundational model with health scores 
+
+We know what adding the health variables, including interaction between mh and ph, improves the penalised model fit using the AIC and BIC metrics. However we have not so far looked at how much this improvement leads to improved estimates of the distribution of persons in each state. 
+
+# Set up 
+
+
+```{r}
+devtools::load_all(here::here("R"))
+
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+library(tidyverse)
+library(nnet)
+library(knitr)
+library(kableExtra)
+library(DiagrammeR)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+ind_data <- get_ind_level_vars_for_selected_waves(
+  varnames = varnames, vartypes = extract_what
+)
+
+ind_data_standardised <- 
+  ind_data |> 
+  rename(age = dvage) |> 
+  mutate(across(c(age, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  filter(between(age, 16, 64)) %>%
+  filter(complete.cases(.))
+
+```
+
+Creating the models to compare:
+
+```{r}
+#| cache: true
+
+mod_foundation <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = ind_data_standardised,
+    maxit = 200
+  )
+
+mod_phmh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
+    data = ind_data_standardised,
+    maxit = 200
+)
+
+```
+
+Now to get the predicted values for wave j give the data in wave i
+
+```{r}
+
+df_wavei <- ind_data_standardised |> 
+  filter(wave == "i")
+
+df_wavej <- ind_data_standardised |> 
+  filter(wave == "j")
+
+pred_wavej_foundation <- predict(mod_foundation, df_wavei, type = "probs")
+pred_wavej_phmh <- predict(mod_phmh, df_wavei, type = "probs")
+
+dists_pred_foundation <- apply(pred_wavej_foundation, 2, sum)
+dists_pred_phmh <- apply(pred_wavej_phmh, 2, sum)
+
+dists_obs <- df_wavej |> 
+  group_by(this_status) |> 
+  summarise(observed_n = length(this_status))
+
+# turn dists_pred_foundation into a two column data frame with key and value columns
+dists_pred_foundation_df <- 
+  dists_pred_foundation |> 
+  as.data.frame() |> 
+  rownames_to_column("this_status") |> 
+  rename(pred_foundation = dists_pred_foundation)
+
+dists_pred_phmh_df <-
+  dists_pred_phmh |>
+  as.data.frame() |>
+  rownames_to_column("this_status") |>
+  rename(pred_phmh = dists_pred_phmh)
+
+# Now join the three tables by this_status 
+
+dists_all <- 
+  dists_obs |> 
+  left_join(dists_pred_foundation_df, by = "this_status") |> 
+  left_join(dists_pred_phmh_df, by = "this_status")
+
+
+dists_all
+
+```
+
+Graphically, the observed and predicted distributions for people in states are as follows:
+
+```{r}
+dists_all |> 
+  mutate(
+    prop_obs = observed_n / sum(observed_n),
+    prop_pred_foundation = pred_foundation / sum(pred_foundation),
+    prop_pred_phmh = pred_phmh / sum(pred_phmh)
+  ) |> 
+  select(this_status, prop_obs, prop_pred_foundation, prop_pred_phmh) |> 
+  pivot_longer(-this_status, names_to = "type", values_to = "prop") |> 
+  ggplot(aes(x = type, y = prop, fill = this_status)) +
+  geom_col(position = "stack") +
+  labs(
+    x = "Observed proportion or proportions predicted from foundational and health model",
+    y = "Cumulative proportion of persons in each state",
+    fill = "State",
+    title = "Observed and predicted distributions of persons in each state, wave j",
+    subtitle = "Predictions are based on data from wave i"
+  )
+
+```
+We can see that overall the two models produce very similar distributions of persons in each state. The proportion who are students appears to be slightly underpredicted by the models, and the proportion who are retired slightly overpredicted. However, so long as the foundational model is used as the foundation of all other models, such biases should be consistent across all models, and so should still be usable to predict the kinds of influence that single (or multiple) additional drivers have on propensities to move between states, and resultant predicted/projected distributions.
+
+Now add column proportions for each of the three columns
+
+
+```{r}
+# Convert the following to a kable table
+
+dta <- 
+dists_all |> 
+  mutate(
+    prop_obs = observed_n / sum(observed_n),
+    prop_pred_foundation = pred_foundation / sum(pred_foundation),
+    prop_pred_phmh = pred_phmh / sum(pred_phmh)
+  ) |> 
+  select(this_status, prop_obs, prop_pred_foundation, prop_pred_phmh) |> 
+  mutate(
+    abs_diff_foundation = prop_pred_foundation - prop_obs,
+    abs_diff_phmh = prop_pred_phmh - prop_obs,
+    rel_diff_foundation = abs_diff_foundation / prop_obs,
+    rel_diff_phmh = abs_diff_phmh / prop_obs
+  )
+
+dta |>
+  kable() |> 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) 
+```
+In the above we have the following columns:
+
+- `prop_obs`: The observed proportion of persons in each state in wave j
+- `prop_pred_foundation`: The proportion of persons in each state in wave j, as predicted by the foundational model and data from wave i
+- `prop_pred_phmh`: The proportion of persons in each state in wave j, as predicted by the health model and data from wave i
+- `abs_diff_foundation`: The absolute difference between the observed and predicted proportions of persons in each state, for the foundational model
+- `abs_diff_phmh`: The absolute difference between the observed and predicted proportions of persons in each state, for the health model
+- `rel_diff_foundation`: The relative difference between the observed and predicted proportions of persons in each state, for the foundational model
+- `rel_diff_phmh`: The relative difference between the observed and predicted proportions of persons in each state, for the health model
+
+Overall, it appears that the foundational model alone does a very good job of producing predicted distributions for wave j, which are close to those actually observed. For all but two states (retired and student), the absolute percentage point differences between what's predicted and what's observed is less than 1% point; for the retired and student states, the absolute percentage point differences are 1.5% and 1.7% respectively.
+
+In terms of the additional improvement from adding health variables, these are more modest than expected, but are associated with improvements for the inactive long-term sick state, in particular. 
+
+An important caveat is that the observed wave j data are slightly different to the wave i data used by both the foundational and health model to predict wave j. This is because some people in wave i will have dropped out by wave j, and some people may be in wave j who were not in wave i. Despite this, the comparison between model predicted and observed distributions is a useful and reassuring check to ensure that the model produces aggregate results which are broadly consistent with what's observed.
+
