@@ -1,0 +1,110 @@
+"","wave","this_status","recoded","n","prop"
+"1","a","Employed","Family with 1-2 Children",6990,0.260170469349015
+"2","a","Employed","Family with 3 or more Children",1649,0.0613764097219637
+"3","a","Employed","Other Households",7838,0.291733353184204
+"4","a","Employed","Pensioner Couple",852,0.0317117653627126
+"5","a","Employed","Single Adult",2611,0.0971824170915994
+"6","a","Employed","Single Parent",1217,0.0452972047493207
+"7","a","Employed","Single Pensioner",128,0.00476420888078312
+"8","a","Employed","Small Adult",5582,0.207764171660401
+"9","a","Inactive care","Family with 1-2 Children",1049,0.298435277382646
+"10","a","Inactive care","Family with 3 or more Children",632,0.179800853485064
+"11","a","Inactive care","Other Households",843,0.239829302987198
+"12","a","Inactive care","Pensioner Couple",87,0.02475106685633
+"13","a","Inactive care","Single Adult",29,0.00825035561877667
+"14","a","Inactive care","Single Parent",636,0.180938833570413
+"15","a","Inactive care","Single Pensioner",8,0.00227596017069701
+"16","a","Inactive care","Small Adult",231,0.0657183499288762
+"17","a","Inactive long term sick","Family with 1-2 Children",185,0.0979354155637904
+"18","a","Inactive long term sick","Family with 3 or more Children",65,0.0344097406034939
+"19","a","Inactive long term sick","Other Households",553,0.292747485442033
+"20","a","Inactive long term sick","Pensioner Couple",108,0.0571731074642668
+"21","a","Inactive long term sick","Single Adult",541,0.286394917946003
+"22","a","Inactive long term sick","Single Parent",128,0.0677607199576496
+"23","a","Inactive long term sick","Single Pensioner",19,0.0100582318687136
+"24","a","Inactive long term sick","Small Adult",290,0.15352038115405
+"25","a","Inactive other","Family with 1-2 Children",54,0.173633440514469
+"26","a","Inactive other","Family with 3 or more Children",21,0.067524115755627
+"27","a","Inactive other","Other Households",108,0.347266881028939
+"28","a","Inactive other","Pensioner Couple",12,0.0385852090032154
+"29","a","Inactive other","Single Adult",38,0.122186495176849
+"30","a","Inactive other","Single Parent",37,0.118971061093248
+"31","a","Inactive other","Single Pensioner",1,0.00321543408360129
+"32","a","Inactive other","Small Adult",40,0.128617363344051
+"33","a","Inactive retired","Family with 1-2 Children",40,0.0183739090491502
+"34","a","Inactive retired","Family with 3 or more Children",6,0.00275608635737253
+"35","a","Inactive retired","Other Households",385,0.176848874598071
+"36","a","Inactive retired","Pensioner Couple",1011,0.464400551217271
+"37","a","Inactive retired","Single Adult",174,0.0799265043638034
+"38","a","Inactive retired","Single Parent",5,0.00229673863114378
+"39","a","Inactive retired","Single Pensioner",291,0.133670188332568
+"40","a","Inactive retired","Small Adult",265,0.12172714745062
+"41","a","Inactive student","Family with 1-2 Children",661,0.172991363517404
+"42","a","Inactive student","Family with 3 or more Children",358,0.0936927505888511
+"43","a","Inactive student","Other Households",2030,0.531274535461921
+"44","a","Inactive student","Pensioner Couple",2,0.000523423187647213
+"45","a","Inactive student","Single Adult",147,0.0384716042920701
+"46","a","Inactive student","Single Parent",505,0.132164354880921
+"47","a","Inactive student","Small Adult",118,0.0308819680711856
+"48","a","Unemployed","Family with 1-2 Children",501,0.149686286226471
+"49","a","Unemployed","Family with 3 or more Children",244,0.0729011054675829
+"50","a","Unemployed","Other Households",1178,0.351956976396773
+"51","a","Unemployed","Pensioner Couple",47,0.014042426053182
+"52","a","Unemployed","Single Adult",540,0.161338512100388
+"53","a","Unemployed","Single Parent",417,0.124589184344189
+"54","a","Unemployed","Single Pensioner",3,0.00089632506722438
+"55","a","Unemployed","Small Adult",417,0.124589184344189
+"56","i","Employed","Family with 1-2 Children",4675,0.246065582399074
+"57","i","Employed","Family with 3 or more Children",991,0.052160640033686
+"58","i","Employed","Other Households",6830,0.359492604873941
+"59","i","Employed","Pensioner Couple",695,0.0365808726775093
+"60","i","Employed","Single Adult",1794,0.0944260224222327
+"61","i","Employed","Single Parent",607,0.0319490499499974
+"62","i","Employed","Single Pensioner",143,0.00752671193220696
+"63","i","Employed","Small Adult",3264,0.171798515711353
+"64","i","Inactive care","Family with 1-2 Children",375,0.257731958762887
+"65","i","Inactive care","Family with 3 or more Children",270,0.185567010309278
+"66","i","Inactive care","Other Households",524,0.360137457044674
+"67","i","Inactive care","Pensioner Couple",51,0.0350515463917526
+"68","i","Inactive care","Single Adult",16,0.0109965635738832
+"69","i","Inactive care","Single Parent",132,0.0907216494845361
+"70","i","Inactive care","Single Pensioner",2,0.0013745704467354
+"71","i","Inactive care","Small Adult",85,0.0584192439862543
+"72","i","Inactive long term sick","Family with 1-2 Children",80,0.0690846286701209
+"73","i","Inactive long term sick","Family with 3 or more Children",26,0.0224525043177893
+"74","i","Inactive long term sick","Other Households",480,0.414507772020725
+"75","i","Inactive long term sick","Pensioner Couple",62,0.0535405872193437
+"76","i","Inactive long term sick","Single Adult",269,0.232297063903282
+"77","i","Inactive long term sick","Single Parent",61,0.0526770293609672
+"78","i","Inactive long term sick","Single Pensioner",48,0.0414507772020725
+"79","i","Inactive long term sick","Small Adult",132,0.113989637305699
+"80","i","Inactive other","Family with 1-2 Children",28,0.130232558139535
+"81","i","Inactive other","Family with 3 or more Children",10,0.0465116279069767
+"82","i","Inactive other","Other Households",102,0.474418604651163
+"83","i","Inactive other","Pensioner Couple",18,0.0837209302325581
+"84","i","Inactive other","Single Adult",18,0.0837209302325581
+"85","i","Inactive other","Single Parent",13,0.0604651162790698
+"86","i","Inactive other","Single Pensioner",3,0.013953488372093
+"87","i","Inactive other","Small Adult",23,0.106976744186047
+"88","i","Inactive retired","Family with 1-2 Children",29,0.0223938223938224
+"89","i","Inactive retired","Family with 3 or more Children",1,0.000772200772200772
+"90","i","Inactive retired","Other Households",333,0.257142857142857
+"91","i","Inactive retired","Pensioner Couple",511,0.394594594594595
+"92","i","Inactive retired","Single Adult",111,0.0857142857142857
+"93","i","Inactive retired","Single Parent",6,0.00463320463320463
+"94","i","Inactive retired","Single Pensioner",99,0.0764478764478764
+"95","i","Inactive retired","Small Adult",205,0.158301158301158
+"96","i","Inactive student","Family with 1-2 Children",347,0.165949306551889
+"97","i","Inactive student","Family with 3 or more Children",195,0.0932568149210904
+"98","i","Inactive student","Other Households",1236,0.591104734576757
+"99","i","Inactive student","Single Adult",92,0.0439980870396939
+"100","i","Inactive student","Single Parent",186,0.0889526542324247
+"101","i","Inactive student","Small Adult",35,0.0167384026781444
+"102","i","Unemployed","Family with 1-2 Children",172,0.129323308270677
+"103","i","Unemployed","Family with 3 or more Children",87,0.0654135338345865
+"104","i","Unemployed","Other Households",675,0.507518796992481
+"105","i","Unemployed","Pensioner Couple",40,0.0300751879699248
+"106","i","Unemployed","Single Adult",147,0.110526315789474
+"107","i","Unemployed","Single Parent",92,0.0691729323308271
+"108","i","Unemployed","Single Pensioner",15,0.0112781954887218
+"109","i","Unemployed","Small Adult",102,0.0766917293233083

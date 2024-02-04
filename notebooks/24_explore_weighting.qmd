@@ -18,10 +18,9 @@ prefer-html: true
 bibliography: references.bib
 ---
 
-# Introduction 
+# Introduction
 
 This notebook explores how to weight data used to make projections using our model framework, and what impact weighting has on the outputs
-
 
 # Prereqs
 
@@ -77,9 +76,10 @@ varnamesWaveJ <- names(waveJIndData)
 
 varnamesWaveJ[str_detect(varnamesWaveJ, "_xw$")]
 ```
+
 This contains the variable we hoped to find
 
-Let's now just get pid and this variables 
+Let's now just get pid and this variables
 
 ```{r}
 xs_weighting_lookup_j <- waveJIndData |> 
@@ -99,7 +99,6 @@ mod_phmh <-
 )
 
 ```
-
 
 Now to apply the weighting from the predicted probabilities
 
@@ -253,12 +252,9 @@ aggregate_differences_weighted |>
   )
 ```
 
+It appears from the above that, for the overall sample frame in wave j, there is an effect of weighting, but that this does not appear to change the aggregate predictions/projections substantially.
 
-It appears from the above that, for the overall sample frame in wave j, there is an effect of weighting, but that this does not appear to change the aggregate predictions/projections substantially. 
-
-
-We will now consider the effect of weighting on adults in households with children, and differences by household type 
-
+We will now consider the effect of weighting on adults in households with children, and differences by household type
 
 ```{r}
 df_joined <- 
@@ -301,19 +297,18 @@ par_mod_hhtype_phmh_demointeraction <-
 )
 ```
 
-We then want to look at how parent_hh_type could interact with sex, especially whether there may be a different magnitude or direction of effect for couple hhs by sex? 
+We then want to look at how parent_hh_type could interact with sex, especially whether there may be a different magnitude or direction of effect for couple hhs by sex?
 
 What are the scenarios to consider?
 
-- All HHs with children (with and without weighting?)
-- All Single parent HHs (with and without weighting)
-- All couple parent HHs (with and without weighting)
-    - By sex? 
+-   All HHs with children (with and without weighting?)
+-   All Single parent HHs (with and without weighting)
+-   All couple parent HHs (with and without weighting)
+    -   By sex?
 
-Just baseline scenarios to start with? 
+Just baseline scenarios to start with?
 
-
-All HH with children - effect of weighting 
+All HH with children - effect of weighting
 
 ```{r}
 econ_cat_levels <- c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other")
@@ -396,19 +391,17 @@ aggregate_predictions_weighted_baseline_scenario |>
   )
 ```
 
-In the above, we have used the ukhls sample weights from wave j to attempt to make the sample frame of parents only more representative of the UK population for that wave. 
-**This may not be what we are most interested in doing!**
+In the above, we have used the ukhls sample weights from wave j to attempt to make the sample frame of parents only more representative of the UK population for that wave. **This may not be what we are most interested in doing!**
 
-The effect of reweighting is to slightly decrease the share projected to move to employment, increase the share moving to unemployment, reduce the share who are inactive carers (substantially, by around 21%), and to increase the share who are long term sick. Also the share of students and retired is uprated. 
+The effect of reweighting is to slightly decrease the share projected to move to employment, increase the share moving to unemployment, reduce the share who are inactive carers (substantially, by around 21%), and to increase the share who are long term sick. Also the share of students and retired is uprated.
 
-So, although this works as a proof of principle that the effect of weighting can lead to substantive differences from unweighted analyses, the weighting used may not be appropriate for the types of problem which we are more interested in this subanalysis. 
-
+So, although this works as a proof of principle that the effect of weighting can lead to substantive differences from unweighted analyses, the weighting used may not be appropriate for the types of problem which we are more interested in this subanalysis.
 
 Now we want to know the following:
 
-- Is the effect of improving health with a bias towards physical health different for men in couples with children than females in couples in children?
-    - Prior expection: it is
-    
+-   Is the effect of improving health with a bias towards physical health different for men in couples with children than females in couples in children?
+    -   Prior expection: it is
+
 ```{r}
 predictors_df_vignettes <- 
   expand_grid(
@@ -452,6 +445,7 @@ preds_pred_vignettes |>
 
 
 ```
+
 Let's do both at once
 
 ```{r}
@@ -488,11 +482,7 @@ single_couple_parent_df |>
 
 Summary of thoughts so far
 
-- Improving health has a similar relative effect on different parent hh types
-- But different parent hh types start from very different positions in terms of sex composition, age, starting mh and ph, and economic status before any hypothetical intervention
-- We should therefore think carefully about absolute changes projected as well as the relative effects, even though the relative effects are closest to quantifying drivers in a PAF-like way
-- future work might consider the effect of weighting the UKHLS dataset to be more representative of the known composition of lone parents (and couple parents) observed in (especially) the lfs and aps
-
-
-
-
+-   Improving health has a similar relative effect on different parent hh types
+-   But different parent hh types start from very different positions in terms of sex composition, age, starting mh and ph, and economic status before any hypothetical intervention
+-   We should therefore think carefully about absolute changes projected as well as the relative effects, even though the relative effects are closest to quantifying drivers in a PAF-like way
+-   future work might consider the effect of weighting the UKHLS dataset to be more representative of the known composition of lone parents (and couple parents) observed in (especially) the lfs and aps

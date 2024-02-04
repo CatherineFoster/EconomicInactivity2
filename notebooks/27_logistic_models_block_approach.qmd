@@ -1,0 +1,698 @@
+---
+title: "Block-based models predicting flows into EILTS"
+author:
+  - "Jon Minton"
+  - "Martin Taulbut"
+format: 
+  html:
+    warning: false
+    code-fold: true
+    message: false
+    code-summary: "Show R Code"
+  docx: 
+    warning: false
+    echo: false
+    message: false
+editor: visual
+prefer-html: true
+---
+
+## Aim
+
+This document will develop analyses which predict flows into EILTS using a block-based approach. This will involve developing a series of logistic regression models which predict flows into EILTS using a range of individual and household level attributes.
+
+## Preparation
+
+```{r}
+devtools::load_all(here::here("R"))
+
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+library(tidyverse)
+library(nnet)
+library(knitr)
+library(kableExtra)
+
+# Individual level attributes 
+
+varnames <-  c(
+  
+  "jbstat", "dvage", "sex", # econ status; age; sex
+  "sf12mcs_dv", "sf12pcs_dv", # SF12 MH, SF12 PH
+  "health" # LLTI as a binary variable
+  
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", 
+  "values", "values",
+  "labels"
+  
+  )
+
+demohealth_data <- get_ind_level_vars_for_selected_waves(
+  varnames = varnames, vartypes = extract_what
+)
+
+mh_data <- 
+  get_ind_level_vars_for_selected_waves(
+    varnames = c("jbstat", "sf12mcs_dv"),
+    vartypes = c("labels", "values")
+  )
+
+eth_data <- 
+  get_ind_level_vars_for_selected_waves(
+    varnames = c("jbstat", "ethn_dv"),
+    vartypes = c("labels", "labels")
+  )
+
+hiqual_data <- 
+  get_ind_level_vars_for_selected_waves(
+    varnames = c("jbstat", "hiqual_dv"),
+    vartypes = c("labels", "labels")
+  )
+
+gor_data <- 
+  get_ind_level_vars_for_selected_waves(
+    varnames = c("jbstat", "gor_dv"),
+    vartypes = c("labels", "labels")
+  )
+
+
+ind_joined <- 
+  left_join(
+    demohealth_data |> select(-sf12mcs_dv),
+    eth_data |> select(
+      pidp, wave, ethn_dv
+    )
+  ) |> 
+  left_join(
+    mh_data |> select(
+      pidp, wave, sf12mcs_dv
+    )
+  ) |> 
+  left_join(
+    hiqual_data |> 
+      select(pidp, wave, hiqual_dv)
+  ) |> 
+  left_join(
+    gor_data |> 
+      select(pidp, wave, gor_dv)
+  )
+
+
+# Household level attributes 
+# cars: ncars
+# equivalised hh income 
+# hh type
+
+vars_types_hh <- tribble(
+  ~var_name, ~var_type, 
+  "fihhmnnet1_dv", "values",
+  "ieqmoecd_dv", "values",
+  "hhtype_dv", "labels"
+)
+
+dta_joined_pt1 <- 
+  add_hh_variables(
+    ind_joined, 
+    varnames = vars_types_hh$var_name, 
+    vartypes = vars_types_hh$var_type
+  ) 
+
+dta_joined_pt2 <- 
+  add_hh_variables(
+    ind_joined,
+    varnames = "ncars",
+    vartypes = "values"
+  )
+
+
+dta_joined <- 
+  left_join(
+    dta_joined_pt1,
+    dta_joined_pt2 |> select(pidp, wave, hidp, ncars)
+  )
+
+rm(dta_joined_pt1, dta_joined_pt2, ind_joined, mh_data, eth_data, demohealth_data, hiqual_data, gor_data)
+
+
+```
+
+## Modelling 
+
+We will start with the simplest possible model specification, then add blocks of covariates 
+
+We are predicting whether next_status is EILTS or not.
+
+We will start with a manual approach to deciding on which blocks of variables, and variables within, to include
+
+```{r}
+data_tidied <- 
+  dta_joined |> 
+    mutate(
+      eth_simplified = case_when(
+        ethn_dv %in% c("british/english/scottish/welsh/northern irish", "any other white background", "gypsy or irish traveller") ~ 'White',
+        is.na(ethn_dv) | ethn_dv == 'missing' ~ NA_character_,
+        TRUE ~ 'non-White'
+      )
+    ) |> 
+    mutate(
+      age = ifelse(dvage < 0, NA, dvage)
+    ) |> 
+    filter(between(age, 16, 64)) |> 
+    filter(hiqual_dv != 'missing') |> 
+    mutate(
+      mh = ifelse(sf12mcs_dv < 0, NA, sf12mcs_dv),
+      ph = ifelse(sf12pcs_dv < 0, NA, sf12pcs_dv)
+    ) |> 
+    mutate(
+      ncars = ifelse(ncars < 0, NA, ncars),
+      hascar = ifelse(ncars > 0, 1, 0)
+    ) |> 
+    mutate(ieqmoecd_dv = ifelse(ieqmoecd_dv < 0, NA, ieqmoecd_dv)) |>
+    mutate(
+      eq_net_income = fihhmnnet1_dv / ieqmoecd_dv
+    )  |> 
+    mutate(
+      ncars = ifelse(ncars < 0, NA, ncars)
+    ) |> 
+    mutate(
+      lti = case_when(
+        health == '1' ~ 'yes',
+        health == '2' ~ 'no',
+        TRUE   ~ NA_character_
+      )
+    ) |> 
+  left_join(simplified_household_lookup, by = c('hhtype_dv' = 'original')) |> 
+  filter(!is.na(this_status)) |> 
+  filter(wave %in% letters[1:10]) |> # waves a to j
+  mutate(
+    becomes_eilts = ifelse(next_status == "Inactive long term sick", 1, 0)
+  ) |> 
+  mutate(
+    age_group = case_when(
+      between(age, 16, 24) ~ "16-24",
+      between(age, 25, 44) ~ "25-44",
+      between(age, 45, 54) ~ "45-54",
+      between(age, 55, 64) ~ "55-64"
+    )
+  ) |> 
+  filter(sex != 'missing') |> 
+  mutate(
+    hh_type = factor(recoded, levels = c("Single Adult", "Small Adult", "Single Parent", "Family with 1-2 Children", "Family with 3 or more Children", "Single Pensioner", "Pensioner Couple") 
+    )
+  ) |> 
+  mutate(hiqual_dv = case_when(
+    hiqual_dv %in% c("A level etc", "A-level etc") ~ "A level etc",
+    hiqual_dv %in% c("No qual", "No qualification") ~ "No qualification",
+    hiqual_dv %in% c("Other higher", "Other higher degree") ~ "Other higher degree",
+    hiqual_dv %in% c("Other qual", "Other qualification") ~ "Other qualification",
+    hiqual_dv %in% c("inapplicable", "missing") ~ NA_character_,
+    TRUE ~ hiqual_dv
+    )
+  )
+
+```
+
+```{r}
+
+mod_null <- glm(becomes_eilts ~ 1, data = data_tidied, family = binomial)
+
+summary(mod_null)
+
+```
+
+Now to add the first block of variables: history
+
+```{r}
+mod_history <- glm(becomes_eilts ~ this_status, data = data_tidied, family = binomial)
+
+summary(mod_history)
+
+
+```
+
+Now to add the second block of variables: demographics
+
+```{r}
+
+mod_history_demographics <- glm(becomes_eilts ~ this_status + age_group + sex + eth_simplified, data = data_tidied, family = binomial)
+
+summary(mod_history_demographics)
+
+
+
+```
+
+We can now start comparing the AICs 
+
+```{r}
+AIC(mod_null, mod_history, mod_history_demographics)
+
+
+
+```
+Now hh income, both linear and logged
+
+```{r}
+
+mod_history_demographics_hhincome <- glm(
+  becomes_eilts ~ this_status + age_group + sex + eth_simplified + eq_net_income, 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_history_demographics_hhincome)
+
+```
+
+Now logged 
+
+```{r}
+
+mod_history_demographics_loghhincome <- glm(
+  becomes_eilts ~ this_status + age_group + sex + eth_simplified + log(eq_net_income+ 0.5), 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_history_demographics_loghhincome)
+
+```
+
+
+If we were to remove event history, the effect of income may be stat sig
+
+```{r}
+mod_demographics_loghhincome <- glm(
+  becomes_eilts ~  age_group + sex + eth_simplified + log(eq_net_income + 0.5), 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_demographics_loghhincome)
+
+```
+
+Now car access 
+
+```{r}
+mod_history_demographics_hascar <- glm(
+  becomes_eilts ~ this_status + age_group + sex + eth_simplified + hascar, 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_history_demographics_hascar)
+
+```
+
+
+Now to add the next block of variables: health
+
+```{r}
+
+mod_history_demographics_car_lti <- glm(
+  becomes_eilts ~ this_status + age_group + sex + eth_simplified + hascar + lti, 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_history_demographics_car_lti)
+
+
+```
+
+Now health as continuous variables 
+
+```{r}
+
+
+mod_history_demographics_car_sf12 <- glm(
+  becomes_eilts ~ this_status + age_group + sex + hascar + eth_simplified + mh + ph, 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_history_demographics_car_sf12)
+
+
+```
+
+Finally let's look at both health and lti
+
+```{r}
+mod_history_demographics_car_health <- glm(
+  becomes_eilts ~ this_status + age_group + sex + eth_simplified + hascar + mh + ph + lti, 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_history_demographics_car_health)
+
+
+
+
+```
+But is the AIC of including both types of health better than just sf12 or lti?
+
+```{r}
+
+AIC(mod_history_demographics_car_sf12, mod_history_demographics_car_lti, mod_history_demographics_car_health)
+
+
+```
+
+The number of observations aren't exactly the same, so we can't directly compare AICs. However, the AIC of the model with both types of health is lower than the AIC of the model with just one type of health. 
+However it appears that the sf12 derived variables are more useful than the lti/no lti binary variable
+
+So let's use mh and ph, before moving onto the next block of variables: household
+
+```{r}
+
+mod_history_demographics_health_car_hhchildren <- glm(
+  becomes_eilts ~ this_status + age_group + sex + eth_simplified + lti + mh + ph + has_children, 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_history_demographics_health_car_hhchildren)
+
+
+
+```
+
+Now hh category 
+
+```{r}
+
+
+mod_history_demographics_health_car_hhtype <- glm(
+  becomes_eilts ~ this_status + age_group + sex + hascar + eth_simplified + lti + mh + ph + hh_type, 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_history_demographics_health_car_hhtype)
+
+```
+Now qualifications, which we think is the last block
+
+```{r}
+mod_history_demographics_health_car_hhtype_qual <- glm(
+  becomes_eilts ~ this_status + age_group + sex + hascar + eth_simplified + lti + mh + ph + hh_type + hiqual_dv, 
+   data = data_tidied, 
+   family = binomial
+)
+
+summary(mod_history_demographics_health_car_hhtype_qual)
+
+broom::tidy(mod_history_demographics_health_car_hhtype_qual) |> write.csv("final_model_results_preds_into_eilts.csv")
+
+```
+
+We now have a series of models, organised into blocks, which build up in complexity incrementally. Each appears to increase the proportion explained. Let's use Nagelkerke's R^2 to compare the models
+
+```{r}
+fmsb::NagelkerkeR2(mod_null)
+fmsb::NagelkerkeR2(mod_history)
+fmsb::NagelkerkeR2(mod_history_demographics)
+fmsb::NagelkerkeR2(mod_history_demographics_hascar)
+fmsb::NagelkerkeR2(mod_history_demographics_car_health)
+fmsb::NagelkerkeR2(mod_history_demographics_health_car_hhchildren) # slightly worse than previous
+fmsb::NagelkerkeR2(mod_history_demographics_health_car_hhtype)
+fmsb::NagelkerkeR2(mod_history_demographics_health_car_hhtype_qual)
+
+
+```
+Now to make this a table 
+
+```{r}
+label_and_return_nr2 <- function(label, model){
+  nr2 <- fmsb::NagelkerkeR2(model)
+  tibble(label = label, nr2 = nr2$R2)
+}
+
+nr2s <- bind_rows(
+  label_and_return_nr2("null", mod_null),
+  label_and_return_nr2("history", mod_history),
+  label_and_return_nr2("history_demographics", mod_history_demographics),
+  label_and_return_nr2("history_demographics_hascar", mod_history_demographics_hascar),
+  label_and_return_nr2("history_demographics_car_health", mod_history_demographics_car_health),
+  label_and_return_nr2("history_demographics_health_car_hhchildren", mod_history_demographics_health_car_hhchildren),
+  label_and_return_nr2("history_demographics_health_car_hhtype", mod_history_demographics_health_car_hhtype),
+  label_and_return_nr2("history_demographics_health_car_hhtype_qual", mod_history_demographics_health_car_hhtype_qual)
+)
+
+nr2s |> write.csv("nagelkerke_r2s.csv")
+
+nr2s |> kable() |> kable_styling()
+
+
+```
+Let's return to the demographics block and see if we can do better (using the spec previously arrived at )
+
+```{r}
+mod_history_demographics_better <- glm(becomes_eilts ~ this_status * sex + splines::bs(age, 5) + sex + eth_simplified, data = data_tidied, family = binomial)
+
+summary(mod_history_demographics_better)
+
+fmsb::NagelkerkeR2(mod_history_demographics_better)
+
+
+```
+Let's now look at the stepwise AIC approach to see if similar variables are selected 
+
+```{r}
+
+complete_data <- data_tidied %>% filter(complete.cases(.))
+
+
+new_mod_null <- glm(becomes_eilts ~ 1, data = complete_data, family = binomial)
+
+new_mod_history_demographics <-  glm(becomes_eilts ~ this_status + age_group + sex + eth_simplified, data = complete_data, family = binomial)
+
+new_mod_history_demographics_health_car_hhtype_qual <- glm(
+  becomes_eilts ~ this_status + age_group + sex + hascar + eth_simplified + lti + mh + ph + hh_type + hiqual_dv, 
+   data = complete_data, 
+   family = binomial
+)
+
+mdl_stepAIC <- step(new_mod_history_demographics, direction = "both", scope = list(lower = new_mod_null, upper = new_mod_history_demographics_health_car_hhtype_qual))
+
+
+
+```
+Let's see the final specification arrived at 
+
+```{r}
+summary(mdl_stepAIC)
+
+```
+Let's see what happens if we ask the algorithm to prune our final model specification
+
+```{r}
+mdl_stepAIC_pruned <- step(new_mod_history_demographics_health_car_hhtype_qual, direction = "backward", scope = list(lower = new_mod_null, upper = new_mod_history_demographics_health_car_hhtype_qual))
+
+summary(mdl_stepAIC_pruned)
+
+
+
+```
+The pruned model is the same as the model we derived manually, so all variables appear essential
+
+Finally, we can start with the simplest and move forwards 
+
+```{r}
+
+mdl_stepAIC_grown <- step(new_mod_null, direction = "forward", scope = list(lower = new_mod_null, upper = new_mod_history_demographics_health_car_hhtype_qual))
+
+summary(mdl_stepAIC_grown)
+
+```
+
+Once again we end up with the same model as we derived manually, so all variables appear essential.
+
+Finally, for now, we'll look at just those who start off in the unemployed category. This means the history variable is no longer needed as everyone's history is now the same
+
+```{r}
+data_tidied_unemployed <- data_tidied |> filter(this_status == "Unemployed") %>% filter(complete.cases(.))
+
+mod_unemployed_null <-  glm(becomes_eilts ~ 1, data = data_tidied_unemployed, family = binomial)
+mod_unemployed_demographics <- glm(becomes_eilts ~ age_group + sex + eth_simplified, data = data_tidied_unemployed, family = binomial)
+mod_unemployed_full <-  glm(becomes_eilts ~  age_group + sex + hascar + eth_simplified + lti + mh + ph + hh_type + hiqual_dv + eq_net_income, data = data_tidied_unemployed, family = binomial) # this time with income 
+
+# first step backwards with the full model, 
+
+mdl_stepAIC_unemployed_pruned <- step(mod_unemployed_full, direction = "backward", scope = list(lower = mod_unemployed_null, upper = mod_unemployed_full))
+
+# then step forwards from the null model
+
+mdl_stepAIC_unemployed_grown <- step(mod_unemployed_null, direction = "forward", scope = list(lower = mod_unemployed_null, upper = mod_unemployed_full))
+
+# then allow stepping in either direction with the demographics model to start
+
+mdl_stepAIC_unemployed_both <- step(mod_unemployed_demographics, direction = "both", scope = list(lower = mod_unemployed_null, upper = mod_unemployed_full))
+
+
+
+
+
+
+
+
+
+```
+
+Let's look at the specifications arrived at by the three approaches 
+
+```{r}
+summary(mdl_stepAIC_unemployed_pruned)
+```
+20 variables included 
+Now the forward approach 
+
+```{r}
+
+summary(mdl_stepAIC_unemployed_grown)
+
+```
+
+Now starting in the middle
+
+```{r}
+
+summary(mdl_stepAIC_unemployed_both)
+
+
+```
+
+Let's get the Nagelkerke R^2 for each of these models 
+
+```{r}
+
+fmsb::NagelkerkeR2(mdl_stepAIC_unemployed_pruned)
+fmsb::NagelkerkeR2(mdl_stepAIC_unemployed_grown)
+fmsb::NagelkerkeR2(mdl_stepAIC_unemployed_both)
+
+
+```
+
+
+Finally (finally?) let's do the same for people who start off employed
+
+
+```{r}
+data_tidied_employed <- data_tidied |> filter(this_status == "Employed") %>% filter(complete.cases(.))
+
+mod_employed_null <-  glm(becomes_eilts ~ 1, data = data_tidied_employed, family = binomial)
+mod_employed_demographics <- glm(becomes_eilts ~ age_group + sex + eth_simplified, data = data_tidied_employed, family = binomial)
+mod_employed_full <-  glm(becomes_eilts ~  age_group + sex + hascar + eth_simplified + lti + mh + ph + hh_type + hiqual_dv + eq_net_income, data = data_tidied_employed, family = binomial) # this time with income 
+
+# first step backwards with the full model, 
+
+mdl_stepAIC_employed_pruned <- step(mod_employed_full, direction = "backward", scope = list(lower = mod_employed_null, upper = mod_employed_full))
+
+# then step forwards from the null model
+
+mdl_stepAIC_employed_grown <- step(mod_employed_null, direction = "forward", scope = list(lower = mod_employed_null, upper = mod_employed_full))
+
+# then allow stepping in either direction with the demographics model to start
+
+mdl_stepAIC_employed_both <- step(mod_employed_demographics, direction = "both", scope = list(lower = mod_employed_null, upper = mod_employed_full))
+
+
+
+
+
+```
+```{r}
+summary(mdl_stepAIC_employed_pruned)
+
+```
+
+```{r}
+
+summary(mdl_stepAIC_employed_grown)
+
+```
+
+```{r}
+
+summary(mdl_stepAIC_employed_both)
+
+```
+
+Now Nagelkerke R^2 for each of these models 
+
+```{r}
+
+fmsb::NagelkerkeR2(mdl_stepAIC_employed_pruned)
+fmsb::NagelkerkeR2(mdl_stepAIC_employed_grown)
+fmsb::NagelkerkeR2(mdl_stepAIC_employed_both)
+
+```
+
+Now, finally (finally (finally)) we can look at flows out of EILTS from those who start in this state
+
+```{r} 
+data_tidied_eilts <- data_tidied |> filter(this_status == "Inactive long term sick") %>% filter(complete.cases(.)) |> 
+  mutate(leaves_eilts = as.numeric(!becomes_eilts))
+
+mod_eilts_null <-  glm(leaves_eilts ~ 1, data = data_tidied_eilts, family = binomial)
+mod_eilts_demographics <- glm(leaves_eilts ~ age_group + sex + eth_simplified, data = data_tidied_eilts, family = binomial)
+mod_eilts_full <-  glm(leaves_eilts ~  age_group + sex + hascar + eth_simplified + lti + mh + ph + hh_type + hiqual_dv + eq_net_income, data = data_tidied_eilts, family = binomial) # this time with income 
+
+# first step backwards with the full model, 
+
+mdl_stepAIC_eilts_pruned <- step(mod_eilts_full, direction = "backward", scope = list(lower = mod_eilts_null, upper = mod_eilts_full))
+
+# then step forwards from the null model
+
+mdl_stepAIC_eilts_grown <- step(mod_eilts_null, direction = "forward", scope = list(lower = mod_eilts_null, upper = mod_eilts_full))
+
+# then allow stepping in either direction with the demographics model to start
+
+mdl_stepAIC_eilts_both <- step(mod_eilts_demographics, direction = "both", scope = list(lower = mod_eilts_null, upper = mod_eilts_full))
+
+
+
+```
+
+
+summaries 
+
+```{r}
+summary(mdl_stepAIC_eilts_pruned)
+
+```
+
+Next model summary 
+```{r}
+
+summary(mdl_stepAIC_eilts_grown)
+
+```
+
+
+Finally, both ways
+
+```{r}
+summary(mdl_stepAIC_eilts_both)
+
+
+```
+
+Now Nagelkerke R^2 for each of these models 
+
+```{r}
+
+fmsb::NagelkerkeR2(mdl_stepAIC_eilts_pruned)
+fmsb::NagelkerkeR2(mdl_stepAIC_eilts_grown)
+fmsb::NagelkerkeR2(mdl_stepAIC_eilts_both)
+
+
+
+```
+
+

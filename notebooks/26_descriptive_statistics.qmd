@@ -1,0 +1,309 @@
+---
+title: "Various tables of descriptive statistics"
+author:
+  - "Jon Minton"
+  - "Martin Taulbut"
+format: 
+  html:
+    warning: false
+    code-fold: true
+    message: false
+    code-summary: "Show R Code"
+  docx: 
+    warning: false
+    echo: false
+    message: false
+editor: visual
+prefer-html: true
+---
+
+## Aim
+
+This document will gather various descriptive statistics from the UKHLS relating to characteristics like age, sex, health, household composition, and so on, and how these vary between different economic inactivity states
+
+## Preparation
+
+```{r}
+devtools::load_all(here::here("R"))
+
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+library(tidyverse)
+library(nnet)
+library(knitr)
+library(kableExtra)
+
+# Individual level attributes 
+
+varnames <-  c(
+  
+  "jbstat", "dvage", "sex", # econ status; age; sex
+  "sf12mcs_dv", "sf12pcs_dv", # SF12 MH, SF12 PH
+  "health" # LLTI as a binary variable
+  
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", 
+  "values", "values",
+  "labels"
+  
+  )
+
+demohealth_data <- get_ind_level_vars_for_selected_waves(
+  varnames = varnames, vartypes = extract_what
+)
+
+mh_data <- 
+  get_ind_level_vars_for_selected_waves(
+    varnames = c("jbstat", "sf12mcs_dv"),
+    vartypes = c("labels", "values")
+  )
+
+eth_data <- 
+  get_ind_level_vars_for_selected_waves(
+    varnames = c("jbstat", "ethn_dv"),
+    vartypes = c("labels", "labels")
+  )
+
+hiqual_data <- 
+  get_ind_level_vars_for_selected_waves(
+    varnames = c("jbstat", "hiqual_dv"),
+    vartypes = c("labels", "labels")
+  )
+
+ind_joined <- 
+  left_join(
+    demohealth_data |> select(-sf12mcs_dv),
+    eth_data |> select(
+      pidp, wave, ethn_dv
+    )
+  ) |> 
+  left_join(
+    mh_data |> select(
+      pidp, wave, sf12mcs_dv
+    )
+  ) |> 
+  left_join(
+    hiqual_data |> 
+      select(pidp, wave, hiqual_dv)
+  )
+
+
+# Household level attributes 
+# cars: ncars
+# equivalised hh income 
+# hh type
+
+vars_types_hh <- tribble(
+  ~var_name, ~var_type, 
+  "fihhmnnet1_dv", "values",
+  "ieqmoecd_dv", "values",
+  "hhtype_dv", "labels"
+)
+
+dta_joined_pt1 <- 
+  add_hh_variables(
+    ind_joined, 
+    varnames = vars_types_hh$var_name, 
+    vartypes = vars_types_hh$var_type
+  ) 
+
+dta_joined_pt2 <- 
+  add_hh_variables(
+    ind_joined,
+    varnames = "ncars",
+    vartypes = "values"
+  )
+
+
+dta_joined <- 
+  left_join(
+    dta_joined_pt1,
+    dta_joined_pt2 |> select(pidp, wave, hidp, ncars)
+  )
+
+rm(dta_joined_pt1, dta_joined_pt2, ind_joined, mh_data, eth_data, demohealth_data)
+
+
+```
+
+Now we can get some descriptive stats:
+
+We want to look at wave a to wave i
+
+16 to 64 year olds
+
+```{r}
+dta_joined_tidied <- 
+  dta_joined |> 
+    mutate(
+      eth_simplified = case_when(
+        ethn_dv %in% c("british/english/scottish/welsh/northern irish", "any other white background", "gypsy or irish traveller") ~ 'White',
+        is.na(ethn_dv) | ethn_dv == 'missing' ~ NA_character_,
+        TRUE ~ 'non-White'
+      )
+    ) |> 
+    mutate(
+      age = ifelse(dvage < 0, NA, dvage)
+    ) |> 
+    filter(between(age, 16, 64)) |> 
+    filter(hiqual_dv != 'missing') |> 
+    mutate(
+      mh = ifelse(sf12mcs_dv < 0, NA, sf12mcs_dv),
+      ph = ifelse(sf12pcs_dv < 0, NA, sf12pcs_dv)
+    ) |> 
+    mutate(
+      eq_net_income = fihhmnnet1_dv / ieqmoecd_dv
+    )  |> 
+    mutate(
+      ncars = ifelse(ncars < 0, NA, ncars)
+    ) |> 
+    mutate(
+      lti = case_when(
+        health == '1' ~ 'yes',
+        health == '2' ~ 'no',
+        TRUE   ~ NA_character_
+      )
+    ) |> 
+  left_join(simplified_household_lookup, by = c('hhtype_dv' = 'original')) |> 
+  filter(!is.na(this_status))
+
+```
+
+```{r}
+summary_stats <- dta_joined_tidied |> 
+  filter(wave %in% c("a", "i")) |> 
+  group_by(wave, this_status) |> 
+  summarise(
+    prop_men = mean(sex == "male", na.rm = TRUE),
+    prop_women = mean(sex == "female", na.rm = TRUE),
+    mean_age = mean(age, na.rm = TRUE),
+    median_age = median(age, na.rm = TRUE),
+    mean_mh = mean(mh, na.rm = TRUE),
+    mean_ph = mean(ph, na.rm = TRUE), 
+    prop_nw = mean(eth_simplified == 'non-White', na.rm = TRUE),
+    median_numcars = median(ncars, na.rm = TRUE),
+    mean_numcars = mean(ncars, na.rm = TRUE),
+    mean_hascar = mean(ncars != 0, na.rm = TRUE),
+    mean_eq_hh_income = mean(eq_net_income, na.rm = TRUE),
+    median_eq_hh_income = median(eq_net_income, na.rm = TRUE),
+    prop_children = mean(has_children, na.rm = TRUE),
+    prop_lti = mean(lti == 'yes', na.rm = TRUE)
+  ) 
+
+summary_stats |> write.csv("summary_stats.csv")
+
+summary_stats
+```
+
+n.b. minority ethnic groups are oversampled within the UKHLS.
+
+Let's now look at the breakdown by household type (the `recoded` variable)
+
+```{r}
+hh_composition_summary_stats <- 
+  dta_joined_tidied |> 
+    filter(wave %in% c("a", "i")) |> 
+    filter(!is.na(recoded)) |> 
+    group_by(wave, this_status, recoded) |> 
+    count() |> 
+    group_by(wave, this_status) |> 
+    mutate(
+      prop = n / sum(n)
+    )
+
+hh_composition_summary_stats |> write.csv("summary_stats_hhcomp.csv")
+
+hh_composition_summary_stats
+```
+
+Highest qualification by status type
+
+```{r}
+hiqual_summary_stats <- 
+  dta_joined_tidied |> 
+    filter(wave %in% c("a", "i")) |> 
+    filter(!is.na(hiqual_dv)) |> 
+    group_by(wave, this_status, hiqual_dv) |> 
+    count() |> 
+    group_by(wave, this_status) |> 
+    mutate(
+      prop = n / sum(n)
+    )
+
+hiqual_summary_stats |> write.csv("summary_stats_hiqual.csv")
+
+hiqual_summary_stats
+```
+
+## Transitions between two pairs of waves 
+
+We are interested in the numbers of transitions between states between: i) wave a to b; ii) i to j
+
+```{r}
+ab_loss <- 
+  dta_joined_tidied |> 
+    filter(wave == 'a') |> 
+    select(this_status, next_status) |> 
+    mutate(
+      is_lost_to_follow_up = ifelse(is.na(next_status), 'lost to follow-up', 'not lost to follow-up')
+    ) |> 
+    group_by(this_status, is_lost_to_follow_up) |> 
+    count() |> 
+    pivot_wider(names_from = 'is_lost_to_follow_up', values_from = 'n')
+
+ab_loss |> write.csv("summary_ab_loss.csv")
+
+ab_loss
+```
+
+And for complete cases (successfully followed up)
+
+```{r}
+ab_transitions <- 
+  dta_joined_tidied |> 
+    filter(wave == 'a') |> 
+    select(this_status, next_status) %>% 
+    filter(complete.cases(.)) |> 
+    group_by(this_status, next_status) |> 
+    count() |> 
+    pivot_wider(names_from = 'next_status', values_from = 'n')
+
+ab_transitions |> write.csv("summary_ab_transitions.csv")
+
+ab_transitions
+```
+
+Now the same but for waves i to j
+
+```{r}
+ij_loss <- 
+  dta_joined_tidied |> 
+    filter(wave == 'i') |> 
+    select(this_status, next_status) |> 
+    mutate(
+      is_lost_to_follow_up = ifelse(is.na(next_status), 'lost to follow-up', 'not lost to follow-up')
+    ) |> 
+    group_by(this_status, is_lost_to_follow_up) |> 
+    count() |> 
+    pivot_wider(names_from = 'is_lost_to_follow_up', values_from = 'n')
+
+ij_loss |> write.csv("summary_ij_loss.csv")
+
+ij_loss
+```
+
+```{r}
+ij_transitions <- 
+  dta_joined_tidied |> 
+    filter(wave == 'i') |> 
+    select(this_status, next_status) %>% 
+    filter(complete.cases(.)) |> 
+    group_by(this_status, next_status) |> 
+    count() |> 
+    pivot_wider(names_from = 'next_status', values_from = 'n')
+
+ij_transitions |> write.csv("summary_ij_transitions.csv")
+
+ij_transitions
+```

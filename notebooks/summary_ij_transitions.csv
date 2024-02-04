@@ -1,0 +1,8 @@
+"","this_status","Employed","Inactive care","Inactive long term sick","Inactive other","Inactive retired","Inactive student","Unemployed"
+"1","Employed",15654,122,75,58,254,175,253
+"2","Inactive care",134,893,43,32,37,4,116
+"3","Inactive long term sick",33,30,771,9,59,3,79
+"4","Inactive other",65,26,7,31,12,11,23
+"5","Inactive retired",50,28,36,4,1092,NA,19
+"6","Inactive student",380,7,14,24,3,1184,108
+"7","Unemployed",331,114,100,31,42,57,455

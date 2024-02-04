@@ -1,0 +1,92 @@
+"","wave","this_status","hiqual_dv","n","prop"
+"1","a","Employed","A level etc",5504,0.204860981873674
+"2","a","Employed","Degree",8011,0.298172479249637
+"3","a","Employed","GCSE etc",5718,0.212826143596233
+"4","a","Employed","No qual",1940,0.0722075408493691
+"5","a","Employed","Other higher",3508,0.130569099638962
+"6","a","Employed","Other qual",2186,0.0813637547921242
+"7","a","Inactive care","A level etc",477,0.135704125177809
+"8","a","Inactive care","Degree",501,0.1425320056899
+"9","a","Inactive care","GCSE etc",997,0.283641536273115
+"10","a","Inactive care","No qual",913,0.259743954480797
+"11","a","Inactive care","Other higher",262,0.0745376955903272
+"12","a","Inactive care","Other qual",365,0.103840682788051
+"13","a","Inactive long term sick","A level etc",245,0.129698253043939
+"14","a","Inactive long term sick","Degree",112,0.0592906299629434
+"15","a","Inactive long term sick","GCSE etc",348,0.18422445738486
+"16","a","Inactive long term sick","No qual",745,0.394388565378507
+"17","a","Inactive long term sick","Other higher",126,0.0667019587083113
+"18","a","Inactive long term sick","Other qual",313,0.16569613552144
+"19","a","Inactive other","A level etc",71,0.228295819935691
+"20","a","Inactive other","Degree",68,0.218649517684887
+"21","a","Inactive other","GCSE etc",62,0.19935691318328
+"22","a","Inactive other","No qual",52,0.167202572347267
+"23","a","Inactive other","Other higher",23,0.0739549839228296
+"24","a","Inactive other","Other qual",35,0.112540192926045
+"25","a","Inactive retired","A level etc",242,0.111162149747359
+"26","a","Inactive retired","Degree",390,0.179145613229215
+"27","a","Inactive retired","GCSE etc",419,0.192466697289848
+"28","a","Inactive retired","No qual",536,0.246210381258613
+"29","a","Inactive retired","Other higher",280,0.128617363344051
+"30","a","Inactive retired","Other qual",310,0.142397795130914
+"31","a","Inactive student","A level etc",1583,0.414289453022769
+"32","a","Inactive student","Degree",525,0.137398586757393
+"33","a","Inactive student","GCSE etc",1144,0.299398063334206
+"34","a","Inactive student","No qual",247,0.0646427636744308
+"35","a","Inactive student","Other higher",235,0.0615022245485475
+"36","a","Inactive student","Other qual",87,0.0227689086626538
+"37","a","Unemployed","A level etc",557,0.166417687481327
+"38","a","Unemployed","Degree",457,0.136540185240514
+"39","a","Unemployed","GCSE etc",945,0.28234239617568
+"40","a","Unemployed","No qual",753,0.224977591873319
+"41","a","Unemployed","Other higher",246,0.0734986555123992
+"42","a","Unemployed","Other qual",389,0.116223483716761
+"43","i","Employed","A-level etc",4366,0.224207877574077
+"44","i","Employed","Degree",6893,0.353977301905202
+"45","i","Employed","GCSE etc",3647,0.18728495866071
+"46","i","Employed","No qualification",541,0.0277820572074154
+"47","i","Employed","Other higher degree",2550,0.130950546911108
+"48","i","Employed","Other qualification",1160,0.0595696605556411
+"49","i","Employed","inapplicable",316,0.0162275971858471
+"50","i","Inactive care","A-level etc",238,0.158139534883721
+"51","i","Inactive care","Degree",235,0.156146179401993
+"52","i","Inactive care","GCSE etc",408,0.27109634551495
+"53","i","Inactive care","No qualification",231,0.153488372093023
+"54","i","Inactive care","Other higher degree",121,0.0803986710963455
+"55","i","Inactive care","Other qualification",162,0.107641196013289
+"56","i","Inactive care","inapplicable",110,0.0730897009966777
+"57","i","Inactive long term sick","A-level etc",203,0.172179813401187
+"58","i","Inactive long term sick","Degree",92,0.0780322307039864
+"59","i","Inactive long term sick","GCSE etc",306,0.259541984732824
+"60","i","Inactive long term sick","No qualification",293,0.248515691263783
+"61","i","Inactive long term sick","Other higher degree",82,0.0695504664970314
+"62","i","Inactive long term sick","Other qualification",175,0.148430873621713
+"63","i","Inactive long term sick","inapplicable",28,0.0237489397794741
+"64","i","Inactive other","A-level etc",59,0.26457399103139
+"65","i","Inactive other","Degree",59,0.26457399103139
+"66","i","Inactive other","GCSE etc",37,0.165919282511211
+"67","i","Inactive other","No qualification",22,0.0986547085201794
+"68","i","Inactive other","Other higher degree",22,0.0986547085201794
+"69","i","Inactive other","Other qualification",21,0.0941704035874439
+"70","i","Inactive other","inapplicable",3,0.0134529147982063
+"71","i","Inactive retired","A-level etc",232,0.176829268292683
+"72","i","Inactive retired","Degree",422,0.321646341463415
+"73","i","Inactive retired","GCSE etc",214,0.163109756097561
+"74","i","Inactive retired","No qualification",106,0.0807926829268293
+"75","i","Inactive retired","Other higher degree",221,0.16844512195122
+"76","i","Inactive retired","Other qualification",103,0.0785060975609756
+"77","i","Inactive retired","inapplicable",14,0.0106707317073171
+"78","i","Inactive student","A-level etc",982,0.445553539019964
+"79","i","Inactive student","Degree",179,0.0812159709618875
+"80","i","Inactive student","GCSE etc",691,0.313520871143376
+"81","i","Inactive student","No qualification",199,0.0902903811252269
+"82","i","Inactive student","Other higher degree",92,0.0417422867513612
+"83","i","Inactive student","Other qualification",41,0.0186025408348457
+"84","i","Inactive student","inapplicable",20,0.00907441016333938
+"85","i","Unemployed","A-level etc",315,0.226130653266332
+"86","i","Unemployed","Degree",239,0.171572146446518
+"87","i","Unemployed","GCSE etc",365,0.262024407753051
+"88","i","Unemployed","No qualification",164,0.117731514716439
+"89","i","Unemployed","Other higher degree",125,0.0897343862167983
+"90","i","Unemployed","Other qualification",146,0.10480976310122
+"91","i","Unemployed","inapplicable",39,0.0279971284996411

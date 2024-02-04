@@ -45,7 +45,6 @@ devtools::load_all(here('R'))
 
 ```
 
-
 ```{r}
 
 # Individual level characteristics 
@@ -88,10 +87,10 @@ dta_joined
 
 We now want:
 
-- only hh with children
-- highqual_dv 
-- fihhmnnet1_dv : total household net income - no deductions
-- ieqmoecd_dv
+-   only hh with children
+-   highqual_dv
+-   fihhmnnet1_dv : total household net income - no deductions
+-   ieqmoecd_dv
 
 ```{r}
 
@@ -139,11 +138,11 @@ dta_joined |>
   ungroup()
 
 ```
+
 What we want
 
-- Number of observations in each group 
-- Exclude inapplicable and missing 
-
+-   Number of observations in each group
+-   Exclude inapplicable and missing
 
 ```{r}
 dta_joined |> 
@@ -166,15 +165,15 @@ dta_joined |>
   ungroup()
 
 ```
+
 We'll exclude inapplicable and missing
 
-Remaining groups should be: 
+Remaining groups should be:
 
-- No qualification
-- GCSE etc and other qualification
-- A-level etc
-- Degree and Other higher degree
-
+-   No qualification
+-   GCSE etc and other qualification
+-   A-level etc
+-   Degree and Other higher degree
 
 ```{r}
 dta_joined |> 
@@ -243,7 +242,7 @@ dta_joined |>
 
 ```
 
-Now just as a table 
+Now just as a table
 
 ```{r}
 inc_by_qual_j <- 
@@ -284,4 +283,3 @@ seven_num_sum <-
 write.csv(seven_num_sum, here::here("data", "eq_income_by_highest_qual.csv"))
 seven_num_sum
 ```
-
