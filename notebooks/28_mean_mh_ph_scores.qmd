@@ -1,0 +1,196 @@
+---
+title: "Mean mental health and physical health scores, UKHLS, Waves a, b, i, j"
+subtitle: "And changes in MH and PH from a-b and i-j for going from different economic inactivity states"
+author:
+  - "Jon Minton"
+  - "Martin Taulbut"
+format: 
+  html:
+    warning: false
+    code-fold: true
+    message: false
+    code-summary: "Show R Code"
+  docx: 
+    warning: false
+    echo: false
+    message: false
+editor: visual
+prefer-html: true
+
+---
+
+# Aim
+
+The aims are:
+
+- Produce a table of mean mental health and physical health scores for waves a, b, i, and j
+
+# Processing 
+
+Load the data 
+
+```{r}
+
+devtools::load_all(here::here("R"))
+
+base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+library(tidyverse)
+library(nnet)
+library(knitr)
+library(kableExtra)
+
+# Individual level attributes 
+
+varnames <-  c(
+  
+  "jbstat", "dvage", "sex", # econ status; age; sex
+  "sf12mcs_dv", "sf12pcs_dv" # SF12 MH, SF12 PH
+
+  )
+
+extract_what <- c(
+  "labels", "values", "labels", 
+  "values", "values"
+
+  )
+
+
+ind_data <- get_ind_level_vars_for_selected_waves(
+  varnames = varnames, vartypes = extract_what
+)
+
+ind_data_processed<- 
+  ind_data |> 
+  rename(age = dvage) |> 
+  mutate(across(c(age, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+  filter(between(age, 16, 64)) %>%
+  filter(complete.cases(.))
+
+```
+
+```{r}
+mean_mh_ph_scores <-
+ind_data_processed |> 
+  filter(wave %in% c("a", "j")) |> 
+  group_by(wave, this_status) |> 
+  summarise(mean_mh = mean(sf12mcs_dv, na.rm = TRUE), mean_ph = mean(sf12pcs_dv, na.rm = TRUE)) |>
+  ungroup()
+
+write.csv(mean_mh_ph_scores, here::here("support", "mean_mh_ph_scores.csv"))
+
+mean_mh_ph_scores |> 
+  # in a table, place wave above the mean mh and mean ph scores
+  pivot_wider(names_from = wave, values_from = c(mean_mh, mean_ph)) |>
+  kable() |>
+  kable_styling() |> 
+  add_header_above(c(" " = 1, "MH" = 2, "PH" = 2)) 
+  # TO DO: rename header columns: status, mh, ph, mh, ph
+  
+
+
+```
+
+Now want to look at, for pairs a-b, and i-j, the change in mean MH and PH scores for each change in status
+
+The following is the observed mean scores in wave a by the paired from-to status known from wave b:
+```{r}
+
+mean_mh_ph_scores_by_transition_a_to_b <- 
+  ind_data_processed |> 
+    filter(wave %in% c('a')) |> 
+    group_by(this_status, next_status) |> 
+    summarise(mean_mh = mean(sf12mcs_dv, na.rm = TRUE), mean_ph = mean(sf12pcs_dv, na.rm = TRUE)) |>
+    ungroup() 
+
+write.csv(mean_mh_ph_scores_by_transition_a_to_b, here::here("support", "mean_mh_ph_scores_by_transition_a_to_b.csv"))
+
+mean_mh_ph_scores_by_transition_a_to_b
+
+```
+
+And the same for waves i to j:
+
+```{r}
+mean_mh_ph_scores_by_transition_i_to_j <- 
+  ind_data_processed |> 
+    filter(wave %in% c('i')) |> 
+    group_by(this_status, next_status) |> 
+    summarise(mean_mh = mean(sf12mcs_dv, na.rm = TRUE), mean_ph = mean(sf12pcs_dv, na.rm = TRUE)) |>
+    ungroup() 
+
+write.csv(mean_mh_ph_scores_by_transition_i_to_j, here::here("support", "mean_mh_ph_scores_by_transition_i_to_j.csv"))
+
+mean_mh_ph_scores_by_transition_i_to_j
+
+```
+
+To Do next:
+
+- CHANGES IN HEALTH associated with changes in economic inactivity status
+
+```{r}
+ch_mh_ph_a_to_b <- 
+  ind_data_processed |> 
+    filter(wave %in% c("a", "b")) |> 
+    select(pidp, wave, sf12mcs_dv, sf12pcs_dv) |> 
+    pivot_wider(names_from = wave, values_from = c(sf12mcs_dv, sf12pcs_dv)) %>% 
+    filter(complete.cases(.)) |> 
+    mutate(
+      change_mh = sf12mcs_dv_b - sf12mcs_dv_a,
+      change_ph = sf12pcs_dv_b - sf12pcs_dv_a
+    ) |> 
+    select(pidp, change_mh, change_ph)
+
+mean_ch_ph_mh_by_transition_a_to_b <-
+  ind_data_processed |> 
+    filter(wave %in% c("a", "b")) |> 
+    select(pidp, this_status, next_status) |> 
+    left_join(ch_mh_ph_a_to_b, by = "pidp") |> 
+    group_by(this_status, next_status) |> 
+    summarise(
+      mean_change_mh = mean(change_mh, na.rm = TRUE),
+      mean_change_ph = mean(change_ph, na.rm = TRUE),
+      n_obs = n()
+    ) |> 
+    ungroup() 
+
+write.csv(mean_ch_ph_mh_by_transition_a_to_b, here::here("support", "mean_ch_ph_mh_by_transition_a_to_b.csv"))
+
+mean_ch_ph_mh_by_transition_a_to_b
+```
+
+And the same, but i to j
+
+```{r}
+
+ch_mh_ph_i_to_j <- 
+  ind_data_processed |> 
+    filter(wave %in% c("i", "j")) |> 
+    select(pidp, wave, sf12mcs_dv, sf12pcs_dv) |> 
+    pivot_wider(names_from = wave, values_from = c(sf12mcs_dv, sf12pcs_dv)) %>% 
+    filter(complete.cases(.)) |> 
+    mutate(
+      change_mh = sf12mcs_dv_j - sf12mcs_dv_i,
+      change_ph = sf12pcs_dv_j - sf12pcs_dv_i
+    ) |> 
+    select(pidp, change_mh, change_ph)
+
+mean_ch_ph_mh_by_transition_i_to_j <-
+  ind_data_processed |> 
+    filter(wave %in% c("i", "j")) |> 
+    select(pidp, this_status, next_status) |> 
+    left_join(ch_mh_ph_i_to_j, by = "pidp") |> 
+    group_by(this_status, next_status) |> 
+    summarise(
+      mean_change_mh = mean(change_mh, na.rm = TRUE),
+      mean_change_ph = mean(change_ph, na.rm = TRUE),
+      n_obs = n()
+    ) |> 
+    ungroup()
+
+write.csv(mean_ch_ph_mh_by_transition_i_to_j, here::here("support", "mean_ch_ph_mh_by_transition_i_to_j.csv"))
+
+mean_ch_ph_mh_by_transition_i_to_j
+
+
+```

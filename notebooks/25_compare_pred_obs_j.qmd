@@ -15,22 +15,20 @@ format:
     message: false
 editor: visual
 prefer-html: true
-
 ---
 
-# Aim 
+# Aim
 
-The aim of this document is to see how the distribution of states, for a broadly representative sample at wave i, as projected to wave j, compares to what's observed in wave j. 
+The aim of this document is to see how the distribution of states, for a broadly representative sample at wave i, as projected to wave j, compares to what's observed in wave j.
 
 We will do this for two different model specifications:
 
-- Foundational model: age, sex, current state
-- Health model: Foundational model with health scores 
+-   Foundational model: age, sex, current state
+-   Health model: Foundational model with health scores
 
-We know what adding the health variables, including interaction between mh and ph, improves the penalised model fit using the AIC and BIC metrics. However we have not so far looked at how much this improvement leads to improved estimates of the distribution of persons in each state. 
+We know what adding the health variables, including interaction between mh and ph, improves the penalised model fit using the AIC and BIC metrics. However we have not so far looked at how much this improvement leads to improved estimates of the distribution of persons in each state.
 
-# Set up 
-
+# Set up
 
 ```{r}
 devtools::load_all(here::here("R"))
@@ -152,10 +150,10 @@ dists_all |>
   )
 
 ```
+
 We can see that overall the two models produce very similar distributions of persons in each state. The proportion who are students appears to be slightly underpredicted by the models, and the proportion who are retired slightly overpredicted. However, so long as the foundational model is used as the foundation of all other models, such biases should be consistent across all models, and so should still be usable to predict the kinds of influence that single (or multiple) additional drivers have on propensities to move between states, and resultant predicted/projected distributions.
 
 Now add column proportions for each of the three columns
-
 
 ```{r}
 # Convert the following to a kable table
@@ -179,19 +177,19 @@ dta |>
   kable() |> 
   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) 
 ```
+
 In the above we have the following columns:
 
-- `prop_obs`: The observed proportion of persons in each state in wave j
-- `prop_pred_foundation`: The proportion of persons in each state in wave j, as predicted by the foundational model and data from wave i
-- `prop_pred_phmh`: The proportion of persons in each state in wave j, as predicted by the health model and data from wave i
-- `abs_diff_foundation`: The absolute difference between the observed and predicted proportions of persons in each state, for the foundational model
-- `abs_diff_phmh`: The absolute difference between the observed and predicted proportions of persons in each state, for the health model
-- `rel_diff_foundation`: The relative difference between the observed and predicted proportions of persons in each state, for the foundational model
-- `rel_diff_phmh`: The relative difference between the observed and predicted proportions of persons in each state, for the health model
+-   `prop_obs`: The observed proportion of persons in each state in wave j
+-   `prop_pred_foundation`: The proportion of persons in each state in wave j, as predicted by the foundational model and data from wave i
+-   `prop_pred_phmh`: The proportion of persons in each state in wave j, as predicted by the health model and data from wave i
+-   `abs_diff_foundation`: The absolute difference between the observed and predicted proportions of persons in each state, for the foundational model
+-   `abs_diff_phmh`: The absolute difference between the observed and predicted proportions of persons in each state, for the health model
+-   `rel_diff_foundation`: The relative difference between the observed and predicted proportions of persons in each state, for the foundational model
+-   `rel_diff_phmh`: The relative difference between the observed and predicted proportions of persons in each state, for the health model
 
 Overall, it appears that the foundational model alone does a very good job of producing predicted distributions for wave j, which are close to those actually observed. For all but two states (retired and student), the absolute percentage point differences between what's predicted and what's observed is less than 1% point; for the retired and student states, the absolute percentage point differences are 1.5% and 1.7% respectively.
 
-In terms of the additional improvement from adding health variables, these are more modest than expected, but are associated with improvements for the inactive long-term sick state, in particular. 
+In terms of the additional improvement from adding health variables, these are more modest than expected, but are associated with improvements for the inactive long-term sick state, in particular.
 
 An important caveat is that the observed wave j data are slightly different to the wave i data used by both the foundational and health model to predict wave j. This is because some people in wave i will have dropped out by wave j, and some people may be in wave j who were not in wave i. Despite this, the comparison between model predicted and observed distributions is a useful and reassuring check to ensure that the model produces aggregate results which are broadly consistent with what's observed.
-

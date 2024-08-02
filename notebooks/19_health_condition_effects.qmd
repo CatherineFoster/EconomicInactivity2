@@ -89,11 +89,18 @@ mod_01 <-
     next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition,
     data = df_ind_health_standardised
   )
+
+mod_02 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition * sex,
+    data = df_ind_health_standardised
+  )
+  
 ```
 
 ```{r}
-AIC(mod_00, mod_01)
-BIC(mod_00, mod_01)
+AIC(mod_00, mod_01, mod_02)
+BIC(mod_00, mod_01, mod_02)
 ```
 
 Both AIC and BIC suggest improvements in the model fit from including the health variable, even after accounting for general relationships with age, sex, last_status and so on.

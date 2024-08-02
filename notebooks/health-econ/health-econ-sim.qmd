@@ -1,0 +1,536 @@
+---
+title: "Health Economics Simulation Experiment"
+date: "2024-03-23"
+author: "Jon Minton"
+format: 
+  html:
+    code-fold: true
+    fig-width: 8
+    fig-height: 8
+  docx: 
+    code-fold: true
+message: false
+warning: false
+prefer-html: true
+editor: visual
+---
+
+## Other pertinent links/materials
+
+-   [Presentation on EI model](https://rpubs.com/JonMinton/edinbr-econinact)
+
+    -   [Example of age-wage relationships](https://rpubs.com/JonMinton/effect-wages-staying-employed)
+
+-   [Technical Blog on statistical inference and simulation](https://jonminton.github.io/jon-blog/glms.html)
+
+    -   [Representing variation and uncertainty using Frequentist approaches](https://jonminton.github.io/jon-blog/posts/glms/lms-are-glms-part-12/)
+
+    -   [Representing variation and uncertainty using Bayesian approaches](https://jonminton.github.io/jon-blog/posts/glms/lms-are-glms-part-13/)
+
+# Purpose
+
+This document will show a fairly minimal adaptation of an existing model to demonstrate how it could be used as part of a health economic model.
+
+The model is in effect an *individual level* markov model of economic activity status, including seven distinct states of economic activity and inactivity.
+
+The data used are all pre-COVID waves of the UK Household Longitudinal Study (UKHLS), where information about participant characteristics in the current and next wave are available.
+
+The model uses multinomial logistic regression, with the economic activity status at wave T+1 as the response, and including existing economic activity status at wave T as a predictor. Age and sex are also included as predictors, with a spline term used for age, and an interaction between sex and economic activity status at wave T included. This model specification was determined by comparing AIC and BIC for a range of model specifications.
+
+The foundational model, which includes state at T, age and sex as predictors, as predictors, is adapted to also include clinical depression as a predictor.
+
+A hypothetical generic intervention, costing £400 a year, which reduces the probability of 'limiting long term illness' by 20%, is then modelled. The number of people in each economic activity state is then projected given this scenario. Each economic state is associated with a different utility score and net societal cost excluding the cost to the NHS.
+
+## Packages used
+
+-   Bespoke functions (loaded as package)
+-   tidyverse
+-   nnet (for multinomial logit function)
+
+# Data preparation
+
+We can start with the binary `health` variable as described in [this page](https://www.understandingsociety.ac.uk/documentation/mainstage/variables/health/). This is effectively an indicator for whether people have a limiting long-term condition or not.
+
+# Preparation
+
+```{r}
+devtools::load_all(here::here('R'))
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "health"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_health_standardised <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  |> 
+    mutate(
+      lt_condition = case_when(
+        health %in% c("No", "no") ~ FALSE,
+        health %in% c("Yes", "yes") ~ TRUE,
+        TRUE ~ NA_integer_
+      ) |> as.logical()
+    ) %>% 
+    filter(complete.cases(.)) 
+
+```
+
+## Foundational model
+
+The foundational model is specified as follows:
+
+```{r}
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_health_standardised |> 
+      filter(!is.na(lt_condition)),
+    maxit = 200
+  )
+```
+
+Within the above the formula is `next_status ~ this_status * sex + splines::bs(age, 5)`. The predicted variables are to the left of the `~`. The predictor variables are to the right of the `~`.
+
+If the model specification were `next_status ~ this_status`, then the model would effectively be an individual markov model, with probability of moving to or staying in each state at time T+1 dependent on the state at time T.
+
+The inclusion of `this_status * sex` is shorthand for `this_status + sex + this_status:sex`, i.e. both independent effects, and a status:sex interaction. This was found to be important mainly because male and female patterns of engagement with the `economically inactive - looking after home and family` states are quite different.
+
+The `splines::bs(age, 5)` term is a spline term for age, with 5 degrees of freedom. This was found to be important because the relationship between age and economic activity status is not linear, and to be dissimilar between states and transitions. The spline term appears to be flexible enough to capture this. Both fewer and more degrees of freedom were found to have lower AICs and BICs on average.
+
+We can see what the model predicts given different predictors as follows:
+
+```{r}
+predictors <- 
+  expand_grid(
+    this_status = unique(df_ind_health_standardised$this_status),
+    age = c(30, 40, 50, 60),
+    sex = c('female', 'male')
+  )
+
+predictions_m00 <- predict(mod_00, newdata = predictors, type = "probs")
+
+predictors_predictions_m00 <- cbind(predictors, predictions_m00) |> 
+  pivot_longer(cols = -c(this_status, age, sex), names_to = "next_status", values_to = "probability")
+```
+
+```{r}
+predictors_predictions_m00 |>
+  ggplot(aes(next_status, this_status, fill = probability, label = round(probability, 2))) + 
+  facet_grid(age ~ sex) + 
+  geom_tile() + 
+  geom_text(color = "darkgrey") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_viridis_c(limits = c(0, 1)) +
+  labs(
+    title = "Estimated age-sex specific transition probabilities",
+    y = "Status at current period",
+    x = "Status at next period",
+    subtitle = "For males and female, at ages 30, 40, 50 and 60"
+  )
+  
+
+```
+
+## Health model extension
+
+We next extend the model to include the health variable.
+
+```{r}
+mod_01 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition,
+    data = df_ind_health_standardised,
+    maxit = 200
+  )
+```
+
+We can check that the model fit has improved by comparing AIC and BIC:
+
+```{r}
+AIC(mod_00, mod_01)
+BIC(mod_00, mod_01)
+```
+
+In both cases the penalised values are lower, indicating an improvement in model fit.
+
+We can now construct the same kinds of transition matrices, but including both with and without a long term condition as another covariate in the predictor matrix:
+
+```{r}
+predictors <- 
+  expand_grid(
+    this_status = unique(df_ind_health_standardised$this_status),
+    age = c(30, 40, 50, 60),
+    sex = c('female', 'male'),
+    lt_condition = c(TRUE, FALSE)
+  )
+
+predictions_m01 <- predict(mod_01, newdata = predictors, type = "probs")
+
+predictors_predictions_m01 <- cbind(predictors, predictions_m01) |> 
+  pivot_longer(cols = -c(this_status, age, sex, lt_condition), names_to = "next_status", values_to = "probability")
+
+
+```
+
+For everyone who does not have a long term condition, the transition matrices look as follows:
+
+```{r}
+predictors_predictions_m01 |>
+  filter(lt_condition == FALSE) |>
+  ggplot(aes(next_status, this_status, fill = probability, label = round(probability, 2))) + 
+  facet_grid(age ~ sex) + 
+  geom_tile() + 
+  geom_text(color = "darkgrey") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_viridis_c(limits = c(0, 1)) +
+  labs(
+    title = "No LT condition: Estimated age-sex specific transition probabilities",
+    y = "Status at current period",
+    x = "Status at next period",
+    subtitle = "For males and female, at ages 30, 40, 50, 60"
+  )
+  
+
+```
+
+Now the same if everyone else had a long term condition:
+
+```{r}
+predictors_predictions_m01 |>
+  filter(lt_condition == TRUE) |>
+  ggplot(aes(next_status, this_status, fill = probability, label = round(probability, 2))) + 
+  facet_grid(age ~ sex) + 
+  geom_tile() + 
+  geom_text(color = "darkgrey") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_viridis_c(limits = c(0, 1)) +
+  labs(
+    title = "LT condition: Estimated age-sex specific transition probabilities",
+    y = "Status at current period",
+    x = "Status at next period",
+    subtitle = "For males and female, at ages 30, 40, 50, 60"
+  )
+  
+
+```
+
+We can see the effects that a long term condition has on transition probabilities as follows:
+
+```{r}
+predictors_predictions_m01 |> 
+  pivot_wider(names_from = lt_condition, values_from = probability) |> 
+  mutate(diff_prop = `TRUE` - `FALSE`) |> 
+  select(-`TRUE`, -`FALSE`) |> 
+  ggplot(aes(next_status, this_status, fill = diff_prop, label = round(diff_prop, 2))) + 
+  facet_grid(age ~ sex) + 
+  geom_tile() + 
+  geom_text(color = "darkgrey") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_gradient2(low = "darkred", mid = "white", high = "darkblue", breaks = seq(-0.5, 0.5, by = 0.1)) +
+  labs(
+    title = "Effect of long-term condition on transition probabilities",
+    y = "Status at current period",
+    x = "Status at next period",
+    subtitle = "For males and female, at ages 30, 40, 50, 60"
+  )
+
+```
+
+We can see the effect of the health condition increased the probability of someone remaining inactive LT sick by about 0.45.
+
+## Adding a health economic component
+
+Let's say we're considering two perspectives:
+
+-   NHS
+-   Societal
+
+Let's say we are also considering two population groups:
+
+-   30 year old females, initially all Employed
+-   60 year old males, initially all Economically inactive - long term sick
+
+Initially these populations all have a LT condition.
+
+Let's also imagine we have an intervention that costs £400 a year, and reduces the probability of having a LT condition by 20%.
+
+Let's say also our utility tariffs are the same by state:
+
+-   Employed: 0.80
+-   Unemployed: 0.55
+-   Economically inactive - full time carer: 0.60
+-   Economically inactive - retired: 0.60
+-   Economically inactive - sick: 0.30
+-   Economically inactive - other: 0.35
+-   Economically inactive - student: 0.75
+
+### NHS perspective
+
+Let's specify the utility tarrifs:
+
+```{r}
+utility_tariffs <- tribble(
+  ~state, ~utility,
+  "Employed", 0.80,
+  "Unemployed", 0.55,
+  "Inactive care", 0.60,
+  "Inactive retired", 0.60,
+  "Inactive long term sick", 0.30,
+  "Inactive other", 0.35,
+  "Inactive student",  0.75
+)
+
+
+```
+
+Let's now create predicted probabilities for the with and without LT condition groups, and then attach the utilities:
+
+```{r}
+first_population_scenario <- 
+  expand_grid(
+    sex = "female", 
+    age = 30, 
+    this_status = "Employed",
+    lt_condition = c(TRUE, FALSE)
+  )
+
+predictions_s01 <- predict(mod_01, newdata = first_population_scenario, type = "probs")
+
+predictions_predictors_s01 <- cbind(first_population_scenario, predictions_s01) |> 
+  pivot_longer(cols = -c(this_status, age, sex, lt_condition), names_to = "next_status", values_to = "probability") 
+
+# Now attach utilities to next_status
+
+population_group_01_pred_utility <- 
+predictions_predictors_s01 |> 
+  left_join(utility_tariffs, by = c("next_status" = "state")) |> 
+  mutate(component = utility * probability) |> 
+  group_by(lt_condition) |> 
+  summarise(total_utility = sum(component)) 
+
+population_group_01_pred_utility
+
+
+```
+
+So, the total utility for this type of person is, on average, 0.782 with a LT condition, and 0.790 without.
+
+If our intervention costs £400 a year, and reduces the probability of having a LT condition by 20% then our improvement in utility is:
+
+```{r}
+util_lt_s01 <- population_group_01_pred_utility %>% filter(lt_condition == TRUE) %>% pull(total_utility)
+util_no_lt_s01 <- population_group_01_pred_utility %>% filter(lt_condition == FALSE) %>% pull(total_utility)
+
+utility_baseline_s01 = 1 * util_lt_s01 
+utility_counter_s01 = 0.8 * util_lt_s01 + 0.20 * util_no_lt_s01 
+
+change_in_utility_s01 <- utility_counter_s01 - utility_baseline_s01
+change_in_utility_s01
+
+```
+
+Our cost per change in utility is therefore:
+
+```{r}
+cost_per_change_in_utility_s01 <- 400 / change_in_utility_s01
+cost_per_change_in_utility_s01
+
+```
+
+Let's now consider the second possible indication/population group:
+
+```{r}
+second_population_scenario <- 
+  expand_grid(
+    sex = "male", 
+    age = 60, 
+    this_status = "Inactive long term sick",
+    lt_condition = c(TRUE, FALSE)
+  )
+
+predictions_s02 <- predict(mod_01, newdata = second_population_scenario, type = "probs")
+
+predictions_predictors_s02 <- cbind(second_population_scenario, predictions_s02) |> 
+  pivot_longer(cols = -c(this_status, age, sex, lt_condition), names_to = "next_status", values_to = "probability") 
+
+# Now attach utilities to next_status
+
+population_group_02_pred_utility <- 
+predictions_predictors_s02 |> 
+  left_join(utility_tariffs, by = c("next_status" = "state")) |> 
+  mutate(component = utility * probability) |> 
+  group_by(lt_condition) |> 
+  summarise(total_utility = sum(component)) 
+
+population_group_02_pred_utility
+
+```
+
+As this group start from a state with a lower utility, the effect of removing LT sickness on aggregate utility is now larger.
+
+Let's calculate the expected change in utility as a result of the intervention for this group:
+
+```{r}
+util_lt_s02 <- population_group_02_pred_utility %>% filter(lt_condition == TRUE) %>% pull(total_utility)
+util_no_lt_s02 <- population_group_02_pred_utility %>% filter(lt_condition == FALSE) %>% pull(total_utility)
+
+utility_baseline_s02 = 1 * util_lt_s02
+utility_counter_s02 = 0.8 * util_lt_s02 + 0.20 * util_no_lt_s02
+
+change_in_utility_s02 <- utility_counter_s02 - utility_baseline_s02
+change_in_utility_s02
+```
+
+And now the cost per change in utility:
+
+```{r}
+cost_per_change_in_utility_s02 <- 400 / change_in_utility_s02
+cost_per_change_in_utility_s02
+
+
+```
+
+For this (initially older, more economically inactive) population the cost per change in utility is much lower than for the younger employed population.
+
+## Societal perspective
+
+We could also imagine that the time a person spends in each state is associated with a societal cost or value, which could also be considered in the analysis. We can do this by extending the tariffs dataframe to include a societal cost/benefit value too:
+
+```{r}
+
+utility_cost_tariffs <- tribble(
+  ~state, ~utility, ~cost,
+  "Employed", 0.80, -20000,
+  "Unemployed", 0.55, 15000,
+  "Inactive care", 0.60, -7000,
+  "Inactive retired", 0.60, 8000,
+  "Inactive long term sick", 0.30, 28000,
+  "Inactive other", 0.35, -4000,
+  "Inactive student",  0.75 , -9000
+)
+
+```
+
+Let's take the two hypothetical groups, but then also calculate aggregated societal costs as well as utilities:
+
+First the 30 year old employed females
+
+```{r}
+
+# Now attach utilities AND costs to next_status
+
+population_group_01_pred_cost_utility <-
+predictions_predictors_s01 |> 
+  left_join(utility_cost_tariffs, by = c("next_status" = "state")) |> 
+  mutate(utility_component = utility * probability) |> 
+  mutate(cost_component = cost * probability) |>
+  group_by(lt_condition) |> 
+  summarise(
+    total_utility = sum(utility_component),
+    total_scost = sum(cost_component)) 
+
+population_group_01_pred_cost_utility
+```
+
+When considering the societal perspective, we should include the aggregated (negative) scost as well as the direct treatment cost:
+
+```{r}
+util_lt_s01 <- population_group_01_pred_cost_utility %>% filter(lt_condition == TRUE) %>% pull(total_utility)
+util_no_lt_s01 <- population_group_01_pred_cost_utility %>% filter(lt_condition == FALSE) %>% pull(total_utility)
+scost_lt_s01 <- population_group_01_pred_cost_utility %>% filter(lt_condition == TRUE) %>% pull(total_scost)
+scost_no_lt_s01 <- population_group_01_pred_cost_utility %>% filter(lt_condition == FALSE) %>% pull(total_scost)
+
+utility_baseline_s01 = 1 * util_lt_s01
+utility_counter_s01 = 0.8 * util_lt_s01 + 0.20 * util_no_lt_s01
+
+cost_baseline_s01 = 1 * scost_lt_s01
+cost_counter_s01 = 400 + 0.8 * scost_lt_s01 + 0.20 * scost_no_lt_s01
+
+diff_cost <- cost_counter_s01 - cost_baseline_s01
+diff_utility <- utility_counter_s01 - utility_baseline_s01
+
+cost_per_change_in_utility_s01_societal <- diff_cost / diff_utility
+cost_per_change_in_utility_s01_societal
+
+
+```
+
+So, incorporating the societal perspective, the net cost per change in utility changes from £265,000/QALY to £160,000/QALY
+
+Let's now attempt the same for the second population group:
+
+```{r}
+
+population_group_02_pred_cost_utility <-
+predictions_predictors_s02 |> 
+  left_join(utility_cost_tariffs, by = c("next_status" = "state")) |> 
+  mutate(utility_component = utility * probability) |> 
+  mutate(cost_component = cost * probability) |>
+  group_by(lt_condition) |> 
+  summarise(
+    total_utility = sum(utility_component),
+    total_scost = sum(cost_component)) 
+
+population_group_02_pred_cost_utility
+
+```
+
+```{r}
+util_lt_s02 <- population_group_02_pred_cost_utility %>% filter(lt_condition == TRUE) %>% pull(total_utility)
+util_no_lt_s02 <- population_group_02_pred_cost_utility %>% filter(lt_condition == FALSE) %>% pull(total_utility)
+scost_lt_s02 <- population_group_02_pred_cost_utility %>% filter(lt_condition == TRUE) %>% pull(total_scost)
+scost_no_lt_s02 <- population_group_02_pred_cost_utility %>% filter(lt_condition == FALSE) %>% pull(total_scost)
+
+utility_baseline_s02 = 1 * util_lt_s02
+utility_counter_s02 = 0.8 * util_lt_s02 + 0.20 * util_no_lt_s02
+
+cost_baseline_s02 = 1 * scost_lt_s02
+cost_counter_s02 = 400 + 0.8 * scost_lt_s02 + 0.20 * scost_no_lt_s02
+
+diff_cost <- cost_counter_s02 - cost_baseline_s02
+diff_utility <- utility_counter_s02 - utility_baseline_s02
+
+cost_per_change_in_utility_s02_societal <- diff_cost / diff_utility
+cost_per_change_in_utility_s02_societal
+
+
+```
+
+So, for this second indication, including the societal perspective leads to a negative cost per QALY gained from the intervention. i.e. the suggestion that the intervention is cost saving from a societal perspective.
+
+## Summary
+
+In this script we have taken a model framework that is in effect an individual Markov model specification, based on real survey data, and used to to compare two scenarios for a hypothetical intervention on long-term sickness from two different payer perspectives.
+
+## Discussion Points
+
+### Uncertainty and variation
+
+For Probabilistic Sensitivity Analysis (PSA) we should really include variation in predicted outputs from two sources:
+
+-   Stochastic variation: as we are modelling stochastic systems, each time the system is asked to make predictions there should be some variation in the predictions produced.
+-   Parameter uncertainty: the model is based on a sample of the population, and so the parameter estimates are uncertain.
+
+The first of these types of output uncertainty can be modelled by changing the predict mode from 'probs' to 'class', and then running the model many times. The second can be addressed in at least two ways: 1) by bootstrapping the data and reestimating the model many times; 2) by making use of the optional Hessian output from the model to produce samples of joint distributions of model parameters, and passing these through the model link functions. An extension of the second approach would be to use a fully Bayesian modelling framework, where these parameter quantities form part of the posterior distribution.
+
+There is also likely to be uncertainty in the estimation of the utilities and costs. Again these can be produced through simulation approaches, applying draws from appropriate distributions rather than fixed values, and repeating the exercise many times.
+
+### Integration with Excel
+
+Some of the above can be done in Excel relatively easily. Other parts may require computation in something like R beforehand, then importing relevant results and estimates into Excel. Packages like `openxlsx` make it relatively straightforward to write R outputs to Excel sheets and cells, and format them, programatically.
+
+For a more integrated approach, the Python language could take the place of the R package, as Python is increasingly taking the place of VBA within Excel.

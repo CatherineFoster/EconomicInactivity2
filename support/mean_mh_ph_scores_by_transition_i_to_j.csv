@@ -1,0 +1,49 @@
+"","this_status","next_status","mean_mh","mean_ph"
+"1","Employed","Employed",48.7109335751226,52.7921814762576
+"2","Employed","Inactive care",46.884358974359,49.9175213675214
+"3","Employed","Inactive long term sick",38.4463768115942,41.0742028985507
+"4","Employed","Inactive other",46.0749056603774,51.4309433962264
+"5","Employed","Inactive retired",50.8124096385542,49.7639357429719
+"6","Employed","Inactive student",46.140119760479,55.3977844311377
+"7","Employed","Unemployed",45.6717647058824,51.6618067226891
+"8","Inactive care","Employed",47.0385483870968,50.5817741935484
+"9","Inactive care","Inactive care",46.0965803108808,49.0479663212435
+"10","Inactive care","Inactive long term sick",36.7861764705882,38.2361764705882
+"11","Inactive care","Inactive other",42.677037037037,46.7377777777778
+"12","Inactive care","Inactive retired",48.0141176470588,45.1788235294118
+"13","Inactive care","Inactive student",55.6625,51.24
+"14","Inactive care","Unemployed",44.1534653465347,47.8475247524752
+"15","Inactive long term sick","Employed",32.375,39.8284375
+"16","Inactive long term sick","Inactive care",35.7903571428571,29.2482142857143
+"17","Inactive long term sick","Inactive long term sick",34.8170178041543,29.577997032641
+"18","Inactive long term sick","Inactive other",32.28,31.3542857142857
+"19","Inactive long term sick","Inactive retired",40.4382,29.027
+"20","Inactive long term sick","Inactive student",38.26,40.8966666666667
+"21","Inactive long term sick","Unemployed",32.28,36.7180882352941
+"22","Inactive other","Employed",45.9509523809524,52.3930158730159
+"23","Inactive other","Inactive care",42.9745833333333,46.375
+"24","Inactive other","Inactive long term sick",36.7366666666667,37.68
+"25","Inactive other","Inactive other",44.524,50.8066666666667
+"26","Inactive other","Inactive retired",49.9175,46.6858333333333
+"27","Inactive other","Inactive student",52.49,52.0911111111111
+"28","Inactive other","Unemployed",43.0477272727273,51.5131818181818
+"29","Inactive retired","Employed",52.7169387755102,51.2351020408163
+"30","Inactive retired","Inactive care",51.02,40.6432
+"31","Inactive retired","Inactive long term sick",40.62125,24.6003125
+"32","Inactive retired","Inactive other",51.02,45.5325
+"33","Inactive retired","Inactive retired",51.4692082940622,47.3899905749293
+"34","Inactive retired","Unemployed",51.3621428571429,41.3735714285714
+"35","Inactive student","Employed",44.1858287292818,55.3986740331492
+"36","Inactive student","Inactive care",42.454,45.546
+"37","Inactive student","Inactive long term sick",39.22,45.22
+"38","Inactive student","Inactive other",40.6211111111111,56.1038888888889
+"39","Inactive student","Inactive retired",51.9166666666667,58.65
+"40","Inactive student","Inactive student",46.2879023508137,55.5064828209765
+"41","Inactive student","Unemployed",45.73625,54.2691666666667
+"42","Unemployed","Employed",43.5582524271845,52.4929126213592
+"43","Unemployed","Inactive care",44.6387735849057,47.9154716981132
+"44","Unemployed","Inactive long term sick",37.2379166666667,36.9543055555556
+"45","Unemployed","Inactive other",44.7091304347826,51.1121739130435
+"46","Unemployed","Inactive retired",47.1453846153846,42.15
+"47","Unemployed","Inactive student",43.3939285714286,54.7625
+"48","Unemployed","Unemployed",42.8292,47.76485

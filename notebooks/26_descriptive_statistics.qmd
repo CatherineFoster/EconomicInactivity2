@@ -236,7 +236,7 @@ hiqual_summary_stats |> write.csv("summary_stats_hiqual.csv")
 hiqual_summary_stats
 ```
 
-## Transitions between two pairs of waves 
+## Transitions between two pairs of waves
 
 We are interested in the numbers of transitions between states between: i) wave a to b; ii) i to j
 
