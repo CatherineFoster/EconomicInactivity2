@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Jon Minton">
+<meta name="author" content="Martin Taulbut">
+<meta name="author" content="Deborah Shipton">
+<meta name="author" content="Andy Pulford">
+<meta name="author" content="Neil Chalmers">
+
+<title>Modelling the impact of changes to health on economic status in the UK Longitudinal Household Study</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="main_files/libs/clipboard/clipboard.min.js"></script>
+<script src="main_files/libs/quarto-html/quarto.js"></script>
+<script src="main_files/libs/quarto-html/popper.min.js"></script>
+<script src="main_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="main_files/libs/quarto-html/anchor.min.js"></script>
+<link href="main_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="main_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="main_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="main_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="main_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Modelling the impact of changes to health on economic status in the UK Longitudinal Household Study</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Authors</div>
+    <div class="quarto-title-meta-contents">
+             <p>Jon Minton </p>
+             <p>Martin Taulbut </p>
+             <p>Deborah Shipton </p>
+             <p>Andy Pulford </p>
+             <p>Neil Chalmers </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="abstract" class="level1">
+<h1>Abstract</h1>
+<p>Economic status is an important determinant of health, with unemployment and many forms of economic inactivity associated with worse morbidity and higher mortality. Health can also influence economic status, especially movement from employment to long-term sickness and from long-term sickness to employment. This paper uses modelling to estimate how improvements to health alter the composition of economic status at a population level in the UK.</p>
+<p>Descriptive analysis found important differences in characteristics by economic status, with health poorest among the long-term sick, unemployed and early retired. Flows into long-term sickness are largest from unemployment and employment. Factors such as low skills, income, local jobs, car access and childcare may prevent people from moving into work from unemployment or economic inactivity, even if their health improves. Multinominal logistic regression was used to build a foundational model to estimate the economic status of a population in the next time period, based on age, sex and current economic status. This model was extended to include health as a predictor. The model was then applied to wave i of the UKHLS. We compared the baseline predictions with a counterfactual where the health measures were improved. Improving both mental and physical health, with a bias towards improving physical health more, was associated with the largest reduction in unemployment and long-term sickness, and increased flows into employment, full-time education and early retirement.</p>
+<p>Further analysis will build on this methodology to quantify the impact of changes in structural, household and individual level factors on population-level economic status.</p>
+</section>
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<section id="economic-activity-and-economic-inactivity-in-the-uk" class="level2">
+<h2 class="anchored" data-anchor-id="economic-activity-and-economic-inactivity-in-the-uk">Economic activity and economic inactivity in the UK</h2>
+<p>Working-age adults in the UK can be divided by their main economic status into the employed, unemployed and the economically inactive. Employed people include employees and the self-employed who do at least one paid hour of work a week plus those temporarily away from work because they are on holiday or sick. Unemployed people are defined as those out of work and are either actively seeking work and are available to start work within the next two weeks or who are out of work, have found work and are about to start employment within the next two weeks. Economically inactive people are those out of work who are not available for or actively seeking employment. The main reasons for working-age economic inactivity in the UK include being in full-time education, long-term illness or disability, looking after home and family and (early)retired (Leaker, 2020).</p>
+<p>Economic status is an important determinant of public health. Working is associated with better mental and physical health, while people who are long-term sick have the worst morbidity (Wilson et al, 2015). <span class="citation" data-cites="brown2012">(<a href="#ref-brown2012" role="doc-biblioref">Brown et al. 2012</a>)</span> Unemployed adults and those looking after home and family have intermediate levels of health. Compared to the employed, working-age adults who become or remain unemployed or economically inactive (especially long-term sick or early retired) have an increased risk of mortality <span class="citation" data-cites="roelfs2011 åhs2006 kim2015">(<a href="#ref-roelfs2011" role="doc-biblioref">Roelfs et al. 2011</a>; <a href="#ref-åhs2006" role="doc-biblioref">Åhs and Westerling 2006</a>; <a href="#ref-kim2015" role="doc-biblioref">Kim et al. 2015</a>)</span>. For economically inactive students, the picture is more complex. Their mental health is poorer than those in employment; however, some evidence suggests this difference may be transitory, with the effect wearing off once they leave full-time education <span class="citation" data-cites="mccloud2023">(<a href="#ref-mccloud2023" role="doc-biblioref">McCloud et al. 2023</a>)</span>.</p>
+<p>Health is also an important driver of economic status. In the UK, adults of all ages were more likely to be economically inactive if they had self-reported bad/very bad health than if they had self-reported good/very good health (Dey-Chowdhury et al, 2022). Economic inactivity due to long-term sickness has also increased since 2019. While an ageing population and increased waiting lists for NHS treatment may have played a role in this, the UK’s worsening health record was also a major contributory factor (Houston et al, 2022; Office for Budget Responsibility, 2023).<span class="citation" data-cites="tinson2022">(<a href="#ref-tinson2022" role="doc-biblioref">Tinson, Major, and Finch 2022</a>)</span></p>
+<p>Since the 1970s in Britain, inactivity has fallen for working-age women and risen for working-age men. Within this, the numbers inactive due to looking after home and family have decreased, while those inactive because of full-time education or long-term sickness has increased (Dar, 2015, Machin and Wadsworth, 2023). <span class="citation" data-cites="dar2015">(<a href="#ref-dar2015" role="doc-biblioref">Dar 2015</a>)</span> Alongside this, employment rates for mothers increased steadily in the 1980s and 1990s, while employment rates for people with disabilities declined until the early 1980s and did not recover in the next two decades <span class="citation" data-cites="berthoud2007">(<a href="#ref-berthoud2007" role="doc-biblioref">Berthoud 2007</a>)</span>. Between 2000 and 2018, economic inactivity for adults aged 16-64 fell only slightly, driven by increased labour market participation for women aged 50-64 (Herz and Van Rens, 2020).<span class="citation" data-cites="herz">(<a href="#ref-herz" role="doc-biblioref">Herz and Rens, n.d.</a>)</span></p>
+<p>Of particular concern to policy makers is the number of working-age adults whose economic inactivity is due to long-term sickness. 2.8 million adults in the UK were in this position in January-March 2024 (ONS Labour Force). This reflects both long-term and short-term trends. The long-term trend is a reflection of growing numbers of working-age adults on incapacity benefits (IB) since the 1970s. Both sexes were affected. Male levels increased sharply until mid-1990s before levelling off. Female levels continued to increase after mid-1990s but also levelled off in early 2000s <span class="citation" data-cites="anyadike-danes2008">(<a href="#ref-anyadike-danes2008" role="doc-biblioref">Anyadike-Danes and McVicar 2008</a>)</span>. These changes are likely to be due to a combination of factors: local and regional spatial differences in labour market demand and lower employment prospects linked to poor health and low skills <span class="citation" data-cites="beatty2013 roberts2022 plotnikova2020 machin2023">(<a href="#ref-beatty2013" role="doc-biblioref">Beatty and Fothergill 2013</a>; <a href="#ref-roberts2022" role="doc-biblioref">Roberts and Taylor 2022</a>; <a href="#ref-plotnikova2020" role="doc-biblioref">Plotnikova 2020</a>; <a href="#ref-machin2023" role="doc-biblioref">Machin and Wadsworth 2023</a>)</span>. There is some evidence that economic inactivity due to long-term sickness declined in the UK between the early 2000s and early to mid-2010s. Trends in long-term sickness stopped falling around the middle to latter half of the decade and have subsequently increased <span class="citation" data-cites="machin2023">(<a href="#ref-machin2023" role="doc-biblioref">Machin and Wadsworth 2023</a>)</span>. Quantifying the contribution of these factors to the growth in long-term sickness could help understand what to focus on, to reverse recent increases and prevent further growth.</p>
+</section>
+<section id="background-to-modelling-strategies-and-approaches" class="level2">
+<h2 class="anchored" data-anchor-id="background-to-modelling-strategies-and-approaches">Background to modelling strategies and approaches</h2>
+<p>In this paper, we use multinominal logistic regression to predict the distribution of the working-age population by economic status in the next time period. After creating a foundational model, which includes age, sex and current economic status, we consider two extended model specifications, both of which include at least one health-related variables in addition to the variables in the foundational model.</p>
+<p>The first of these extended model specifications uses a binary variable, which is coded as <code>1</code> if the respondent reports having a limiting long-term illness, and <code>0</code> if they do not. The second extended model specification uses a continuous measure of health, derived from the physical health and mental health components of the Short Form (SF) 12 (SF-12) questionnaire. We focus here on the pre-pandemic period 2010 to 2019, because the drivers of economic inactivity during the pandemic are likely to be different from those in the pre-COVID years.</p>
+</section>
+</section>
+<section id="general-methodological-considerations" class="level1">
+<h1>General Methodological Considerations</h1>
+<p>This section of the paper will approach how we thought about problems, challenges and solutions of building a model that can answer questions on the contributions of specific factors on the levels of economic inactivity and activity in a population.We first describe what the model needs to accomplish; then describe modelling and simulation principles in general; lastly moveand towards operationalisation and the specific model structure and content that we use in this manuscript.</p>
+<section id="description-of-the-modelling-challenges-and-how-we-address-them" class="level2">
+<h2 class="anchored" data-anchor-id="description-of-the-modelling-challenges-and-how-we-address-them">Description of the modelling challenges and how we address them</h2>
+<p>The modelling strategy starts with the need to operationalise key assumptions about the economic (in)activity status of individuals over time, factors that may influence an individual’s economic (in)activity status, and the longitudinal study design of the UKHLS. We assume:</p>
+<ol type="1">
+<li>An individual can be in one of seven economic (in)activity states at a given time period T; and these states are mutually exclusiveand exhaustive. We use a multinomial logistic regression.</li>
+<li>A key factor expected to influence the economic (in)activity state of an individual at time T is their economic (in)activity state in the previous time period T-1. Our model is Markovian.</li>
+<li>A person’s age is expected to influence the probability of an individual being in each and every economic (in)activity state, and these effects are likely to be nonlinear. We explored whether age should be included using a polynomial function or spline function.</li>
+<li>A person’s sex is also expected to be influential as to their probability of being in and moving to each economic (in)activity state. We explored whether sex should be included an independent or interactive.</li>
+<li>Once the modelling framework is sufficient in capturing those qualities represented by conditions (1-4), it should be readily extensible to capture the additional influence that other factors may have on the predicted probabilities of being in each mutually exclusive economic (in)activity state at time <span class="math inline">\(T\)</span>. Condition (1) indicates that a multivariate model should be used. By this we mean that the response variable Y comprises a vector of response outcomes, rather than a single response outcome. Knowing additionally from this condition that the states an individual can be in are mutually exclusive and exhaustive leads us to a choice of multinomial logistic regression as our main model framework. Multinomial logistic regression is an extension of standard logistic regression from two mutually exclusive states to K mutually exclusive states, where <span class="math inline">\(K\)</span> is an integer value, which in our case is seven: the number of mutually exclusive and exhaustive economic (in)activity states an individual can be in at a time period <span class="math inline">\(T\)</span>.</li>
+</ol>
+<p>Condition (2) suggests that we should include economic (in)activity status at time <span class="math inline">\(T\)</span> as a predictor in our model, where the model response is economic (in)activity status at time <span class="math inline">\(T+1\)</span>. This inclusion of current state (at time <span class="math inline">\(T\)</span>) as a predictor of next state (time <span class="math inline">\(T+1\)</span>) means our model is Markovian, in that the influence of recent history is considered an important predictor of current status, but the longer-term history (such as from two or more time periods ago) is only considered to have influenced state at time <span class="math inline">\(T+1\)</span> through its influence on state T. This modelling approach can also be considered a discrete-state analogue of an autoregressive <span class="math inline">\(AR(1)\)</span> model in time series data, though Markovian is a more common way of conceptualising this type of model structure when working with mutually exclusive and discrete states and state transitions between time periods.</p>
+<p>Condition (3), when combined with condition (1), suggests that a somewhat generic, generalisable and flexible functional form for capturing the types of influence that age can have on the probabilities of being in each of the seven mutually exclusive states. Call this functional form s(age). Potential candidates for this flexible functional form s(.) include polynomial functions, which are parametric, and spline functions, which are semi-parametric. This functional form should be sufficiently flexible as to be appropriate for all seven age-state schedules, but not so flexible that the number of parameters required to fit it are too large, or the risk of model over-fitting too great.</p>
+<p>Condition (4) suggests that sex should be considered as a predictor variable in the model. It could either be included as an independent, non-interacting predictor, or also as a factor which interacts with other factors also included in the model. When considering interaction effects, a standard strategy for determining whether an interaction term is required should be adopted to make this determination.</p>
+<p>Condition (5) suggests that, in addition to including the factors implied by conditions 2-4 in the model, it should be possible to decide to add additional variables to this basic specification, which allows for the effect of these additional variables on economic (in)activity states to be estimated, assuming conditions 2-4 are adequately controlled for. Within this paper, we refer to the model that includes current status (condition 2), age (condition 3) and sex (condition 4) as our foundational model, and models which add one or more additional variables of interest to the predictor side of the model as our extended models. It is by comparing scenarios in an extended model, where the variable or variables of interest are changed to one of two conditions, but the foundational model variables are kept constant, that we will be able to produce estimates of the contribution of these variables of interest to economic (in)activity states overall.</p>
+</section>
+<section id="modelling-for-simulation" class="level2">
+<h2 class="anchored" data-anchor-id="modelling-for-simulation">Modelling for simulation</h2>
+<p>A statistical model can be thought of, fundamentally, as a simplified and stylized representation of a data generation process. This involves i) defining a model, which contains various parameters to be determined; and ii) using a dataset to calibrate the model parameters. A model is a way of specifying a relationship between predictor variables, usually referred to as X, and response variables, usually referred to as y. The model structure determines how many model parameters are to be estimated, and the process of producing model parameter estimates usually involves attempting to minimize some kind of loss function which relates the conditional predictions from a model Y|X to the observed outcome values y.</p>
+<section id="overview-of-what-models-contain" class="level3">
+<h3 class="anchored" data-anchor-id="overview-of-what-models-contain">Overview of what models contain</h3>
+<p>Almost all statistical models can be considered specific instances of a generalised linear model (GLM) specification as described below:</p>
+<p><span class="math display">\[
+Y_i∼f(θ_i,\alpha), θ_i=g(X_i,\beta)
+\]</span></p>
+<p>(See eqn 1 of https://gking.harvard.edu/files/making.pdf)</p>
+<p>Where <span class="math inline">\(Y_i\)</span> represents a model-predicted value for the ith observation of a dataset, <span class="math inline">\(f(.,.)\)</span> a stochastic function, <span class="math inline">\(g(.,.)\)</span> a systematic or linking function, <span class="math inline">\(X_i\)</span> a row of predictor variables corresponding to the ith observation of the data, <span class="math inline">\(θ_i\)</span> the result of applying the linking function to <span class="math inline">\(X_i\)</span> , and <span class="math inline">\(\alpha\)</span> and <span class="math inline">\(\beta\)</span> parameters, for <span class="math inline">\(f(.,.)\)</span> and <span class="math inline">\(g(.,.)\)</span> respectively, to be determined either analytically or numerically.</p>
+<p>The estimation of parameters <span class="math inline">\(\alpha\)</span> and <span class="math inline">\(\beta\)</span> usually involves optimising some loss function <span class="math inline">\(L(Y, y)\)</span> where <span class="math inline">\(Y\)</span> represents model predictions and <span class="math inline">\(y\)</span> the corresponding observed outcomes from the data. This loss function is usually based on maximum likelihood identification.</p>
+<p>Note that the GLM specification above is generic enough that it covers cases where <span class="math inline">\(\theta_i\)</span>, <span class="math inline">\(Y_i\)</span> and <span class="math inline">\(y_i\)</span> are vectors of length <span class="math inline">\(k\)</span>, rather than scalars (single values), and so <span class="math inline">\(\theta\)</span>, <span class="math inline">\(Y\)</span> and <span class="math inline">\(y\)</span> are matrices of dimensions <span class="math inline">\(N\)</span> by <span class="math inline">\(k\)</span> (where <span class="math inline">\(N\)</span> represents the number of observations, typically rows, in the dataset). Models where these quantities are vectors can be called multivariate regression models or vector GLMs.</p>
+<p>Within this paper, we use multinomial logistic regression, which can be thought of as a vectorised extension of standard logistic regression. For standard logistic regression we code an outcome as either 0 or 1 for each observation. This is appropriate where there are two and only two mutually exclusive states that an outcome can take. The standard logistic regression looks as follows:</p>
+<p><span class="math display">\[
+Y_i ∼ Bernoulli(\pi_i ) , π_i = \frac{1}{(1 + e^{-X_i \beta } )}
+\]</span></p>
+<p>(From eqn 3 of https://gking.harvard.edu/files/making.pdf)</p>
+<p>Here <span class="math inline">\(\pi_i\)</span> assigns a probability of the ith outcome taking a value of 1, meaning the probability of the ith outcome taking a value of 0 is <span class="math inline">\(1 - \pi_i\)</span>. For multinomial logistic regression this generalises to:</p>
+<p><span class="math display">\[
+Y_i ∼ Multinomial(y_i, \pi_{ij} ) , \pi_{ij} = \frac{exp⁡(x_i \beta_j )}{\sum_{k=1}^{J}exp⁡(x_i \beta_k ) }
+\]</span></p>
+<p>(See https://docs.zeligproject.org/articles/zeligchoice_mlogit.html#model)</p>
+<p>Where in the above there are <span class="math inline">\(J\)</span> mutually exclusive outcomes that Y_i can take, where <span class="math inline">\(J = K-1\)</span>, and <span class="math inline">\(K\)</span> is the total number of mutually exclusive and exhaustive states that can be possible outcomes for observation <span class="math inline">\(i\)</span>. The difference between <span class="math inline">\(J\)</span> and <span class="math inline">\(K\)</span> is due to the need for a reference category, analogous to the 0 outcome in standard logistic regression. Just as the predicted probability of observation i taking an outcome 0 in standard logistic regression is <span class="math inline">\(1- \pi_i\)</span> , so the predicted probability of observation i taking the reference category outcome in multinomial logistic regression is <span class="math inline">\(1- \sum_{k=1}^{J} \pi_{ik}\)</span>.</p>
+</section>
+<section id="selecting-between-model-specifications" class="level3">
+<h3 class="anchored" data-anchor-id="selecting-between-model-specifications">Selecting between model specifications</h3>
+<p>Different model specifications, involving different predictors <span class="math inline">\(X\)</span>, are compared using Akaike’s Information Criterion (AIC) and the Bayesian Information Criterion (BIC), even where models are not nested. In either case, lower scores are generally considered to indicate a better trade-off between model complexity and model fit, and BIC tends to penalise model complexity more severely than AIC, leading to more parsimonious models being selected. Where AIC and BIC ‘prefer’ different model specifications, researcher judgement was used to determine which model specification to adopt, for both the ‘foundational’ and ‘extended’ model specifications.</p>
+</section>
+<section id="simulation-to-quantify-the-effects-of-specific-factors" class="level3">
+<h3 class="anchored" data-anchor-id="simulation-to-quantify-the-effects-of-specific-factors">Simulation to quantify the effects of specific factors</h3>
+<p>With a model specification selected as described above, after being calibrated on the available data, the model can then be used to estimate the influence of one or more specific factors on both individual level conditional probabilities to transition to different mutually exclusive states, and the composition of a population beginning in heterogeneous states ending up each of the mutually exclusive states. The latter process, population level modelling, depends on the former process: the modelling of conditional transition for an individual with a known state at time T to each of the mutually exclusive states at time T+1. This section will therefore describe how the modelling can be used to simulate the effects of a given factor of interest on individual-level transitions, before then describing how the approach can be used to estimate the effects of a given factor for a population. To start with, let us say that model <span class="math inline">\(M(.)\)</span> has been calibrated on observed data <span class="math inline">\(D ≡ \{y,X\}\)</span>, where <span class="math inline">\(y\)</span> is the observed response and <span class="math inline">\(X\)</span> is the observed predictor matrix. Given any valid set of predictor variables for an individual <span class="math inline">\(X_i\)</span> the model will generate expected probabilities <span class="math inline">\(E(Y_i )= P\)</span> where <span class="math inline">\(P ≡ {p_1,p_2,…,p_J }\)</span>, <span class="math inline">\(p_0= 1- \sum_{j=1}^{J}p_j\)</span> and <span class="math inline">\(\sum_{j=1}^J p_j &lt;1\)</span>. (i.e.&nbsp;the model will generate mutually exclusive and exhaustive expected probabilities for each of the <span class="math inline">\(K\)</span> mutually exclusive states where, as before, <span class="math inline">\(K=J+1\)</span>.)</p>
+<p>Given the above, the model will generate mutually exclusive and exhaustive predicted probabilities of being in each state at time <span class="math inline">\(T+1\)</span>, <span class="math inline">\(P^*\)</span>, given a <em>hypothetical</em> predictor set <span class="math inline">\(X_i^*\)</span>. We can further imagine splitting this hypothetical predictor set into components <span class="math inline">\(X_i^*= \{W_i,Y_i (T),Z\}\)</span>, where <span class="math inline">\(W_i\)</span> represents a range of modelled factors (such as age and sex) to control for, <span class="math inline">\(Y_i (T)\)</span> represents the economic (in)activity state at time <span class="math inline">\(T\)</span>, and <span class="math inline">\(Z\)</span> represents a factor (or set of factors) of interest.</p>
+<p>We can now define two predictor sets: <span class="math inline">\(X_i^{Trt}= \{W_i,Y_i (T),Z= Z^{Trt} \}\)</span>, and <span class="math inline">\(X_i^{Ctr}= \{W_i,Y_i (T),Z= Z^{Ctr} \}\)</span>. Note that these differ only in terms of the contents of the factor or factors of interest <span class="math inline">\(Z\)</span>, with all other variables identical. To simplify, let us assume that <span class="math inline">\(Z=1\)</span> for <span class="math inline">\(X_i^{Trt}\)</span>, and <span class="math inline">\(Z=0\)</span> for <span class="math inline">\(X_i^{Ctr}\)</span>, i.e.&nbsp;that <span class="math inline">\(Z\)</span> is a binary indicator which marks the individual as either exposed or not exposed to the specific factor of interest. We can then define a model-derived treatment effect relating to this factor as <span class="math inline">\({TE}_i=E(Y_i^{Trt})-E(Y_i^{Ctr})\)</span> where <span class="math inline">\(Y_i^*\)</span> is the model prediction given <span class="math inline">\(X_i^*\)</span> as input. Along with the conditions stated above - that <span class="math inline">\(p_0 = 1 - \sum_{j=1}^J p_j\)</span> and that <span class="math inline">\(J\)</span> is one less <span class="math inline">\(K\)</span>, we have two vectors of predicted probabilities of length K: <span class="math inline">\(\{p_0^{Trt},p_1^{Trt},p_2^{Trt} ,…,p_J^{Trt} \}\)</span> and <span class="math inline">\(\{p_0^{Ctr},p_1^{Ctr},p_2^{Ctr} ,…,p_J^{Ctr} \}\)</span>. Our simulated treatment effect for individual <span class="math inline">\(i\)</span> will therefore be a vector of length <span class="math inline">\(K\)</span>: <span class="math inline">\(\{p_0^{Trt}- p_0^{Ctr},p_1^{Trt}- p_1^{Ctr},p_2^{Trt}- p_2^{Ctr} ,…,p_J^{Trt}- p_J^{Ctr} \}\)</span>, where the value of each element will be above 0 if the estimated probability of being in the state indicated by the position element is greater in the treatment condition (where <span class="math inline">\(Z=1\)</span>) than in the control condition (where <span class="math inline">\(Z=0\)</span>); and below 0 if the probability is estimated to be higher in the control than the treatment condition.</p>
+</section>
+<section id="moving-from-individual-level-to-population-level-estimates" class="level3">
+<h3 class="anchored" data-anchor-id="moving-from-individual-level-to-population-level-estimates">Moving from individual level to population level estimates</h3>
+<p>We can extend the intuition of the above to estimating the effect of a given factor of interest <span class="math inline">\(Z\)</span> for a population rather than an individual as follows. If we define <span class="math inline">\(X^{Ref}\)</span> as a matrix of dimensions <span class="math inline">\(m\)</span> by <span class="math inline">\(p\)</span>, where <span class="math inline">\(m\)</span> is the number of rows (number of hypothetical individuals) and <span class="math inline">\(p\)</span> the number of columns (number of predictors) then we can say that the contents for each row of <span class="math inline">\(X^{Ref}\)</span>, <span class="math inline">\(X_i^{Ref}\)</span>, are <span class="math inline">\(\{W_i,Y_i (T),Z=Z_i \}\)</span>. Again, in the simple case of a binary indicator for <span class="math inline">\(Z\)</span>, <span class="math inline">\(Z_i\)</span> could take on a value of either 0 or 1. We can now define a counterfactual matrix, <span class="math inline">\(X^{Alt}\)</span>, whose dimensions and values are identical to that of <span class="math inline">\(X^{Ref}\)</span>, except that all values of <span class="math inline">\(Z\)</span> are now set to 0, i.e.&nbsp;<span class="math inline">\(X_i^{Alt}= \{W_i,Y_i (T),Z=0\}\)</span> for all i. If we now slightly redefine <span class="math inline">\(P\)</span> as an m-by-K (rather than m-by-J) dimension matrix of conditional expected probabilities including the probabilities of <span class="math inline">\(p_0\)</span> (i.e.&nbsp;the reference category state) we can now define the matrix of expected probabilities given <span class="math inline">\(X^{Ref}\)</span> as <span class="math inline">\(P^{Ref}\)</span> and given <span class="math inline">\(X^{Alt}\)</span> as <span class="math inline">\(P^{Alt}\)</span>. With both <span class="math inline">\(P^{Ref}\)</span> and <span class="math inline">\(P^{Alt}\)</span> we can now produce modelled estimates of the number of individuals projected to be in each of the <span class="math inline">\(K\)</span> mutually exclusive states through column-wise summation of each <span class="math inline">\(P\)</span> matrix. This will produce two vectors, <span class="math inline">\(S^{Ref}\)</span> and <span class="math inline">\(S^{Alt}\)</span>, both of length <span class="math inline">\(K\)</span>, whose elements are <span class="math inline">\(\{s_0^{Ref},s_1^{Ref},…,s_J^{Ref} \}\)</span> and <span class="math inline">\(\{s_0^{Alt},s_1^{Alt},…,s_J^{Alt} \}\)</span> respectively. For both <span class="math inline">\(S^{Ref}\)</span> and <span class="math inline">\(S^{Alt}\)</span>, the sum of all elements will be <span class="math inline">\(m\)</span>, the number of rows in <span class="math inline">\(X\)</span>, because for any row of <span class="math inline">\(X\)</span>, <span class="math inline">\(X_i\)</span>, the sum of all row-wise probabilities must equal 1.</p>
+</section>
+<section id="using-the-approach-to-estimate-pafs-and-safs" class="level3">
+<h3 class="anchored" data-anchor-id="using-the-approach-to-estimate-pafs-and-safs">Using the approach to estimate PAFs and SAFs</h3>
+<p>What the above means is that the contents of <span class="math inline">\(S^{Ref}\)</span> and <span class="math inline">\(S^{Alt}\)</span> give the predicted pool sizes for a population of individuals in each mutually exclusive state under conditions that differ only in terms of the presence, absence or value of the particular factor of interest <span class="math inline">\(Z\)</span>. This means that for a particular state <span class="math inline">\(j\)</span> then <span class="math inline">\(s_j^{Alt} - s_j^{Ref}\)</span> will give <em>the additional number of persons in state j that can be attributed to Z</em>, and $ $ <em>the relative difference in state <span class="math inline">\(j\)</span> pool size that can be attributed to <span class="math inline">\(Z\)</span></em>. This latter quantity can be of particular interest as, when <span class="math inline">\(Z\)</span> comprises a single factor, then it can be interpreted as a population-attributable fraction (PAF), i.e.&nbsp;the proportion of the state pool size that can be ‘explained by’ the factor of interest. Where <span class="math inline">\(Z\)</span> comprises more than one factor, then the selective ‘switching on’ and ‘switching off’ of factors within the model can be used to estimate the related sequential attributable fractions (SAFs) of the marginal contributions of any specific faction given the presence or absence of other factors of interest.</p>
+</section>
+<section id="including-continuous-variables-in-the-model" class="level3">
+<h3 class="anchored" data-anchor-id="including-continuous-variables-in-the-model">Including continuous variables in the model</h3>
+<p>The descriptions above have considered the case where Z takes on a binary value, 0 or 1. Where <span class="math inline">\(Z\)</span> takes on a continuous value, the values of Z are first normalized and standardized to have a mean of 0 and standard deviation of 1. In the control/reference population the observed values (after standardisation and normalisation) are used; for the alternative population a value of 1 is either added or subtracted to the observed values, depending on whether the factor of interest is something to which population exposure should ideally be maximized (so added) or minimized (so subtracted). In either case, this is equivalent to an alternative/counterfactual scenario in which the exposure to the factor of interest has been shifted by one standardised unit in the ‘good’ direction.</p>
+</section>
+</section>
+<section id="data-source-used-the-uk-household-longitudinal-study" class="level2">
+<h2 class="anchored" data-anchor-id="data-source-used-the-uk-household-longitudinal-study">Data Source Used: The UK Household Longitudinal Study</h2>
+<p>Our first step was to build a foundational model to predict the future distribution of economic status in the population based on the current characteristics of that population. We do this using individuals’ observed economic states reported across ten waves of the UK Household Longitudinal Study (UKHLS), 2009-10 to 2018-19. Also known as Understanding Society, the UKHLS is a longitudinal household panel survey that aims to follow all individuals in households selected at random in the first wave, 2009. Even where households move, or individuals in initially selected household form new households, the UKHLS aims to interview them each subsequent year, along with any new household members.</p>
+<p>Important strengths of the UKHLS for our purposes are its longitudinal nature and the richness of the data it collects. Because of its longitudinal nature, the UKHLS is ideal for tracking changes in individuals’ economic (in)activity states over time and seeing how a variety of factors at wave T influence the subsequent state at time T+1. Its collection of data on income, employment and other labour market outcomes, education, family and health is comprehensive compared to other large-scale surveys (Benzeval et al, 2023). Other advantages of UKHLS include its large sample size compared to other longitudinal surveys, its coverage of all age groups (rather than a specific birth cohort), and its potential for linkage with ecological data and individual-level administrative data). A key limitation is attrition (people dropping-out of the survey) and loss of representativeness over time (Platt et al, 2020).</p>
+<p>We use all the observations from waves i (2009-10) to waves j (2018-19) for which flows from T to T+1 are available. This means that any one individual can contribute multiple observations to the model, similar to autoregressive time-series models [ref?], so the model is based on unique observations, not unique individuals. We excluded waves k (2019-20) to m (2021-22), because changes in economic status are likely to have been affected by the COVID-19 epidemic during these years.</p>
+</section>
+<section id="categories-of-economic-inactivity" class="level2">
+<h2 class="anchored" data-anchor-id="categories-of-economic-inactivity">Categories of economic (in)activity</h2>
+<p>The UKHLS offers a number of levels of aggregation and disaggregation at which an individual’s economic (in)activity state can be divided. This ranges from two mutually exclusive states, {economically inactive, economically active}, through to a much larger number of economically inactive states. In the case of two mutually exclusive states, economically inactive includes full time students, those inactive for reasons of ill health, and full time carers, even though we may consider these to be qualitatively different categories and experiences. Similarly economically active includes both those who are presently employed, and those who are unemployed but seeking employment: again, qualitatively different categories. In order to be mindful of the hidden heterogeneity involved in the broader categories of economically inactive and economically active, we made use consistently of a seven-level grouping of economic (in)activity types from the UKHLS:</p>
+<ul>
+<li>Economically Active:
+<ul>
+<li>Employed</li>
+<li>Unemployed</li>
+</ul></li>
+<li>Economically Inactive:
+<ul>
+<li>Long Term Sick</li>
+<li>Full Time Student</li>
+<li>Full Time Carer</li>
+<li>Early Retired</li>
+<li>Other</li>
+</ul></li>
+</ul>
+<p>Our multinomial logistic regression model therefore has K=7 (and so J=6). Each of the seven states is treated as categorical, and model does not ‘know’ (in the sense there are no structural constraints) that, say, Long term Sick and Full Time Student are both types of Economic Inactivity, and that Employed and Unemployed are both types of Economic Activity.</p>
+</section>
+<section id="dual-uses-of-the-dataset" class="level2">
+<h2 class="anchored" data-anchor-id="dual-uses-of-the-dataset">Dual uses of the dataset</h2>
+<p>It is important to note that the main dataset used in this paper, the UK Household Longitudinal Study (UKHLS), is used in two distinct capacities: firstly to calibrate a model to produce a vector of conditional expected probabilities of individuals ending up in each of the mutually exclusive economic (in)activity states at the next discrete period; and secondly to construct a representative population sample frame used to produce the reference population, X^Ref, which is then artificially modified through the overwriting of factors of interest, Z, to form the counterfactual population, X^Alt. The distinction between these two uses, and ways in which the UKHLS is used in these two capacities, will now be discussed.</p>
+<p>The UKHLS is a household panel survey, which aims to follow up all individuals in households selected at random via the Postcode Address File (PAF) annually from the first 12 month period of its operation, 2009, for each subsequent 12 month period. Within the UKHLS, each 12 month period is referred to as a wave, and the first wave referred to as wave a. For our purposes, the data required for calibrating the model are those where individuals have been successfully recontacted between consecutive waves, and the economic (in)activity status at both waves <span class="math inline">\(T\)</span> and <span class="math inline">\(T+1\)</span> have been successfully recorded. The observations in our model therefore comprise <span class="math inline">\(D ≡ \{y,X\}\)</span>, where <span class="math inline">\(y= y_{t+1}\)</span>, the economic (in)activity status at wave <span class="math inline">\(T+1\)</span>, and <span class="math inline">\(X= \{W,y_t,Z\}\)</span>, i.e.&nbsp;sociodemographic confounders of interest <span class="math inline">\(W\)</span>, economic (in)activity status at wave <span class="math inline">\(T\)</span>, <span class="math inline">\(y_t\)</span>, and the factor or factors of interest <span class="math inline">\(Z\)</span>. (Implicitly, <span class="math inline">\(W\)</span> and <span class="math inline">\(Z\)</span> are also as recorded at wave <span class="math inline">\(T\)</span>, and for an individual factors like age are of course liable to change over time.)</p>
+<p>When calibrating the model, the observations used <span class="math inline">\(D\)</span> therefore comprise paired observations from individuals who have been successfully followed up between consecutive waves, with the model response term being from wave <span class="math inline">\(T+1\)</span> and other variables from wave <span class="math inline">\(T\)</span>. This means both that the same individual may contribute multiple observations to the calibration dataset if paired consecutive observations of their economic (in)activity status over multiple waves has been successfully recorded. observations from a specific individual from a given wave <span class="math inline">\(T\)</span> will not be included in the calibration dataset if their corresponding economic (in)activity status at the following wave <span class="math inline">\(y_{t+1}\)</span> has not been successfully recorded; but also that the same individual may contribute multiple observations to the calibration dataset if paired consecutive observations of their economic (in)activity status over multiple waves has been successfully recorded. These observations comprising paired statuses between consecutive waves <span class="math inline">\(\{y_{t+1},y_t\}\)</span> are therefore assumed to be conditionally independent given <span class="math inline">\(W\)</span> and <span class="math inline">\(Z\)</span>. This assumption was checked by comparing the AIC and BIC of alternative model specifications that included additional historical status terms - <span class="math inline">\(\{y_{t+1},y_t,y_{t-1}\}\)</span>,<span class="math inline">\(\{y_{t+1},y_t,y_{t-1},y_{t-2}\}\)</span>, and so on – which were not found to lead to improvements in penalized model fit. This assessment of whether additional lagged terms on y should be included is conceptually similar to the selection of the number of autoregressive terms <span class="math inline">\(p\)</span> to use in an <span class="math inline">\(AR(p)\)</span> model specification. AIC and BIC was also used to select between a number of candidate model structures for including the effects of sociodemographic confounders, <span class="math inline">\(W\)</span>. This led to the identification of what we describe as our foundational model specification, which is detailed later. Our foundational model specification includes a specific treatment of <span class="math inline">\(W\)</span> and <span class="math inline">\(y_t\)</span>. Model specifications including one or more factors of interest, <span class="math inline">\(Z\)</span>, are referred to as extended models, which contain all terms in the foundational model specification plus the additional term or terms contained in <span class="math inline">\(Z\)</span>; the foundational model specification can therefore be considered a restricted version of each extended model specification. Again, AIC and BIC, along with researcher judgement, is used to determine which extended model specification to use for simulation.</p>
+<p>For the model calibration stage, data comprising complete data with paired consecutive economic (in)activity state observations for individuals observed between waves a (2009) and wave j (2018) were used. This means that <span class="math inline">\(y_{t+1}\)</span> for wave <span class="math inline">\(j\)</span> is 2019, the last complete pre-pandemic year. The appropriateness of treating data from different waves or pairs of waves as equivalent in our calibration dataset was further checked by looking at a model specification in which the starting wave number (wave <span class="math inline">\(a=1\)</span>, <span class="math inline">\(b=2\)</span>, and so on) was included as a predictor variable and comparing the AIC and BIC against models in which wave number terms were not included. The inclusion of a wave number term was not found to improve penalized model fit using either of these criteria, suggesting that the propensity to transition between economic inactivity states was largely consistent over these waves conditional on the sociodemographic controls used <span class="math inline">\(W\)</span>.</p>
+<p>Regarding the use of the UKHLS data for model prediction, the last complete pre-pandemic wave, i.e.&nbsp;wave <span class="math inline">\(j\)</span>, was used. The use of this wave represents a compromise between a range of completing considerations: on the one hand, sample attrition tends to increase over time, meaning that data from earlier waves are likely to be more completed. But on the other hand, earlier data are likely to be less representative of contemporary UK sociodemographic characteristics than later data. Finally, data covering the pandemic and earlier post pandemic period are likely to have compositions, especially of economic (in)activity states, unrepresentative of non-pandemic periods.</p>
+<p>As described above, the procedure using data from wave j for model prediction involved identifying all complete observations from this wave for variables <span class="math inline">\(\{W,y_t,Z\}\)</span> and using them to construct the reference population sample frame <span class="math inline">\(X^{Ref}\)</span>. Using the procedure described above, for the counterfactual sample frame <span class="math inline">\(X^{Alt}\)</span> the values of <span class="math inline">\(Z\)</span> were ‘switched off’, i.e.&nbsp;set to 0, in the case of a binary indicator, or standardised and normalized, then moved one standardised unit in the ‘good’ direction for continuous indicators. In the case of the continuous indicator presented in this paper there were a number of different ways of implementing the concept of moving <span class="math inline">\(Z\)</span> one standardised unit in the good direction, due to the factor of interest – health – being recorded separately for mental health and physical health, and an interaction term between these two health subdomains being identified as important for modelling these factors appropriately. These are discussed further below.</p>
+
+</section>
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-åhs2006" class="csl-entry" role="listitem">
+Åhs, Annika M. H., and Ragnar Westerling. 2006. <span>“Mortality in Relation to Employment Status During Different Levels of Unemployment.”</span> <em>Scandinavian Journal of Public Health</em> 34 (2): 159–67. <a href="https://doi.org/10.1080/14034940510032374">https://doi.org/10.1080/14034940510032374</a>.
+</div>
+<div id="ref-anyadike-danes2008" class="csl-entry" role="listitem">
+Anyadike-Danes, Michael, and Duncan McVicar. 2008. <span>“Has the Boom in Incapacity Benefit Claimant Numbers Passed Its Peak?”</span> <em>Fiscal Studies</em> 29 (4): 415434.
+</div>
+<div id="ref-beatty2013" class="csl-entry" role="listitem">
+Beatty, Christina, and Steve Fothergill. 2013. <span>“Disability Benefits in the UK: An Issue of Health or Jobs?”</span> In, edited by Colin Lindsay and Donald Houston, 15–32. London: Palgrave Macmillan UK. <a href="http://link.springer.com/10.1057/9781137314277_2">http://link.springer.com/10.1057/9781137314277_2</a>.
+</div>
+<div id="ref-berthoud2007" class="csl-entry" role="listitem">
+Berthoud, Richard. 2007. <span>“Work-Rich and Work-Poor: Three Decades of Change.”</span> <a href="https://www.jrf.org.uk/work/work-rich-and-work-poor-three-decades-of-change">https://www.jrf.org.uk/work/work-rich-and-work-poor-three-decades-of-change</a>.
+</div>
+<div id="ref-brown2012" class="csl-entry" role="listitem">
+Brown, Judith, Evangelia Demou, Madeleine Ann Tristram, Harper Gilmour, Kaveh A Sanati, and Ewan B Macdonald. 2012. <span>“Employment Status and Health: Understanding the Health of the Economically Inactive Population in Scotland.”</span> <em>BMC Public Health</em> 12 (1): 327. <a href="https://doi.org/10.1186/1471-2458-12-327">https://doi.org/10.1186/1471-2458-12-327</a>.
+</div>
+<div id="ref-dar2015" class="csl-entry" role="listitem">
+Dar, Aliyah. 2015. <span>“Why Are People Economically Inactive?”</span> <a href="https://commonslibrary.parliament.uk/why-are-people-economically-inactive/">https://commonslibrary.parliament.uk/why-are-people-economically-inactive/</a>.
+</div>
+<div id="ref-herz" class="csl-entry" role="listitem">
+Herz, Benedict, and Thijs van Rens. n.d. <span>“The Labor Market in the UK, 2000-2019.”</span> <a href="https://wol.iza.org/uploads/articles/524/pdfs/the-labor-market-in-the-uk.pdf">https://wol.iza.org/uploads/articles/524/pdfs/the-labor-market-in-the-uk.pdf</a>.
+</div>
+<div id="ref-kim2015" class="csl-entry" role="listitem">
+Kim, Ji Man, Nak-Hoon Son, Eun-Cheol Park, Chung Mo Nam, Tae Hyun Kim, and Woo-Hyun Cho. 2015. <span>“The Relationship Between Changes in Employment Status and Mortality Risk Based on the Korea Labor and Income Panel Study (2003-2008).”</span> <em>Asia Pacific Journal of Public Health</em> 27 (2): NP993–1001. <a href="https://doi.org/10.1177/1010539513486923">https://doi.org/10.1177/1010539513486923</a>.
+</div>
+<div id="ref-machin2023" class="csl-entry" role="listitem">
+Machin, Steven, and Jonathan Wadsworth. 2023. <span>“The Trouble with Inactivity.”</span> <a href="https://cep.lse.ac.uk/_NEW/publications/abstract.asp?index=10314#:~:text=Inactivity%20is%20strongly%20concentrated%20on,themselves%20as%20the%20economy%20recovers.">https://cep.lse.ac.uk/_NEW/publications/abstract.asp?index=10314#:~:text=Inactivity%20is%20strongly%20concentrated%20on,themselves%20as%20the%20economy%20recovers.</a>
+</div>
+<div id="ref-mccloud2023" class="csl-entry" role="listitem">
+McCloud, Tayla, Strahil Kamenov, Claire Callender, Glyn Lewis, and Gemma Lewis. 2023. <span>“The Association Between Higher Education Attendance and Common Mental Health Problems Among Young People in England: Evidence from Two Population-Based Cohorts.”</span> <em>The Lancet Public Health</em> 8 (10): e811–19. <a href="https://doi.org/10.1016/S2468-2667(23)00188-3">https://doi.org/10.1016/S2468-2667(23)00188-3</a>.
+</div>
+<div id="ref-plotnikova2020" class="csl-entry" role="listitem">
+Plotnikova, Maria. 2020. <span>“Explaining Spatial Patterns of Incapacity Benefit Claimant Rolls.”</span> <em>Romanian Journal of Regional Science</em> 14 (2): 35–48. <a href="https://ideas.repec.org/a/rrs/journl/v14y2020i2p35-48.html">https://ideas.repec.org/a/rrs/journl/v14y2020i2p35-48.html</a>.
+</div>
+<div id="ref-roberts2022" class="csl-entry" role="listitem">
+Roberts, Jennifer, and Karl Taylor. 2022. <span>“New Evidence on Disability Benefit Claims in Britain: The Role of Health and the Local Labour Market.”</span> <em>Economica</em> 89 (353): 131–60. <a href="https://doi.org/10.1111/ecca.12382">https://doi.org/10.1111/ecca.12382</a>.
+</div>
+<div id="ref-roelfs2011" class="csl-entry" role="listitem">
+Roelfs, David J., Eran Shor, Karina W. Davidson, and Joseph E. Schwartz. 2011. <span>“Losing Life and Livelihood: A Systematic Review and Meta-Analysis of Unemployment and All-Cause Mortality.”</span> <em>Social Science &amp; Medicine</em> 72 (6): 840–54. <a href="https://doi.org/10.1016/j.socscimed.2011.01.005">https://doi.org/10.1016/j.socscimed.2011.01.005</a>.
+</div>
+<div id="ref-tinson2022" class="csl-entry" role="listitem">
+Tinson, Adam, Alice Major, and David Finch. 2022. <span>“Is Poor Health Driving a Rise in Economic Inactivity?”</span> <a href="https://www.health.org.uk/news-and-comment/charts-and-infographics/is-poor-health-driving-a-rise-in-economic-inactivity?gad_source=1&amp;gclid=Cj0KCQjwh7K1BhCZARIsAKOrVqHZkWmCrptsKC8mSixh0US77N0oR3BF6ddtCmPxFAWew3P6PkOhsMYaAg3-EALw_wcB">https://www.health.org.uk/news-and-comment/charts-and-infographics/is-poor-health-driving-a-rise-in-economic-inactivity?gad_source=1&amp;gclid=Cj0KCQjwh7K1BhCZARIsAKOrVqHZkWmCrptsKC8mSixh0US77N0oR3BF6ddtCmPxFAWew3P6PkOhsMYaAg3-EALw_wcB</a>.
+</div>
+</div></section></div></main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
