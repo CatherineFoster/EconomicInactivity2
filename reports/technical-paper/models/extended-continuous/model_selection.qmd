@@ -1,0 +1,110 @@
+---
+echo: false
+message: false
+warning: false
+---
+
+The following model extended model specifications were considered and compared with the foundational model specification: 
+
+- `mod_mh`: Mental health only 
+- `mod_ph`: Physical health only 
+- `mod_ph_mh`: Physical health and mental health: no interaction term
+- `mod_phmh`: Physical health and mental health: interaction term
+
+```{r}
+devtools::load_all(here::here('R'))
+
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_sf12_standardised <-
+  df_ind |>
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(c(dvage, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    filter(complete.cases(.)) |>
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  # This renames dvage to age
+    rename(age = dvage) |>
+    filter(between(age, 16, 64))  
+
+
+```
+
+
+```{r}
+#| cache: true
+
+
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_sf12_standardised, 
+    maxit = 200
+  )
+
+mod_mh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12mcs_dv,
+    data = df_ind_sf12_standardised,
+    maxit = 200  
+  )
+
+mod_ph <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv,
+    data = df_ind_sf12_standardised,
+    maxit = 200
+  )
+
+mod_ph_mh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv + sf12mcs_dv,
+    data = df_ind_sf12_standardised,
+    maxit = 200
+  )
+
+mod_phmh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
+    data = df_ind_sf12_standardised,
+    maxit = 200
+)
+
+```
+
+The AICs and BICs of these model specifications are as follows:
+
+
+```{r}
+AIC(mod_00, mod_mh, mod_ph, mod_ph_mh, mod_phmh) |>
+    as_tibble(rownames = "model") |>
+    left_join(
+        BIC(mod_00, mod_mh, mod_ph, mod_ph_mh, mod_phmh) |>
+            as_tibble(rownames = "model")
+    ) |>
+    mutate(
+        aic_rank = rank(AIC),
+        bic_rank = rank(BIC)
+    ) |>
+    knitr::kable()
+
+
+```
+
+Here the results are unequivocal: both the AIC and BIC metrics indicate the model including both mental and physical health factors, and an interaction term between them, should be used. 

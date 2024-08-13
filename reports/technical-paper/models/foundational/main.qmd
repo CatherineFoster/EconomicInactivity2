@@ -1,0 +1,439 @@
+---
+echo: false
+warning: false
+message: false
+---
+
+
+As mentioned previously, the modelling approach starts with attempting to determine a foundational model specification which adequately controls for event history ($y_t$) and demography (i.e. age and sex). A number of specifications are considered. These specifications differ in terms of the following parameters:
+
+- Whether the specification includes an interaction between sex and current status
+- the degree of the polynomial for the spline to represent age
+
+```{r}
+devtools::load_all(here::here('R'))
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_standardised <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+    filter(sex %in% c("male", "female")) |>
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64)) %>% 
+    filter(complete.cases(.)) 
+```
+
+When extracting paired observations between consecutive economic statuses between waves, and when selecting on only those observations where age and sex has been recorded, age is between 16 and 64 years of age inclusive, and both economic status at current and next wave has been successfully identified, then a total of 305,324 observations are available from the UKHLS, relating to 58,301 unique individuals. A random selection of ten observations from this dataset is as follows:
+
+```{r}
+set.seed(5)
+df_ind_standardised |>
+    sample_n(10) |>
+    knitr::kable()
+
+```
+
+Here `pidp` refers to the person identifier, which is unique and consistent across waves, `wave` is a character indicating the wave from which the variables `age`, `sex` and `this_status` have been observed and recorded. For example wave `a` is the UKHLS's first wave, `d` the fourth wave, and `f` the sixth wave. The variable `next_status` is the economic status as observed at the wave immediately after the wave indicated in the `wave` variable: for wave `d`, this would be wave `e`, for `f`, it would be wave `g`, and so on. 
+
+Both `this_status` and `next_status` are seven category regroupings of the variable `jbstat` in the individual level wave-specific UKHLS datasets. 
+
+Below are a series of possible foundational model specifications which incorporate age, sex and event history (`this_status`) in different ways. 
+
+- `fnd_00`: `next_status ~ this_status + sex + splines::bs(age, 3)`
+- `fnd_01`: `next_status ~ this_status + sex + splines::bs(age, 4)`
+- `fnd_02`: `next_status ~ this_status + sex + splines::bs(age, 5)`
+- `fnd_03`: `next_status ~ this_status + sex + splines::bs(age, 6)`
+- `fnd_04`: `next_status ~ this_status * sex + splines::bs(age, 3)`
+- `fnd_05`: `next_status ~ this_status * sex + splines::bs(age, 4)`
+- `fnd_06`: `next_status ~ this_status * sex + splines::bs(age, 5)`
+- `fnd_07`: `next_status ~ this_status * sex + splines::bs(age, 6)`
+
+The first four specifications involve no interaction between `sex` and `this_status`, whereas the last four specifications inclulde an additional `sex:this_status` interaction term. The number inside the `bs()` function determines the degree of flexibility of the age spline component. 
+
+The penalised model fits using AIC and BIC for each of the above specifications is as follows:
+
+```{r}
+#\ cache: true 
+
+fnd_00 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 3),
+    data = df_ind_standardised, maxit = 200
+    ) 
+
+fnd_01 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 4),
+    data = df_ind_standardised, maxit = 200
+    ) 
+    
+fnd_02 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 5),
+    data = df_ind_standardised, maxit = 200
+    ) 
+    
+fnd_03 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 6),
+    data = df_ind_standardised , maxit = 200
+    ) 
+    
+fnd_04 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 3),
+    data = df_ind_standardised , maxit = 200
+    ) 
+
+fnd_05 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 4),
+    data = df_ind_standardised , maxit = 200
+    ) 
+    
+fnd_06 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_standardised , maxit = 200
+    ) 
+    
+fnd_07 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 6),
+    data = df_ind_standardised , maxit = 200
+    ) 
+    
+
+
+
+
+```
+
+
+```{r}
+AIC(fnd_00, fnd_01, fnd_02, fnd_03, fnd_04, fnd_05, fnd_06, fnd_07) |>
+    as_tibble(rownames = "model") |>
+    left_join(
+        BIC(fnd_00, fnd_01, fnd_02, fnd_03, fnd_04, fnd_05, fnd_06, fnd_07) |>
+            as_tibble(rownames = "model")
+    ) |>
+    mutate(
+        aic_rank = rank(AIC),
+        bic_rank = rank(BIC)
+    ) |>
+    knitr::kable()
+
+
+```
+
+Having set the number of iterations to 200 rather than the default 100, all models have converged before reaching the iteration limit. The four model specifications with interaction terms (`fnd_04` through to `fnd_07`) outpeform the model specifications without interaction terms, suggesting the interaction term should be included. However, the rank order of these specifications using AIC and BIC are reversed, with AIC suggesting the most complicated model specification `fnd_07` should be used, whereas BIC indicating the least complicated of the with-interaction term model specifications `fnd_04` should be used. 
+
+However only a subset of the above data contain the necessary health variables, and the foundational model specification that best fits this subset may be clearer. 
+
+```{r}
+#library(tidyverse)
+#devtools::load_all(here::here('R'))
+# library(haven)
+# library(here)
+#library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "health"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_health_standardised <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+    filter(sex %in% c("male", "female")) |>
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  |> 
+    mutate(
+      lt_condition = case_when(
+        health %in% c("No", "no") ~ FALSE,
+        health %in% c("Yes", "yes") ~ TRUE,
+        TRUE ~ NA_integer_
+      ) |> as.logical()
+    ) %>% 
+    filter(complete.cases(.)) 
+
+
+```
+
+
+```{r}
+#| cache: true
+fnd_00 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 3),
+    data = df_ind_health_standardised, maxit = 200
+    ) 
+
+fnd_01 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 4),
+    data = df_ind_health_standardised, maxit = 200
+    ) 
+    
+fnd_02 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 5),
+    data = df_ind_health_standardised , maxit = 200 
+    ) 
+    
+fnd_03 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 6),
+    data = df_ind_health_standardised, maxit = 200
+    ) 
+    
+fnd_04 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 3),
+    data = df_ind_health_standardised, maxit = 200
+    ) 
+
+fnd_05 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 4),
+    data = df_ind_health_standardised, maxit = 200
+    ) 
+    
+fnd_06 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_health_standardised, maxit = 200
+    ) 
+    
+fnd_07 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 6),
+    data = df_ind_health_standardised, maxit = 200
+    ) 
+    
+
+
+```
+
+
+```{r}
+AIC(fnd_00, fnd_01, fnd_02, fnd_03, fnd_04, fnd_05, fnd_06, fnd_07) |>
+    as_tibble(rownames = "model") |>
+    left_join(
+        BIC(fnd_00, fnd_01, fnd_02, fnd_03, fnd_04, fnd_05, fnd_06, fnd_07) |>
+            as_tibble(rownames = "model")
+    ) |>
+    mutate(
+        aic_rank = rank(AIC),
+        bic_rank = rank(BIC)
+    ) |>
+    knitr::kable()
+
+```
+
+With the health-variable subset of the dataset, the same results are apparent: models including interaction terms outperform those without interaction terms, but the rank order of preference differs by whether the AIC or BIC metric is used. 
+
+To try to resolve this, we can also look at the subset of data which contains the continuous health variables of interest: 
+
+```{r}
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_sf12_standardised <-
+  df_ind |>
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(c(dvage, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    filter(sex %in% c("male", "female")) %>%
+    filter(complete.cases(.)) |>
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  # This renames dvage to age
+    rename(age = dvage) |>
+    filter(between(age, 16, 64))  
+
+
+```
+
+```{r}
+#\ cache: true
+
+
+fnd_00 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 3),
+    data = df_ind_sf12_standardised, maxit = 200
+    ) 
+
+fnd_01 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 4),
+    data = df_ind_sf12_standardised, maxit = 200
+    ) 
+    
+fnd_02 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 5),
+    data = df_ind_sf12_standardised, maxit = 200
+    ) 
+    
+fnd_03 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 6),
+    data = df_ind_sf12_standardised, maxit = 200
+    ) 
+    
+fnd_04 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 3),
+    data = df_ind_sf12_standardised, maxit = 200
+    ) 
+
+fnd_05 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 4),
+    data = df_ind_sf12_standardised, maxit = 200
+    ) 
+    
+fnd_06 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_sf12_standardised, maxit = 200
+    ) 
+    
+fnd_07 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 6),
+    data = df_ind_sf12_standardised, maxit = 200
+    ) 
+    
+
+```
+
+
+```{r}
+
+AIC(fnd_00, fnd_01, fnd_02, fnd_03, fnd_04, fnd_05, fnd_06, fnd_07) |>
+    as_tibble(rownames = "model") |>
+    left_join(
+        BIC(fnd_00, fnd_01, fnd_02, fnd_03, fnd_04, fnd_05, fnd_06, fnd_07) |>
+            as_tibble(rownames = "model")
+    ) |>
+    mutate(
+        aic_rank = rank(AIC),
+        bic_rank = rank(BIC)
+    ) |>
+    knitr::kable()
+
+
+```
+
+This also does not resolve the choice of which model to use as the foundational model. 
+
+So a different approach will be used. For each interaction model, from `fnd_04` through to `fnd_07`, we will do the following: 
+
+- Sample 80% of the data as the training set 
+- Hold back 20% of the data as the test set
+- For the test set calculate the proportion of classifications that are correct in the test set. 
+
+n.b. we will use the response = `probs` argument to reduce the amount of stochastic variation in the experiment. This means that, for example, if the model predicts the correct answer with a 90% probability then it is assigned a score of 0.90, and so on. 
+
+The above process will be repeated 50 times (as the models take some time to run)
+
+
+```{r}
+#| cache: true
+set.seed(9)
+
+calc_mean_oos_score <- function(
+    df, model_formula, training_prop
+){
+
+    selections <- sample(c(TRUE, FALSE), nrow(df), prob = c(training_prop, 1 - training_prop), replace = TRUE)
+    training_set <- df[selections,]
+    test_set <- df[!selections,]
+
+    model_on_training <- nnet::multinom(
+        model_formula,
+        data = training_set, maxit = 200
+)
+
+    predictions <- predict(model_on_training, test_set, type = "probs")
+
+    truths <- test_set$next_status
+
+    scores <- vector(mode = "numeric", length = length(truths))
+    N <- length(scores)
+
+    for (i in 1:N){
+        scores[i] <- predictions[i, truths[i]]
+    }
+
+    mean_score <- mean(scores)
+    mean_score
+}
+
+
+
+oos_fnd_04 <- replicate(50, calc_mean_oos_score(df_ind_standardised, next_status ~ this_status * sex + splines::bs(age, 3), 0.8)
+)
+
+oos_fnd_05 <- replicate(50, calc_mean_oos_score(df_ind_standardised, next_status ~ this_status * sex + splines::bs(age, 4), 0.8)
+)
+
+oos_fnd_06 <- replicate(50, calc_mean_oos_score(df_ind_standardised, next_status ~ this_status * sex + splines::bs(age, 5), 0.8)
+)
+
+oos_fnd_07 <- replicate(50, calc_mean_oos_score(df_ind_standardised, next_status ~ this_status * sex + splines::bs(age, 6), 0.8)
+)
+
+```
+
+bind together
+
+```{r}
+df_oos <- data.frame(
+    rep = 1:50, 
+    fnd_04 = oos_fnd_04,
+    fnd_05 = oos_fnd_05,
+    fnd_06 = oos_fnd_06,
+    fnd_07 = oos_fnd_07
+) |>
+    pivot_longer(-rep, 
+    names_to = "mdl", 
+    values_to = "value")
+
+```
+
+```{r}
+df_oos |> 
+    group_by(mdl) |> 
+    mutate(value = 100000 * value) |> 
+    summarise(
+        lql = quantile(value, 0.25), 
+        median = median(value), 
+        mean = mean(value), 
+        uql = quantile(value, 0.75)
+    ) |>
+    knitr::kable()
+
+```
+
+It appears that all model specifications have very similar properties in terms of out-of-sample predictive accuracy. On average all models correctly predict the next state around 78% of the time. Differences in predictive accuracy are largely detectable only after the third decimal place in the accuracy scores. 
+
+Overally, it appears model `fnd_06` has slightly higher accuracy than the other specifications. This is the specification originally selected as the baseline specification. 

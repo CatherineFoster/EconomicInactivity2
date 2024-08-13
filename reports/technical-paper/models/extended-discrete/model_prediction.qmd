@@ -1,0 +1,282 @@
+---
+echo: false
+warning: false
+message: false
+---
+
+```{r}
+devtools::load_all(here::here('R'))
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "health"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_health_standardised <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  |> 
+    mutate(
+      lt_condition = case_when(
+        health %in% c("No", "no") ~ FALSE,
+        health %in% c("Yes", "yes") ~ TRUE,
+        TRUE ~ NA_integer_
+      ) |> as.logical()
+    ) %>% 
+    filter(complete.cases(.)) 
+
+```
+
+
+```{r}
+#| cache: true
+
+
+mod_health_discrete <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition,
+    data = df_ind_health_standardised,
+    maxit = 200
+  )
+
+mod_foundation <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_health_standardised,
+    maxit = 200
+  )
+
+
+
+
+```
+
+
+## Predictive accuracy 
+
+
+```{r}
+true_category <- df_ind_health_standardised$next_status
+
+prediction_block_ext <- predict(mod_health_discrete, type = "probs")
+prediction_block_fnd <- predict(mod_foundation, type = "probs")
+
+N <- length(true_category)
+
+pred_score_ext <- vector(mode = "numeric", length = N)
+pred_score_fnd <- vector(mode = "numeric", length = N)
+
+for (i in 1:N){
+    pred_score_ext[i] <- prediction_block_ext[i,true_category[i]]
+    pred_score_fnd[i] <- prediction_block_fnd[i,true_category[i]]
+}
+mean(pred_score_ext)
+mean(pred_score_fnd)
+```
+
+The discrete health extended model specification has an average predicted model accuracy score of `0.7858`, as opposed to `0.7847` for the foundational model, when both are assessed using the data used to fit them, showing a marginal improvement in fit associated with including this variable. 
+
+## Vignette examples: Predicted effects of health
+
+To illustrate the substantive predicted effects of health the following vignettes are presented both where an LLTI is present (`lt_condition = TRUE`) or absent (`lt_condition=FALSE`)
+
+- Male, aged 25, 40, 50, 60. Either Employed, Unemployed, or Economically Inactive, Long-term sick
+- Female, aged 25, 40, 50, 60. Either Employed, Unemployed, or Economically Inactive, Long-term sick
+
+```{r}
+vignettes <- expand_grid(
+    sex = c("male", "female"),
+    age = c(25, 40, 50, 60),
+    this_status = c("Employed", "Unemployed", "Inactive long term sick"),
+    lt_condition = c(FALSE, TRUE)
+)
+
+vignettes_predictions <- predict(mod_health_discrete, newdata = vignettes, type = "probs")
+
+vig_pred_preds <- bind_cols(vignettes, vignettes_predictions)
+
+vig_pred_preds |> knitr::kable()
+```
+
+The predicted absolute effects of health for each of these vignettes are therefore as shown below:
+
+```{r}
+vig_pred_preds |>
+    pivot_longer(cols = Employed:Unemployed, names_to = "next_status_predicted", values_to = "prob") |>
+    group_by(sex, age, this_status, next_status_predicted) |>
+    summarise(
+        abs_diff_prob = prob[lt_condition == TRUE] - prob[lt_condition == FALSE]
+    ) |>
+    ungroup() |>
+    pivot_wider(names_from = next_status_predicted, values_from = abs_diff_prob) |>
+    knitr::kable()
+
+
+```
+
+The effects of `lt_condition` on the absolute changes in probability of being in each of these states therefore differs quite a lot by individual characteristics. For example, the effect of a long term condition on the probability of being predicted to be Inactive long-term sick ranges from around 45% for some vignette scenarios to less than 1% for others. 
+
+## Population level estimates 
+
+
+### Unweighted sample frame 
+
+The following table shows the estimated differences in population pool predicted to be in each of the seven mutually exclusive categories using the *unweighted* sample from the last pre-COVID wave: 
+
+```{r}
+sample_unweighted_baseline <- df_ind_health_standardised |>
+    filter(wave == 'j') %>%
+    filter(complete.cases(.))
+
+sample_unweighted_counterfactual <- sample_unweighted_baseline |>
+    mutate(lt_condition = FALSE)
+
+preds_baseline <- predict(mod_health_discrete, newdata = sample_unweighted_baseline, type = "probs")
+
+preds_counterfactual <- predict(mod_health_discrete, newdata = sample_unweighted_counterfactual, type = "probs")
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_baseline, 2, sum),
+  apply(preds_counterfactual, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counterfactual")
+predictions_summary_matrix |> 
+    as_tibble(rownames = "Status") |>
+    mutate(
+        Status = factor(Status, levels = c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other"))
+    ) |>
+    arrange(Status) |>
+    mutate(
+        base_share = base / sum(base),
+        counter_share = counterfactual/sum(counterfactual), 
+        point_difference  = counter_share - base_share,
+        prop_difference = point_difference / base_share
+    ) |> 
+    knitr::kable()
+
+```
+
+The estimated effect from this model of assigning all individuals with LLTIs to not having LLTIs is to change the projected proportion of the population who are employed from 72.4% to 73.8%, a 1.3 percentage poing change. This same change is projected to *reduce* the proportion of the population who are Inactive long-term sick from 4.3% to 1.7%, which is a 2.6 percentage point reduction, or in relative terms around a 60.2% reduction from the baseline population size. 
+
+### Weighted sample frame 
+
+The following shows the effect of weighting the wave j population using the weighting variable `j_indinui_xw` from the UKHLS. 
+
+
+```{r}
+xs_weighting_lookup_j <- haven::read_dta(
+  here::here(
+    "big_data/UKDA-6614-stata/stata/stata13_se/ukhls/j_indresp.dta"
+  )
+) |>
+    select(
+        pidp, j_indinui_xw
+    )
+
+
+
+df_baseline_weighted <- df_ind_health_standardised |> 
+    filter(wave == 'j') %>%
+    filter(complete.cases(.)) |>
+  left_join(
+    xs_weighting_lookup_j
+  )
+# Now need to adjust the weighting so the sum of weights is the number of rows in this dataset 
+
+n_obs <- nrow(df_baseline_weighted)
+sum_weights <- df_baseline_weighted$j_indinui_xw |> sum()
+
+df_baseline_weighted <- 
+  df_baseline_weighted |> 
+  mutate(
+    bespoke_weight = j_indinui_xw / (sum_weights / n_obs)
+  )
+
+df_counterfactual_weighted <- 
+  df_baseline_weighted |> 
+  mutate(
+    lt_condition = FALSE
+  )
+
+
+preds_df_baseline_weighted <- 
+  predict(mod_health_discrete, newdata = df_baseline_weighted, type = "probs")
+
+preds_df_counterfactual_weighted <- 
+  predict(mod_health_discrete, newdata = df_counterfactual_weighted, type = "probs")
+
+predictions_predictors_baseline_weighted <- 
+  df_baseline_weighted |> 
+    bind_cols(preds_df_baseline_weighted) |> 
+    mutate(across(Employed:Unemployed, function(x) {x * bespoke_weight}))
+
+predictions_predictors_counterfactual_weighted <- 
+  df_counterfactual_weighted |> 
+    bind_cols(preds_df_counterfactual_weighted) |> 
+    mutate(across(Employed:Unemployed, function(x) {x * bespoke_weight}))
+
+# Now to get the expected sums (after weighting from both scenarios) 
+
+aggregate_predictions_weighted_baseline_scenario <- 
+  predictions_predictors_baseline_weighted |> 
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |> 
+    group_by(status) |> 
+    summarise(total_persons = sum(statistical_persons)) |> 
+    ungroup() |> 
+    mutate(scenario = "baseline") |> 
+    mutate(weighting = "weighted")
+  
+aggregate_predictions_weighted_counterfactual_scenario <- 
+  predictions_predictors_counterfactual_weighted |> 
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |> 
+    group_by(status) |> 
+    summarise(total_persons = sum(statistical_persons)) |> 
+    ungroup() |> 
+    mutate(scenario = "counterfactual") |> 
+    mutate(weighting = "weighted")
+
+bind_rows(
+    aggregate_predictions_weighted_baseline_scenario,
+    aggregate_predictions_weighted_counterfactual_scenario
+    ) |>
+    select(-weighting) |>
+    pivot_wider(names_from = scenario, values_from = total_persons) |>
+    mutate(
+        status = factor(status, levels = c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other"))
+    ) |>
+    arrange(status) |>
+    mutate(
+        base_share = baseline / sum(baseline), 
+        counter_share = counterfactual / sum(counterfactual),
+        point_difference = counter_share - base_share, 
+        prop_difference = point_difference / base_share
+    ) |>
+    knitr::kable()
+
+```
+
+Using the reweighting the results are slightly different: the share of the population projected to be employed in the baseline scenario is now 72.2% (compared with 72.4%), and in the counterfactual scenario 73.6% (compared with 73.8% unweighted). The proportion of the population projected to be Inactive long-term sick is now 4.8% in the baseline scenario and 1.9% in the counterfactual scenario, i.e. more than a halving. 
+
+## PAF summary 
+
+Whether using weighted or unweighted approaches, the population share projected to be Inactive long-term sick is around 60% smaller in the counterfactual scenario, where all individuals' long-term illness status is 'cured', than in the baseline scenario where some proportion of the people have long-term illness flags. This suggests a population attributable fraction (PAF) of around 60%, i.e. 60% of the pool of persons of working age who are inactive long-term sick is 'explained by' a limiting long-term condition. 

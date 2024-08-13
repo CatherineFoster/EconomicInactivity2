@@ -6,7 +6,7 @@ author:
     - Deborah Shipton
     - Andy Pulford
     - Neil Chalmers
-code-fold: true
+echo: false
 warning: false
 message: false
 zotero: "economic-inactivity-modelling"
@@ -15,14 +15,14 @@ bibliography: references.bib
 
 # Abstract
 
-Economic status is an important determinant of health, with unemployment and many forms of economic inactivity associated with worse morbidity and higher mortality. Health can also influence economic status, especially movement from employment to long-term sickness and from long-term sickness to employment. This paper uses modelling to estimate how improvements to health alter the composition of economic status at a population level in the UK.
-
-Descriptive analysis found important differences in characteristics by economic status, with health poorest among the long-term sick, unemployed and early retired. Flows into long-term sickness are largest from unemployment and employment. Factors such as low skills, income, local jobs, car access and childcare may prevent people from moving into work from unemployment or economic inactivity, even if their health improves.
-Multinominal logistic regression was used to build a foundational model to estimate the economic status of a population in the next time period, based on age, sex and current economic status. This model was extended to include health as a predictor. The model was then applied to wave i of the UKHLS. We compared the baseline predictions with a counterfactual where the health measures were improved. Improving both mental and physical health, with a bias towards improving physical health more, was associated with the largest reduction in unemployment and long-term sickness, and increased flows into employment, full-time education and early retirement.
-
-Further analysis will build on this methodology to quantify the impact of changes in structural, household and individual level factors on population-level economic status.
+{{< include abstract.qmd >}}
 
 # Introduction
+
+There have been important and in some cases troubling trends in working age economic inactivity in the UK, especially in trends towards worsening economic inactivity related to ill health. 
+
+The purpose of this paper is to describe and show examples of a modelling framework that allows the contribution of specific health related factors to economic activity and inactivity for a population to be estimated, having sufficiently controlled for both demography and event history (i.e. current economic status). The modelling framework is highly adaptable and extendable, much beyond the two types of extended variable shown here. 
+
 
 ## Economic activity and economic inactivity in the UK
 
@@ -48,83 +48,11 @@ This section of the paper will approach how we thought about problems, challenge
 
 ## Description of the modelling challenges and how we address them
 
-The modelling strategy starts with the need to operationalise key assumptions about the economic (in)activity status of individuals over time, factors that may influence an individual’s economic (in)activity status, and the longitudinal study design of the UKHLS. We assume:
-
-1.  An individual can be in one of seven economic (in)activity states at a given time period T; and these states are mutually exclusiveand exhaustive. We use a multinomial logistic regression.
-2.  A key factor expected to influence the economic (in)activity state of an individual at time T is their economic (in)activity state in the previous time period T-1. Our model is Markovian.
-3.  A person’s age is expected to influence the probability of an individual being in each and every economic (in)activity state, and these effects are likely to be nonlinear. We explored whether age should be included using a polynomial function or spline function.
-4.  A person’s sex is also expected to be influential as to their probability of being in and moving to each economic (in)activity state. We explored whether sex should be included an independent or interactive.
-5.  Once the modelling framework is sufficient in capturing those qualities represented by conditions (1-4), it should be readily extensible to capture the additional influence that other factors may have on the predicted probabilities of being in each mutually exclusive economic (in)activity state at time $T$. Condition (1) indicates that a multivariate model should be used. By this we mean that the response variable Y comprises a vector of response outcomes, rather than a single response outcome. Knowing additionally from this condition that the states an individual can be in are mutually exclusive and exhaustive leads us to a choice of multinomial logistic regression as our main model framework. Multinomial logistic regression is an extension of standard logistic regression from two mutually exclusive states to K mutually exclusive states, where $K$ is an integer value, which in our case is seven: the number of mutually exclusive and exhaustive economic (in)activity states an individual can be in at a time period $T$.
-
-Condition (2) suggests that we should include economic (in)activity status at time $T$ as a predictor in our model, where the model response is economic (in)activity status at time $T+1$. This inclusion of current state (at time $T$) as a predictor of next state (time $T+1$) means our model is Markovian, in that the influence of recent history is considered an important predictor of current status, but the longer-term history (such as from two or more time periods ago) is only considered to have influenced state at time $T+1$ through its influence on state T. This modelling approach can also be considered a discrete-state analogue of an autoregressive $AR(1)$ model in time series data, though Markovian is a more common way of conceptualising this type of model structure when working with mutually exclusive and discrete states and state transitions between time periods.
-
-Condition (3), when combined with condition (1), suggests that a somewhat generic, generalisable and flexible functional form for capturing the types of influence that age can have on the probabilities of being in each of the seven mutually exclusive states. Call this functional form s(age). Potential candidates for this flexible functional form s(.) include polynomial functions, which are parametric, and spline functions, which are semi-parametric. This functional form should be sufficiently flexible as to be appropriate for all seven age-state schedules, but not so flexible that the number of parameters required to fit it are too large, or the risk of model over-fitting too great.
-
-Condition (4) suggests that sex should be considered as a predictor variable in the model. It could either be included as an independent, non-interacting predictor, or also as a factor which interacts with other factors also included in the model. When considering interaction effects, a standard strategy for determining whether an interaction term is required should be adopted to make this determination.
-
-Condition (5) suggests that, in addition to including the factors implied by conditions 2-4 in the model, it should be possible to decide to add additional variables to this basic specification, which allows for the effect of these additional variables on economic (in)activity states to be estimated, assuming conditions 2-4 are adequately controlled for. Within this paper, we refer to the model that includes current status (condition 2), age (condition 3) and sex (condition 4) as our foundational model, and models which add one or more additional variables of interest to the predictor side of the model as our extended models. It is by comparing scenarios in an extended model, where the variable or variables of interest are changed to one of two conditions, but the foundational model variables are kept constant, that we will be able to produce estimates of the contribution of these variables of interest to economic (in)activity states overall.
+{{< include modelling-challenges-verbal.qmd >}}
 
 ## Modelling for simulation
 
-A statistical model can be thought of, fundamentally, as a simplified and stylized representation of a data generation process. This involves i) defining a model, which contains various parameters to be determined; and ii) using a dataset to calibrate the model parameters. A model is a way of specifying a relationship between predictor variables, usually referred to as X, and response variables, usually referred to as y. The model structure determines how many model parameters are to be estimated, and the process of producing model parameter estimates usually involves attempting to minimize some kind of loss function which relates the conditional predictions from a model Y\|X to the observed outcome values y.
-
-### Overview of what models contain
-
-Almost all statistical models can be considered specific instances of a generalised linear model (GLM) specification as described below:
-
-$$
-Y_i∼f(θ_i,\alpha), θ_i=g(X_i,\beta)
-$$
-
-(See eqn 1 of https://gking.harvard.edu/files/making.pdf)
-
-Where $Y_i$ represents a model-predicted value for the ith observation of a dataset, $f(.,.)$ a stochastic function, $g(.,.)$ a systematic or linking function, $X_i$ a row of predictor variables corresponding to the ith observation of the data, $θ_i$ the result of applying the linking function to $X_i$ , and $\alpha$ and $\beta$ parameters, for $f(.,.)$ and $g(.,.)$ respectively, to be determined either analytically or numerically.
-
-The estimation of parameters $\alpha$ and $\beta$ usually involves optimising some loss function $L(Y, y)$ where $Y$ represents model predictions and $y$ the corresponding observed outcomes from the data. This loss function is usually based on maximum likelihood identification.
-
-Note that the GLM specification above is generic enough that it covers cases where $\theta_i$, $Y_i$ and $y_i$ are vectors of length $k$, rather than scalars (single values), and so $\theta$, $Y$ and $y$ are matrices of dimensions $N$ by $k$ (where $N$ represents the number of observations, typically rows, in the dataset). Models where these quantities are vectors can be called multivariate regression models or vector GLMs.
-
-Within this paper, we use multinomial logistic regression, which can be thought of as a vectorised extension of standard logistic regression. For standard logistic regression we code an outcome as either 0 or 1 for each observation. This is appropriate where there are two and only two mutually exclusive states that an outcome can take. The standard logistic regression looks as follows:
-
-$$
-Y_i ∼ Bernoulli(\pi_i ) , π_i = \frac{1}{(1 + e^{-X_i \beta } )}
-$$
-
-(From eqn 3 of https://gking.harvard.edu/files/making.pdf)
-
-Here $\pi_i$ assigns a probability of the ith outcome taking a value of 1, meaning the probability of the ith outcome taking a value of 0 is $1 - \pi_i$. For multinomial logistic regression this generalises to:
-
-$$
-Y_i ∼ Multinomial(y_i, \pi_{ij} ) , \pi_{ij} = \frac{exp⁡(x_i \beta_j )}{\sum_{k=1}^{J}exp⁡(x_i \beta_k ) }
-$$
-
-(See https://docs.zeligproject.org/articles/zeligchoice_mlogit.html#model)
-
-Where in the above there are $J$ mutually exclusive outcomes that Y_i can take, where $J = K-1$, and $K$ is the total number of mutually exclusive and exhaustive states that can be possible outcomes for observation $i$. The difference between $J$ and $K$ is due to the need for a reference category, analogous to the 0 outcome in standard logistic regression. Just as the predicted probability of observation i taking an outcome 0 in standard logistic regression is $1- \pi_i$ , so the predicted probability of observation i taking the reference category outcome in multinomial logistic regression is $1- \sum_{k=1}^{J} \pi_{ik}$.
-
-### Selecting between model specifications
-
-Different model specifications, involving different predictors $X$, are compared using Akaike’s Information Criterion (AIC) and the Bayesian Information Criterion (BIC), even where models are not nested. In either case, lower scores are generally considered to indicate a better trade-off between model complexity and model fit, and BIC tends to penalise model complexity more severely than AIC, leading to more parsimonious models being selected. Where AIC and BIC ‘prefer’ different model specifications, researcher judgement was used to determine which model specification to adopt, for both the ‘foundational’ and ‘extended’ model specifications.
-
-### Simulation to quantify the effects of specific factors
-
-With a model specification selected as described above, after being calibrated on the available data, the model can then be used to estimate the influence of one or more specific factors on both individual level conditional probabilities to transition to different mutually exclusive states, and the composition of a population beginning in heterogeneous states ending up each of the mutually exclusive states. The latter process, population level modelling, depends on the former process: the modelling of conditional transition for an individual with a known state at time T to each of the mutually exclusive states at time T+1. This section will therefore describe how the modelling can be used to simulate the effects of a given factor of interest on individual-level transitions, before then describing how the approach can be used to estimate the effects of a given factor for a population. To start with, let us say that model $M(.)$ has been calibrated on observed data $D ≡ \{y,X\}$, where $y$ is the observed response and $X$ is the observed predictor matrix. Given any valid set of predictor variables for an individual $X_i$ the model will generate expected probabilities $E(Y_i )= P$ where $P ≡ {p_1,p_2,…,p_J }$, $p_0= 1- \sum_{j=1}^{J}p_j$ and $\sum_{j=1}^J p_j <1$. (i.e. the model will generate mutually exclusive and exhaustive expected probabilities for each of the $K$ mutually exclusive states where, as before, $K=J+1$.)
-
-Given the above, the model will generate mutually exclusive and exhaustive predicted probabilities of being in each state at time $T+1$, $P^*$, given a *hypothetical* predictor set $X_i^*$. We can further imagine splitting this hypothetical predictor set into components $X_i^*= \{W_i,Y_i (T),Z\}$, where $W_i$ represents a range of modelled factors (such as age and sex) to control for, $Y_i (T)$ represents the economic (in)activity state at time $T$, and $Z$ represents a factor (or set of factors) of interest.
-
-We can now define two predictor sets: $X_i^{Trt}= \{W_i,Y_i (T),Z= Z^{Trt} \}$, and $X_i^{Ctr}= \{W_i,Y_i (T),Z= Z^{Ctr} \}$. Note that these differ only in terms of the contents of the factor or factors of interest $Z$, with all other variables identical. To simplify, let us assume that $Z=1$ for $X_i^{Trt}$, and $Z=0$ for $X_i^{Ctr}$, i.e. that $Z$ is a binary indicator which marks the individual as either exposed or not exposed to the specific factor of interest. We can then define a model-derived treatment effect relating to this factor as ${TE}_i=E(Y_i^{Trt})-E(Y_i^{Ctr})$ where $Y_i^*$ is the model prediction given $X_i^*$ as input. Along with the conditions stated above - that $p_0 = 1 - \sum_{j=1}^J p_j$ and that $J$ is one less $K$, we have two vectors of predicted probabilities of length K: $\{p_0^{Trt},p_1^{Trt},p_2^{Trt} ,…,p_J^{Trt} \}$ and $\{p_0^{Ctr},p_1^{Ctr},p_2^{Ctr} ,…,p_J^{Ctr} \}$. Our simulated treatment effect for individual $i$ will therefore be a vector of length $K$: $\{p_0^{Trt}- p_0^{Ctr},p_1^{Trt}- p_1^{Ctr},p_2^{Trt}- p_2^{Ctr} ,…,p_J^{Trt}- p_J^{Ctr} \}$, where the value of each element will be above 0 if the estimated probability of being in the state indicated by the position element is greater in the treatment condition (where $Z=1$) than in the control condition (where $Z=0$); and below 0 if the probability is estimated to be higher in the control than the treatment condition.
-
-### Moving from individual level to population level estimates
-
-We can extend the intuition of the above to estimating the effect of a given factor of interest $Z$ for a population rather than an individual as follows. If we define $X^{Ref}$ as a matrix of dimensions $m$ by $p$, where $m$ is the number of rows (number of hypothetical individuals) and $p$ the number of columns (number of predictors) then we can say that the contents for each row of $X^{Ref}$, $X_i^{Ref}$, are $\{W_i,Y_i (T),Z=Z_i \}$. Again, in the simple case of a binary indicator for $Z$, $Z_i$ could take on a value of either 0 or 1. We can now define a counterfactual matrix, $X^{Alt}$, whose dimensions and values are identical to that of $X^{Ref}$, except that all values of $Z$ are now set to 0, i.e. $X_i^{Alt}= \{W_i,Y_i (T),Z=0\}$ for all i. If we now slightly redefine $P$ as an m-by-K (rather than m-by-J) dimension matrix of conditional expected probabilities including the probabilities of $p_0$ (i.e. the reference category state) we can now define the matrix of expected probabilities given $X^{Ref}$ as $P^{Ref}$ and given $X^{Alt}$ as $P^{Alt}$. With both $P^{Ref}$ and $P^{Alt}$ we can now produce modelled estimates of the number of individuals projected to be in each of the $K$ mutually exclusive states through column-wise summation of each $P$ matrix. This will produce two vectors, $S^{Ref}$ and $S^{Alt}$, both of length $K$, whose elements are $\{s_0^{Ref},s_1^{Ref},…,s_J^{Ref} \}$ and $\{s_0^{Alt},s_1^{Alt},…,s_J^{Alt} \}$ respectively. For both $S^{Ref}$ and $S^{Alt}$, the sum of all elements will be $m$, the number of rows in $X$, because for any row of $X$, $X_i$, the sum of all row-wise probabilities must equal 1.
-
-### Using the approach to estimate PAFs and SAFs
-
-What the above means is that the contents of $S^{Ref}$ and $S^{Alt}$ give the predicted pool sizes for a population of individuals in each mutually exclusive state under conditions that differ only in terms of the presence, absence or value of the particular factor of interest $Z$. This means that for a particular state $j$ then $s_j^{Alt} - s_j^{Ref}$ will give *the additional number of persons in state j that can be attributed to Z*, and $\frac{s_j^{Alt}- s_j^{Ref}}{s_j^{Ref}} $ *the relative difference in state $j$ pool size that can be attributed to $Z$*. This latter quantity can be of particular interest as, when $Z$ comprises a single factor, then it can be interpreted as a population-attributable fraction (PAF), i.e. the proportion of the state pool size that can be ‘explained by’ the factor of interest. Where $Z$ comprises more than one factor, then the selective ‘switching on’ and ‘switching off’ of factors within the model can be used to estimate the related sequential attributable fractions (SAFs) of the marginal contributions of any specific faction given the presence or absence of other factors of interest.
-
-### Including continuous variables in the model
-
-The descriptions above have considered the case where Z takes on a binary value, 0 or 1. Where $Z$ takes on a continuous value, the values of Z are first normalized and standardized to have a mean of 0 and standard deviation of 1. In the control/reference population the observed values (after standardisation and normalisation) are used; for the alternative population a value of 1 is either added or subtracted to the observed values, depending on whether the factor of interest is something to which population exposure should ideally be maximized (so added) or minimized (so subtracted). In either case, this is equivalent to an alternative/counterfactual scenario in which the exposure to the factor of interest has been shifted by one standardised unit in the ‘good’ direction.
+{{< include modelling-for-simulation.qmd >}}
 
 ## Data Source Used: The UK Household Longitudinal Study
 
@@ -152,7 +80,7 @@ Our multinomial logistic regression model therefore has K=7 (and so J=6). Each o
 
 ## Dual uses of the dataset
 
-It is important to note that the main dataset used in this paper, the UK Household Longitudinal Study (UKHLS), is used in two distinct capacities: firstly to calibrate a model to produce a vector of conditional expected probabilities of individuals ending up in each of the mutually exclusive economic (in)activity states at the next discrete period; and secondly to construct a representative population sample frame used to produce the reference population, X\^Ref, which is then artificially modified through the overwriting of factors of interest, Z, to form the counterfactual population, X\^Alt. The distinction between these two uses, and ways in which the UKHLS is used in these two capacities, will now be discussed.
+It is important to note that the main dataset used in this paper, the UK Household Longitudinal Study (UKHLS), is used in two distinct capacities: firstly to calibrate a model to produce a vector of conditional expected probabilities of individuals ending up in each of the mutually exclusive economic (in)activity states at the next discrete period; and secondly to construct a representative population sample frame used to produce the reference population, $X^{Ref}$, which is then artificially modified through the overwriting of factors of interest, Z, to form the counterfactual population, $X^{Alt}$. The distinction between these two uses, and ways in which the UKHLS is used in these two capacities, will now be discussed.
 
 The UKHLS is a household panel survey, which aims to follow up all individuals in households selected at random via the Postcode Address File (PAF) annually from the first 12 month period of its operation, 2009, for each subsequent 12 month period. Within the UKHLS, each 12 month period is referred to as a wave, and the first wave referred to as wave a. For our purposes, the data required for calibrating the model are those where individuals have been successfully recontacted between consecutive waves, and the economic (in)activity status at both waves $T$ and $T+1$ have been successfully recorded. The observations in our model therefore comprise $D ≡ \{y,X\}$, where $y= y_{t+1}$, the economic (in)activity status at wave $T+1$, and $X= \{W,y_t,Z\}$, i.e. sociodemographic confounders of interest $W$, economic (in)activity status at wave $T$, $y_t$, and the factor or factors of interest $Z$. (Implicitly, $W$ and $Z$ are also as recorded at wave $T$, and for an individual factors like age are of course liable to change over time.)
 
@@ -164,3 +92,39 @@ Regarding the use of the UKHLS data for model prediction, the last complete pre-
 
 As described above, the procedure using data from wave j for model prediction involved identifying all complete observations from this wave for variables $\{W,y_t,Z\}$ and using them to construct the reference population sample frame $X^{Ref}$. Using the procedure described above, for the counterfactual sample frame $X^{Alt}$ the values of $Z$ were ‘switched off’, i.e. set to 0, in the case of a binary indicator, or standardised and normalized, then moved one standardised unit in the ‘good’ direction for continuous indicators. In the case of the continuous indicator presented in this paper there were a number of different ways of implementing the concept of moving $Z$ one standardised unit in the good direction, due to the factor of interest – health – being recorded separately for mental health and physical health, and an interaction term between these two health subdomains being identified as important for modelling these factors appropriately. These are discussed further below.
 
+## Model Specification
+
+{{< include model-specifications.qmd >}}
+
+
+## Foundational model
+
+{{< include models/foundational/main.qmd >}}
+
+## Extended models
+
+### Discrete health outcome extended model
+
+#### Model selection
+
+{{< include models/extended-discrete/model_selection.qmd >}}
+
+#### Model predictions and simulations 
+
+{{< include models/extended-discrete/model_prediction.qmd >}}
+
+
+### Continuous health outcome extended model
+
+
+#### Model selection
+
+{{< include models/extended-continuous/model_selection.qmd >}}
+
+#### Model predictions and simulations 
+
+{{< include models/extended-continuous/model_prediction.qmd >}}
+
+## Discussion
+
+{{< include discussion.qmd >}}

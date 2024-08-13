@@ -1,0 +1,414 @@
+---
+echo: false
+warning: false
+message: false
+---
+
+```{r}
+devtools::load_all(here::here('R'))
+
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_sf12_standardised <-
+  df_ind |>
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(c(dvage, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    filter(complete.cases(.)) |>
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  # This renames dvage to age
+    rename(age = dvage) |>
+    filter(between(age, 16, 64))  
+
+
+
+```
+
+
+```{r}
+#| cache: true
+
+
+mod_phmh <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
+    data = df_ind_sf12_standardised,
+    maxit = 200
+)
+
+mod_foundation <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_sf12_standardised,
+    maxit = 200
+  )
+
+
+
+
+```
+
+
+## Predictive accuracy 
+
+
+```{r}
+true_category <- df_ind_sf12_standardised$next_status
+
+prediction_block_ext <- predict(mod_phmh, type = "probs")
+prediction_block_fnd <- predict(mod_foundation, type = "probs")
+
+N <- length(true_category)
+
+pred_score_ext <- vector(mode = "numeric", length = N)
+pred_score_fnd <- vector(mode = "numeric", length = N)
+
+for (i in 1:N){
+    pred_score_ext[i] <- prediction_block_ext[i,true_category[i]]
+    pred_score_fnd[i] <- prediction_block_fnd[i,true_category[i]]
+}
+mean(pred_score_ext)
+mean(pred_score_fnd)
+```
+
+The continuous health extended model specification has an average predicted model accuracy score of `0.7927`, as opposed to `0.7902` for the foundational model, when both are assessed using the data used to fit them, showing a marginal improvement in fit associated with including this variable. 
+
+## Counterfactual scenarios 
+
+Unlike with the discrete case, there are a number of possible counterfactual scenarios in which 1 standardised unit of improvement in health has been modelled. Such health improvement could occur entirely through the mental health pathway, or entirely through the physical health pathway, or through a combination of both mental and physical health improvements, which may be biased either towards mental health or physical health. Because of this five different counterfactual scenarios are considered, which can be represented visually. 
+
+```{r}
+df_baseline <- df_ind_sf12_standardised |> 
+  filter(wave == 'j')
+
+
+df_counter_equal <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 2^-0.5,
+    sf12pcs_dv = sf12pcs_dv + 2^-0.5
+  )
+
+df_counter_ph_bias <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 * 5^-0.5,
+    sf12pcs_dv = sf12pcs_dv + 2 * 5^-0.5
+  )
+
+df_counter_mh_bias <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 2 * 5^-0.5,
+    sf12pcs_dv = sf12pcs_dv + 1 * 5^-0.5
+  )
+
+
+df_counter_mh_only <- 
+  df_baseline |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1
+  )
+
+df_counter_ph_only <- 
+  df_baseline |> 
+  mutate(
+    sf12pcs_dv = sf12pcs_dv + 1
+  )
+
+
+```
+
+## Population level estimates 
+
+### Unweighted sample frame 
+
+The following table shows the estimated differences in population pool predicted to be in each of the seven mutually exclusive categories using the *unweighted* sample from the last pre-COVID wave: 
+
+```{r}
+
+preds_baseline <- predict(mod_phmh, newdata = df_baseline, type = "probs")
+
+preds_counter_mh_only <- predict(mod_phmh, newdata = df_counter_mh_only, type = "probs")
+
+preds_counter_mh_bias <- predict(mod_phmh, newdata = df_counter_mh_bias, type = "probs")
+
+preds_counter_equal <- predict(mod_phmh, newdata = df_counter_equal, type = "probs")
+
+preds_counter_ph_bias <- predict(mod_phmh, newdata = df_counter_ph_bias, type = "probs")
+
+preds_counter_ph_only <- predict(mod_phmh, newdata = df_counter_ph_only, type = "probs")
+
+
+predictions_summary_matrix <- cbind(
+  # The number 2 indicates do the sum function for each column.
+  # If it were 1 then this would sum for each row (which should add up to 1 in call cases)
+  apply(preds_baseline, 2, sum),
+  apply(preds_counter_mh_only, 2, sum),
+  apply(preds_counter_mh_bias, 2, sum),
+  apply(preds_counter_equal, 2, sum),
+  apply(preds_counter_ph_bias, 2, sum), 
+  apply(preds_counter_ph_only, 2, sum)
+)
+
+colnames(predictions_summary_matrix) <- c("base", "counter_mh_only", "counter_mh_bias", "counter_equal", "counter_ph_bias", "counter_ph_only")
+
+predictions_share_matrix <- 
+    predictions_summary_matrix |> 
+        as_tibble(rownames = "Status") |>
+        mutate(
+            Status = factor(Status, levels = c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other"))
+        ) |>
+        arrange(Status) |>
+        mutate(
+            base_share = base / sum(base),
+            counter_mh_only_share = counter_mh_only / sum(counter_mh_only),
+            counter_mh_bias_share = counter_mh_bias / sum(counter_mh_bias),
+            counter_equal_share = counter_equal / sum(counter_equal),
+            counter_ph_bias_share = counter_ph_bias / sum(counter_ph_bias),
+            counter_ph_only_share = counter_ph_only / sum(counter_ph_only)
+        )
+    
+predictions_share_matrix |>
+    select(Status, contains("share")) |>
+    knitr::kable()
+
+```
+
+Even though each of the counterfactual scenarios are the same in terms of the *amount* of change they represent relative to the baseline, they differ in terms of the relative contribution of mental or physical health improvement pathways towards this overall improvement. 
+
+In terms of projected effect on the share of the population Inactive - long-term sick, the scenario `counter_ph_bias` apepars to have the largest effect, reducing the share of the population in this state from 4.09% in the baseline scenario to 2.85%. As factors explaining this state are of particular interest we will now focus on this specific counterfactual scenario when comparing with the baseline. The absolute and relative differences between the baseline and this counterfactual scenario are as shown in the following table: 
+
+```{r}
+
+predictions_share_matrix |>
+    select(Status, base_share, counter_ph_bias_share) |>
+    mutate(
+        point_difference = counter_ph_bias_share - base_share, 
+        prop_difference = point_difference / base_share
+    ) |>
+    knitr::kable()
+
+```
+
+Health, as operationalised in this way - as a one standardised unit improvement along both mental and physical health, but biased towards physical health improvement, would lead to a decrease in the share of the population who are Inactive long-term sick from around 4.09% to 2.85%, or a difference of around 30%. This could be interpreted as an estimated PAF of the Inactive long-term sick population attributable to poor health based on this continuous health variable approach, although it is not directly comparable with the approach taken in the discrete health scenario previously. 
+
+
+### Weighted sample frame 
+
+The following shows the effect of weighting the wave j population using the weighting variable `j_indinui_xw` from the UKHLS, with a focus on the scenario that leads to the greatest apparent effect on Inactive long-term sick, namely the `ph_bias` scenario. 
+
+
+```{r}
+xs_weighting_lookup_j <- haven::read_dta(
+  here::here(
+    "big_data/UKDA-6614-stata/stata/stata13_se/ukhls/j_indresp.dta"
+  )
+) |>
+    select(
+        pidp, j_indinui_xw
+    )
+
+df_baseline_weighted <- df_ind_sf12_standardised |> 
+    filter(wave == 'j') %>%
+    filter(complete.cases(.)) |>
+  left_join(
+    xs_weighting_lookup_j
+  )
+# Now need to adjust the weighting so the sum of weights is the number of rows in this dataset 
+
+n_obs <- nrow(df_baseline_weighted)
+sum_weights <- df_baseline_weighted$j_indinui_xw |> sum()
+
+df_baseline_weighted <- 
+  df_baseline_weighted |> 
+  mutate(
+    bespoke_weight = j_indinui_xw / (sum_weights / n_obs)
+  )
+
+df_counterfactual_weighted <- 
+  df_baseline_weighted |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1 * 5^-0.5,
+    sf12pcs_dv = sf12pcs_dv + 2 * 5^-0.5
+  )
+
+
+preds_df_baseline_weighted <- 
+  predict(mod_phmh, newdata = df_baseline_weighted, type = "probs")
+
+preds_df_counterfactual_weighted <- 
+  predict(mod_phmh, newdata = df_counterfactual_weighted, type = "probs")
+
+predictions_predictors_baseline_weighted <- 
+  df_baseline_weighted |> 
+    bind_cols(preds_df_baseline_weighted) |> 
+    mutate(across(Employed:Unemployed, function(x) {x * bespoke_weight}))
+
+predictions_predictors_counterfactual_weighted <- 
+  df_counterfactual_weighted |> 
+    bind_cols(preds_df_counterfactual_weighted) |> 
+    mutate(across(Employed:Unemployed, function(x) {x * bespoke_weight}))
+
+# Now to get the expected sums (after weighting from both scenarios) 
+
+aggregate_predictions_weighted_baseline_scenario <- 
+  predictions_predictors_baseline_weighted |> 
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |> 
+    group_by(status) |> 
+    summarise(total_persons = sum(statistical_persons)) |> 
+    ungroup() |> 
+    mutate(scenario = "baseline") |> 
+    mutate(weighting = "weighted")
+  
+aggregate_predictions_weighted_counterfactual_scenario <- 
+  predictions_predictors_counterfactual_weighted |> 
+    pivot_longer(Employed:Unemployed, names_to = "status", values_to = "statistical_persons") |> 
+    group_by(status) |> 
+    summarise(total_persons = sum(statistical_persons)) |> 
+    ungroup() |> 
+    mutate(scenario = "counterfactual") |> 
+    mutate(weighting = "weighted")
+
+bind_rows(
+    aggregate_predictions_weighted_baseline_scenario,
+    aggregate_predictions_weighted_counterfactual_scenario
+    ) |>
+    select(-weighting) |>
+    pivot_wider(names_from = scenario, values_from = total_persons) |>
+    mutate(
+        status = factor(status, levels = c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other"))
+    ) |>
+    arrange(status) |>
+    mutate(
+        base_share = baseline / sum(baseline), 
+        counter_share = counterfactual / sum(counterfactual),
+        point_difference = counter_share - base_share, 
+        prop_difference = point_difference / base_share
+    ) |>
+    knitr::kable()
+
+```
+
+Using the reweighting approach the proportion projected to be Inactive long-term sick is 4.50% in the baseline scenario, compared to 3.18% in the counterfactual scenario. This is a relative decline of 29.4%, which is only marginally different from the 30.4% when no weighting was used. 
+
+## Sequential attributable fraction estimation 
+
+The same model can be used to estimate sequential attributable fractions (SAFs) associated with a given marginal change in health status given that another change in health status has already occurred. We can do this by modelling the four following scenarios: 
+
+- **O** Baseline scenario: No change to mental or physical health scores
+- **P** PH only: Physical health improved by one standardised unit; mental health unchanged
+- **M** MH only: Mental health improved by one standardised unit; physical health unchanged
+- **B** Both: Both mental health and physical health *each* improved by one standardised unit. 
+
+Note that scenarios **O**, **P**, and **M** have already been modelled; only scenario **B** remains to be modelled. Whereas previously each counterfactual scenario modelled involved a 1 standardised unit change from health states in the baseline scenario, but with different degrees of bias towards either physical or mental health change, in the **B** scenario the total change in health is greater, being 1 unit in the MH direction and 1 unit in the PH direction. If both MH and PH are considered orthogonal dimensions of health in general, and after standardising can be considered to share a common scale, then the total amount of health improvement represented in scenario **B** is therefore $\sqrt{1^2 + 1^2}$, or around 1.41 standardised units of health improvements. 
+
+The aim of the SAF approach is to estimated the additional effect that a MH improvement has on the outcome of interest (Inactive long-term sick) if a PH improvement had already occurred; or of a PH improvement if a MH improvement had already occurred. It does this by using differences in outcomes by scenario to understand the following two pathways of health improvement: 
+
+- $O \rightarrow P \rightarrow B$
+- $O \rightarrow M \rightarrow B$
+
+From the perspective of the first pathway, scenario **B** represents the addition of MH, whereas from the perspective of the second pathway, scenario **B** represents the addition of PH. 
+
+```{r}
+
+df_O <- df_ind_sf12_standardised |> 
+  filter(wave == 'j')
+
+
+df_M <- 
+  df_O |> 
+  mutate(
+    sf12mcs_dv = sf12mcs_dv + 1
+  )
+
+df_P <- 
+  df_O |> 
+  mutate(
+    sf12pcs_dv = sf12pcs_dv + 1
+  )
+
+df_B <- 
+  df_O |> 
+  mutate(
+    sf12pcs_dv = sf12pcs_dv + 1,
+    sf12mcs_dv = sf12mcs_dv + 1
+  )
+
+
+preds_O <- predict(mod_phmh, newdata = df_O, type = "probs")
+preds_M <- predict(mod_phmh, newdata = df_M, type = "probs")
+preds_P <- predict(mod_phmh, newdata = df_P, type = "probs")
+preds_B <- predict(mod_phmh, newdata = df_B, type = "probs")
+
+pop_prop_table <- 
+    preds_O |> 
+        as_tibble() |> 
+        mutate(scenario = "O") |> 
+        select(scenario, everything()) |> 
+        pivot_longer(Employed:Unemployed, names_to = "state", values_to = "value") |>
+        bind_rows(
+            preds_M |> 
+                as_tibble() |> 
+                mutate(scenario = "M") |> 
+                select(scenario, everything()) |> 
+                pivot_longer(Employed:Unemployed, names_to = "state", values_to = "value")
+        ) |>
+        bind_rows(
+            preds_P |> 
+                as_tibble() |> 
+                mutate(scenario = "P") |> 
+                select(scenario, everything()) |> 
+                pivot_longer(Employed:Unemployed, names_to = "state", values_to = "value")
+        ) |>
+        bind_rows(
+            preds_B |> 
+                as_tibble() |> 
+                mutate(scenario = "B") |> 
+                select(scenario, everything()) |> 
+                pivot_longer(Employed:Unemployed, names_to = "state", values_to = "value")
+        ) |> 
+        group_by(scenario, state) |>
+        summarise(statistical_persons = sum(value)) |>
+        ungroup() |>
+        group_by(scenario) |>
+        mutate(pop_prop = statistical_persons / sum(statistical_persons)) |>
+        ungroup() |>
+        select(-statistical_persons) |>
+        pivot_wider(names_from = "scenario", values_from = "pop_prop") |>
+        mutate(
+            state = factor(state, levels = c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other"))
+        ) |>
+        arrange(state) |>
+        select(state, O, M, P, B) 
+
+
+pop_prop_table |>
+    knitr::kable()
+```
+
+In the baseline scenario, 72.99% of the population are projected to be employed. When mental health alone is improved (scenario **M**) this increases to 74.01%. When physical health alone is improved (scenario **P**) this increases to 74.76%. When both physical and mental health are improved (scenario **B**) this increases to 75.42%. 
+
+So, what is the effect of mental health on the proportion employed? This question could either be answered from the perspective of the $O \rightarrow M \rightarrow B$ pathway, or from the perspective of the $O \rightarrow P \rightarrow B$ pathway. From the perspective of the first pathway, the effect of improving mental health is projected to increase the proportion employed by 1.03% points ($O \rightarrow M$). From the perspective of the second pathway, the effect of improving mental health is projected to increase it by 0.66% points ($P \rightarrow B$).
+
+The difference between PAFs and SAFs, and so the importance of modelling marginal effects along sequences, is even easier to understand if looking at projected changes in the proportion Inactive long-term sick in each of the four scenarios. The size of this subpopulation is reduced by 0.64% points if going along the $O \rightarrow M$ pathway, equivalent to a 15.62% reduction in the baseline subpopulation size. And the size of the subpopulation is reduced by 1.06% points if going along the $O \rightarrow P$ pathway, equivalent to a 26.02% reduction in the baseline subpopulation size. 
+
+From a PAF-like perspective, we might be inclined to suggest therefore that 15.62% of Inactive long-term sick can be attributed to poor mental health, and 26.02% can be attributed to poor physical health. However, this it would be incorrect to assume that the amount attributable to both poor physical health and poor mental health is the sum of these two proportions, or 41.63%. Instead, the difference in subpopulation proportions when going along the $O \rightarrow B$ pathway is 1.65% points, which is a 40.38% proportionate reduction from the baseline scenario subpopulation size. This difference, from 41.63% to 40.38%, though somewhat small in this example, illustrates why the effect of multiple factors in combination will tend to be smaller than the sum of the individual effects of specific factors, and hence how SAFs differ from PAFs. 
+
+

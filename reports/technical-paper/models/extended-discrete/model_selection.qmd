@@ -1,0 +1,100 @@
+---
+message: false
+warning: false
+echo: false
+---
+
+```{r}
+
+devtools::load_all(here::here('R'))
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "health"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_health_standardised <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  |> 
+    mutate(
+      lt_condition = case_when(
+        health %in% c("No", "no") ~ FALSE,
+        health %in% c("Yes", "yes") ~ TRUE,
+        TRUE ~ NA_integer_
+      ) |> as.logical()
+    ) %>% 
+    filter(complete.cases(.)) 
+```
+
+The two following extended model specifications were considered as ways of incorporating the effect of a long-term health condition (where the variable `lt_condition` is a simple derivative of the `health` variable in the UKHLS) on labour market activity: 
+
+- `mod_01`: `next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition`
+- `mod_02`: `next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition * sex`
+
+i.e. the second of these two specifications allows for an interaction term between sex and condition, in addition to the interaction term between sex and `this_status` already included as part of the baseline model. 
+
+```{r}
+#| cache: true
+
+mod_00 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_health_standardised |> 
+      filter(!is.na(lt_condition)),
+      maxit = 200 
+  )
+
+mod_01 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition,
+    data = df_ind_health_standardised,
+    maxit = 200
+  )
+
+mod_02 <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition * sex,
+    data = df_ind_health_standardised,
+    maxit = 200
+  )
+  
+```
+
+The penalised model fits of the two extended model specifications, along with the foundational model specification (called `mod_00` here), using AIC and BIC are shown below:
+
+```{r}
+AIC(mod_00, mod_01, mod_02) |>
+    as_tibble(rownames = "model") |>
+    left_join(
+        BIC(mod_00, mod_01, mod_02) |>
+            as_tibble(rownames = "model")
+    ) |>
+    mutate(
+        aic_rank = rank(AIC),
+        bic_rank = rank(BIC)
+    ) |>
+    knitr::kable()
+
+```
+
+Here both versions of the extended model specification `mod_01` and `mod_02` outperformed the foundational model specification, (called `mod_00` here), suggesting health adds useful predictive information to the model. The generally more parsimonious BIC metric suggests the model without interaction terms should be used, whereas the less parsimonious AIC metric suggests the model with interaction terms should be used. Rather than engaging in another assessment round we decided to use the simpler `mod_01`, i.e. the extended model specification without interaction terms, as suggested by the BIC metric. 
+
+

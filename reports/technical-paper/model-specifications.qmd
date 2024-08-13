@@ -1,0 +1,66 @@
+### Foundational Model Specification
+
+Previously, we stated that our model specification must produce predictions of the economic (in)activity status for an individual at time T+1, meaning our response is $y= y_{t+1}$, given a predictor matrix $X= \{W,y_t,Z\}$, where $W$ are sociodemographic confounders, $y_t$ is the economic (in)activity status at wave $T$, and $Z$ represents the factor or factors of interest. This general specification still offers many researcher degrees of freedom in terms of how it may be implemented. Our approach was to first select what we call a common foundational model specification, in which $X= \{W,y_t \}$, then use this foundational model specification as the starting point for one or more extended model specifications in which $X= \{W,y_t,Z\}$. We considered it vital that $W$ includes at a minimum adequate controls for sex and age. We also explored the possibility that interactions between components of $W$ and $y_t$ may also be required. 
+
+Our final foundational model specification for the predictors $X$ was, using R’s formula interface: 
+
+> `next_status ~ this_status * sex + splines::bs(age, knots=2, degree=3)` 
+
+Or equivalently: 
+
+> `next_status ~ this_status * sex + splines::bs(age, df = 5)`
+
+This final foundatonal model specification was selected after comparing eight possible foundational model specifications that incorporated event history (`this_status`), sex, and non-linear age effects: four specifications that included an interaction term between event history and sex (i.e. representing the concept that conditional transitions between states are influenced by sex), and four that did not. Within each of these groups of four, the number of degrees of freedom (the `df` parameter) in the `bs()` function was changed between 3 and 6. 
+
+For each of the eight foundational model specifications two types of test were performed to try to determine the best specification to use. Firstly, AIC and BIC were calculated and compared. These are measures of penalised model fit, where lower scores are by convention taken to indicate better fit. Comparison of AIC and BIC indicated that models including the interaction term were to be prefered to those without an interaction term, but the relative ranking of AIC and BIC scores for the four models with interaction terms were reversed, with AIC 'preferring' the simpler models and BIC the most complicated. 
+
+In order to select between the four model specifications with interaction terms, but differing in terms of the `df` parameter in `bs()` function, the mean accuracy scores for out-of-sample fit were calculated. This involves fitting the model as per the specification of interest on a randomly selected 80% of the dataset, then holding back 20% of the dataset as a test set. For each observation in the test set the model produced a vector of probabilities of being in each of the seven mutually exclusive and exhaustive states summing to one. The accuracy score for a single observation was determined by identifying the probability predicted from the model for the correct categorical assignment (i.e. economic state at wave + 1, i.e. the observed value for `next_status` using the terms in the formula expression above). For example, if for an observation the observed `next_status` was 'Employed', and for this observation the model predicted `Employed` with a probability of `0.90`, then the model's prediction was given an accuracy score of `0.90`. The accuracy metric of interest is the mean accuracy score across all observations in the test set. 
+
+For each of the four models, the exercise - fitting the model on the training set and calculating mean accuracy on the test test - was repeated fifty times. The mean, median, and lower upper quartiles of the ranges of the these mean accuracy scores were calculated and compared. 
+
+Using this exercise, all four model specifications were estimated to have very similar mean accuracy scores, predicting the correct `next_state` on average between 78.4% and 78.5% of the time. The only differences in the out-of-sample predictive accuracies between the models were to additional numbers of decimal places. By a very small margin, the model whose specification is described above, with `df=5` set in the `bs()` function for the age spline, outperformed models where either `df=3`, `df=4` or `df=6` was used instead. This is why this particular specification was used as the foundational model specification, even though the reasons for preferring this specification to similar alternatives are not compelling.
+
+Both extended model specifications discussed in this manuscript begin with this foundational model specification, then add on one or more variables to represent the specific factors/drivers of interest `Z`.
+
+### Extended Model Specification 1: Health as a Discrete Variable
+
+Our first extension of the final foundational model specification defined in section XXX is an example where Z is a single binary health-related indicator. For this we used the variable LLTI within the UKHLS dataset. For this variable, UKHLS are asked the following question:
+
+>Do you have any long-standing physical or mental impairment, illness or disability? By ‘long-standing’ I mean anything that has troubled you over a period of at least 12 months or that is likely to trouble you over a period of at least 12 months.
+
+We coded affirmative responses to this question as ‘1’, and ‘0’ otherwise. This discrete health extended model specification is therefore the foundational model specification plus this additional LLTI variable, i.e.
+
+> `Status_T + sex + Status_T:sex + bspline(age, knots =2, degree =3) + LLTI`
+
+To check whether the above specification is sufficient extension of the foundational model when incorporating the possible influence of LLTI, we considered an additional specification including an `LLTI:sex` interaction. However, this interaction term did not lead to an improvement in either AIC or BIC. 
+
+
+### Extended Model Specification 2: Modelling health as a continuous outcome using the SF-12
+
+Our second extended model specification involved modelling health as a continuous rather than discrete variable. For this, we used summary responses from the Short Form (SF) 12, which is a 12-item questionnaire for assessing both mental and physical health asked in each wave of the UKHLS. Of the 12 items in the questionnaire, six items relate to physical health (physical functioning, physical role, bodily pain, and general health), and six items relate to mental health (energy, social functioning, emotional role, mental health) (Turner-Bowker and Hogue, 2014) (Ware et al, 1995). The scores from each of these pairs of six items are aggregated to produce separate mental and physical health component scores; the two scores are not then further aggregated to produce a single overall continuous health score. 
+
+For our purposes, we first standardised and normalised both the aggregate mental health and physical health component scores, so that both scores have a mean of 0 and standard deviation of 1. This is to allow us to approach using the model to estimate the contribution that health has on economic (in)activity in a similar way to that used in the first extended model specification. Let us refer to the standardised and normalised mental health component score as $z^M$ and the standardised and normalised physical health component score as $z^P$. 
+
+Because health scores from the SF-12 are not further aggregated into a single overall health score, but remain separate variables, there are a number of alternative ways that they can be implemented to form the extended model specification. This includes:
+
+1. Adding $z^M$ only
+2. Adding $z^P$ only
+3. Adding both $z^M$ and $z^P$ as independent terms
+4. Adding both $z^M$ and $z^P$, including an interaction term between $z^M$ and $z^P$ 
+
+As elsewhere, we compared these candidate extended model specifications using AIC and BIC. The model specification with the lowest (i.e. ‘preferred’) AIC and BIC scores was the fourth specification above, i.e. the model including both terms with an interaction term. All above model specifications had lower AIC and BIC scores than the foundational model specification. 
+
+### A description of the SF-12
+
+Our continuous health variable was constructed from the Short Form (SF) 12 (SF- 12). This is a 12-item questionnaire used to assess generic health, including both physical and mental health outcomes. Its physical health component includes six items on physical functioning, physical role, bodily pain and general health, while its mental health component includes six items on energy, social functioning, emotional role and mental health Both components were standardised to have a mean of 0 and standard deviation of 1. Akaike information criterion (AIC) and Bayesian information criterion (BIC) were used to determine whether both variables should be included, and whether an interaction between the two terms should be included as well. 
+
+### Specifications considered - all specificaitons 
+
+In order to ensure we are looking at the effect of the type of the driver being modified, rather than the amount of change we are making to these drivers, we need to employ a little trigonometry. If we were to modify both MH and PH by one standard unit, the total amount of change in ‘health’ would be the hypotenuse of a triangle in which both MH and PH are ‘legs’, i.e. $\sqrt{1^2+1^2}$ or $\sqrt{2}$, which is `1.41` to two decimal places, and so larger than either of the previous exposure reductions being modelled. In order to work out the amount of equal change across both ‘legs’ required for a 1 unit total change across both dimensions, we therefore need to solve $1=\sqrt{z^2+z^2}$, i.e. $1=\sqrt{2z^2}$. This means $1=2z^2$, so $z^2=1/2$, and therefore $z=\frac{1}{\sqrt{2}}$. In scenario 3, therefore, both MH and PH are increased by this same amount, which is `0.71` to two decimal places.
+
+Four different exposure model specifications were considered:
+
+1. 	`mod_mh`: Mental Health only
+2. 	`mod_ph`: Physical Health only
+3. 	`mod_ph_mh`: Mental Health AND Physical Health (as independent effects)
+4. 	`mod_phmh`: Mental Health AND Physical Health, including an interaction term
