@@ -5,7 +5,8 @@ echo: false
 ---
 
 ```{r}
-
+#| label: mod-disc-select-setup
+#| cache: true
 devtools::load_all(here::here('R'))
 library(tidyverse)
 # library(haven)
@@ -52,28 +53,34 @@ The two following extended model specifications were considered as ways of incor
 i.e. the second of these two specifications allows for an interaction term between sex and condition, in addition to the interaction term between sex and `this_status` already included as part of the baseline model. 
 
 ```{r}
+#| label: mod-disc-sel-runmod
 #| cache: true
+
+set.seed(15)
 
 mod_00 <- 
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5),
     data = df_ind_health_standardised |> 
       filter(!is.na(lt_condition)),
-      maxit = 200 
+      maxit = 200,
+      trace = FALSE 
   )
 
 mod_01 <- 
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition,
     data = df_ind_health_standardised,
-    maxit = 200
+    maxit = 200,
+    trace = FALSE
   )
 
 mod_02 <- 
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition * sex,
     data = df_ind_health_standardised,
-    maxit = 200
+    maxit = 200,
+    trace = FALSE
   )
   
 ```
@@ -81,6 +88,8 @@ mod_02 <-
 The penalised model fits of the two extended model specifications, along with the foundational model specification (called `mod_00` here), using AIC and BIC are shown below:
 
 ```{r}
+#| label: tbl-aic-bic-hlth-discrete
+#| tbl-cap: AIC and BIC of the foundational model specification (mod_00) along with two candidate extended model specifications which include health as a discrete variable
 AIC(mod_00, mod_01, mod_02) |>
     as_tibble(rownames = "model") |>
     left_join(
@@ -95,6 +104,6 @@ AIC(mod_00, mod_01, mod_02) |>
 
 ```
 
-Here both versions of the extended model specification `mod_01` and `mod_02` outperformed the foundational model specification, (called `mod_00` here), suggesting health adds useful predictive information to the model. The generally more parsimonious BIC metric suggests the model without interaction terms should be used, whereas the less parsimonious AIC metric suggests the model with interaction terms should be used. Rather than engaging in another assessment round we decided to use the simpler `mod_01`, i.e. the extended model specification without interaction terms, as suggested by the BIC metric. 
+From @tbl-aic-bic-hlth-discrete we can see that both versions of the extended model specification `mod_01` and `mod_02` outperformed the foundational model specification (called `mod_00` here), suggesting health adds useful predictive information to the model. The generally more parsimonious BIC metric suggests the model without interaction terms should be used, whereas the less parsimonious AIC metric suggests the model with interaction terms should be used. Rather than engaging in another assessment round we decided to use the simpler `mod_01`, i.e. the extended model specification without interaction terms, as suggested by the BIC metric. 
 
 

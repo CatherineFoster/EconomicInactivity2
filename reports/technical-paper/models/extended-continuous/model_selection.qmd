@@ -12,6 +12,8 @@ The following model extended model specifications were considered and compared w
 - `mod_phmh`: Physical health and mental health: interaction term
 
 ```{r}
+#| label: mod-cont-select-setup
+#| cache: true
 devtools::load_all(here::here('R'))
 
 library(tidyverse)
@@ -48,6 +50,7 @@ df_ind_sf12_standardised <-
 
 
 ```{r}
+#| label: mod-cont-select-runmod
 #| cache: true
 
 
@@ -55,43 +58,50 @@ mod_00 <-
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5),
     data = df_ind_sf12_standardised, 
-    maxit = 200
+    maxit = 200,
+    trace = FALSE
   )
 
 mod_mh <- 
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5) + sf12mcs_dv,
     data = df_ind_sf12_standardised,
-    maxit = 200  
+    maxit = 200,
+    trace = FALSE  
   )
 
 mod_ph <- 
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv,
     data = df_ind_sf12_standardised,
-    maxit = 200
+    maxit = 200,
+    trace = FALSE
   )
 
 mod_ph_mh <- 
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv + sf12mcs_dv,
     data = df_ind_sf12_standardised,
-    maxit = 200
+    maxit = 200,
+    trace = FALSE
   )
 
 mod_phmh <- 
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
     data = df_ind_sf12_standardised,
-    maxit = 200
+    maxit = 200,
+    trace = FALSE
 )
 
 ```
 
-The AICs and BICs of these model specifications are as follows:
+The AICs and BICs of these model specifications are shown in @tbl-aic-bic-ranking-hlth-continuous:
 
 
 ```{r}
+#| label: tbl-aic-bic-ranking-hlth-continuous
+#| tbl-cap: AIC and BIC scores and rankings for the foundational model specification (mod_00) and four candidate extended model specifications which incorporate health as a continuous variable
 AIC(mod_00, mod_mh, mod_ph, mod_ph_mh, mod_phmh) |>
     as_tibble(rownames = "model") |>
     left_join(

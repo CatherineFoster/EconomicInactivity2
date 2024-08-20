@@ -5,6 +5,8 @@ message: false
 ---
 
 ```{r}
+#| label: model-cont-pred-prep
+#| cache: true
 devtools::load_all(here::here('R'))
 
 library(tidyverse)
@@ -42,6 +44,7 @@ df_ind_sf12_standardised <-
 
 
 ```{r}
+#| label: model-cont-mod-compare
 #| cache: true
 
 
@@ -49,14 +52,16 @@ mod_phmh <-
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5) + sf12pcs_dv*sf12mcs_dv,
     data = df_ind_sf12_standardised,
-    maxit = 200
+    maxit = 200,
+    trace = FALSE
 )
 
 mod_foundation <- 
   nnet::multinom(
     next_status ~ this_status * sex + splines::bs(age, 5),
     data = df_ind_sf12_standardised,
-    maxit = 200
+    maxit = 200,
+    trace = FALSE
   )
 
 
@@ -65,10 +70,11 @@ mod_foundation <-
 ```
 
 
-## Predictive accuracy 
+#### Predictive accuracy 
 
 
 ```{r}
+#| label: mod-cont-pred-acc
 true_category <- df_ind_sf12_standardised$next_status
 
 prediction_block_ext <- predict(mod_phmh, type = "probs")
@@ -83,17 +89,94 @@ for (i in 1:N){
     pred_score_ext[i] <- prediction_block_ext[i,true_category[i]]
     pred_score_fnd[i] <- prediction_block_fnd[i,true_category[i]]
 }
-mean(pred_score_ext)
-mean(pred_score_fnd)
+#mean(pred_score_ext)
+#mean(pred_score_fnd)
 ```
 
 The continuous health extended model specification has an average predicted model accuracy score of `0.7927`, as opposed to `0.7902` for the foundational model, when both are assessed using the data used to fit them, showing a marginal improvement in fit associated with including this variable. 
 
-## Counterfactual scenarios 
+#### Counterfactual scenarios 
 
-Unlike with the discrete case, there are a number of possible counterfactual scenarios in which 1 standardised unit of improvement in health has been modelled. Such health improvement could occur entirely through the mental health pathway, or entirely through the physical health pathway, or through a combination of both mental and physical health improvements, which may be biased either towards mental health or physical health. Because of this five different counterfactual scenarios are considered, which can be represented visually. 
+Unlike with the discrete case, there are a number of possible counterfactual scenarios in which 1 standardised unit of improvement in health has been modelled. Such health improvement could occur entirely through the mental health pathway, or entirely through the physical health pathway, or through a combination of both mental and physical health improvements, which may be biased either towards mental health or physical health. Because of this five different counterfactual scenarios are considered, which can be represented visually, as shown in @fig-genhealth below.
 
 ```{r}
+#| label: fig-genhealth
+#| fig-cap: "Schematic representation of continuous health improvement scenarios modelled"
+library(geomtextpath)
+
+pos_y <- function(x) {sqrt(1 - x^2)}
+x = seq(0, 1, by = 0.001)
+dta <- tibble(
+  x = x
+) |> 
+  mutate(
+    y = pos_y(x)
+  )
+
+dta |> 
+  ggplot(aes(x = x, y = y)) + 
+    geom_line(color = "grey") + 
+    coord_equal() + 
+    labs(x = "Physical Health (Standardised)",
+         y = "Mental Health (Standardised)",
+         title = "Health improvement scenarios modelled") + 
+  theme_minimal() + 
+  annotate("point", x = 1, y = 0) + 
+  annotate("point", x = 0, y = 1) + 
+  annotate("point", x = 1/ sqrt(2), y = 1/ sqrt(2)) + 
+  annotate("point", x =  2 / sqrt(5), y = 1 / sqrt(5)) + 
+  annotate("point", x = 1 / sqrt(5), y = 2 / sqrt(5)) + 
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, xend = 0, yend = 1), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S1: MH Only", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) + 
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, xend = 1, yend = 0), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S2: PH Only", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) + 
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, xend = 1/sqrt(2), yend = 1/sqrt(2)), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S3: Equal Gain", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) + 
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, yend = 2/sqrt(5), xend = 1/sqrt(5)), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S4: MH Bias", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  )  +
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, yend = 1/sqrt(5), xend = 2/sqrt(5)), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "S5: PH Bias", 
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  )  
+  
+  
+
+```
+
+In order to ensure we are looking at the effect of the type of the driver being modified, rather than the amount of change we are making to these drivers, we need to employ a little trigonometry. If we were to modify both MH and PH by one standard unit, the total amount of change in ‘health’ would be the hypotenuse of a triangle in which both MH and PH are ‘legs’, i.e. $\sqrt{1^2+1^2}$ or $\sqrt{2}$, which is `1.41` to two decimal places, and so larger than either of the previous exposure reductions being modelled. In order to work out the amount of equal change across both ‘legs’ required for a 1 unit total change across both dimensions, we therefore need to solve $1=\sqrt{z^2+z^2}$, i.e. $1=\sqrt{2z^2}$. This means $1=2z^2$, so $z^2=1/2$, and therefore $z=\frac{1}{\sqrt{2}}$. In scenario 3, therefore, both MH and PH are increased by this same amount, which is `0.71` to two decimal places.
+
+Four different exposure model specifications were considered:
+
+1. 	`mod_mh`: Mental Health only
+2. 	`mod_ph`: Physical Health only
+3. 	`mod_ph_mh`: Mental Health AND Physical Health (as independent effects)
+4. 	`mod_phmh`: Mental Health AND Physical Health, including an interaction term
+
+```{r}
+#| label: mod-cont-setup-scenarios
 df_baseline <- df_ind_sf12_standardised |> 
   filter(wave == 'j')
 
@@ -135,14 +218,15 @@ df_counter_ph_only <-
 
 ```
 
-## Population level estimates 
+#### Population level estimates 
 
-### Unweighted sample frame 
+##### Unweighted sample frame 
 
 The following table shows the estimated differences in population pool predicted to be in each of the seven mutually exclusive categories using the *unweighted* sample from the last pre-COVID wave: 
 
 ```{r}
-
+#| label: tbl-hlth-continuous-pool-diffs-unweighted
+#| tbl-cap: The estimated effects on the relative proportion of a population in different economic activity states as a result of improving health, using the last pre-pandemic sample wave and no weighting
 preds_baseline <- predict(mod_phmh, newdata = df_baseline, type = "probs")
 
 preds_counter_mh_only <- predict(mod_phmh, newdata = df_counter_mh_only, type = "probs")
@@ -193,9 +277,11 @@ predictions_share_matrix |>
 
 Even though each of the counterfactual scenarios are the same in terms of the *amount* of change they represent relative to the baseline, they differ in terms of the relative contribution of mental or physical health improvement pathways towards this overall improvement. 
 
-In terms of projected effect on the share of the population Inactive - long-term sick, the scenario `counter_ph_bias` apepars to have the largest effect, reducing the share of the population in this state from 4.09% in the baseline scenario to 2.85%. As factors explaining this state are of particular interest we will now focus on this specific counterfactual scenario when comparing with the baseline. The absolute and relative differences between the baseline and this counterfactual scenario are as shown in the following table: 
+In terms of projected effect on the share of the population Inactive - long-term sick, the scenario `counter_ph_bias` apepars to have the largest effect, reducing the share of the population in this state from 4.09% in the baseline scenario to 2.85%. As factors explaining this state are of particular interest we will now focus on this specific counterfactual scenario when comparing with the baseline. The absolute and relative differences between the baseline and this counterfactual scenario are as shown in @tbl-hlth-continuous-pool-diffs-unweighted-summarised: 
 
 ```{r}
+#| label: tbl-hlth-continuous-pool-diffs-unweighted-summarised
+#| tbl-cap: Relative and absolute differences in economic activity state pool sizes between baseline and counterfactual scenario in which health (based to PH) has been improved. Unweighted dataframe.
 
 predictions_share_matrix |>
     select(Status, base_share, counter_ph_bias_share) |>
@@ -207,15 +293,18 @@ predictions_share_matrix |>
 
 ```
 
-Health, as operationalised in this way - as a one standardised unit improvement along both mental and physical health, but biased towards physical health improvement, would lead to a decrease in the share of the population who are Inactive long-term sick from around 4.09% to 2.85%, or a difference of around 30%. This could be interpreted as an estimated PAF of the Inactive long-term sick population attributable to poor health based on this continuous health variable approach, although it is not directly comparable with the approach taken in the discrete health scenario previously. 
+From @tbl-hlth-continuous-pool-diffs-unweighted-summarised we can see that health, as operationalised in this way - as a one standardised unit improvement along both mental and physical health, but biased towards physical health improvement, would lead to a decrease in the share of the population who are Inactive long-term sick from around 4.09% to 2.85%, or a difference of around 30%. This could be interpreted as an estimated PAF of the Inactive long-term sick population attributable to poor health based on this continuous health variable approach, although it is not directly comparable with the approach taken in the discrete health scenario previously. 
 
 
-### Weighted sample frame 
+##### Weighted sample frame 
 
-The following shows the effect of weighting the wave j population using the weighting variable `j_indinui_xw` from the UKHLS, with a focus on the scenario that leads to the greatest apparent effect on Inactive long-term sick, namely the `ph_bias` scenario. 
+@tbl-hlth-continuous-pool-diffs-weighted shows the effect of weighting the wave j population using the weighting variable `j_indinui_xw` from the UKHLS, with a focus on the scenario that leads to the greatest apparent effect on Inactive long-term sick, namely the `ph_bias` scenario. 
 
 
 ```{r}
+#| label: tbl-hlth-continuous-pool-diffs-weighted
+#| tbl-cap: The estimated effects on the relative proportion of a population in different economic activity states as a result of improving health, using the last pre-pandemic sample wave and cross-sectional weighting
+#| cache: true
 xs_weighting_lookup_j <- haven::read_dta(
   here::here(
     "big_data/UKDA-6614-stata/stata/stata13_se/ukhls/j_indresp.dta"
@@ -306,9 +395,9 @@ bind_rows(
 
 ```
 
-Using the reweighting approach the proportion projected to be Inactive long-term sick is 4.50% in the baseline scenario, compared to 3.18% in the counterfactual scenario. This is a relative decline of 29.4%, which is only marginally different from the 30.4% when no weighting was used. 
+We can see from @tbl-hlth-continuous-pool-diffs-weighted that, using the reweighting approach, the proportion projected to be Inactive long-term sick is 4.50% in the baseline scenario, compared to 3.18% in the counterfactual scenario. This is a relative decline of 29.4%, which is only marginally different from the 30.4% estimate produced when no weighting was used. 
 
-## Sequential attributable fraction estimation 
+#### Sequential attributable fraction estimation 
 
 The same model can be used to estimate sequential attributable fractions (SAFs) associated with a given marginal change in health status given that another change in health status has already occurred. We can do this by modelling the four following scenarios: 
 
@@ -324,10 +413,73 @@ The aim of the SAF approach is to estimated the additional effect that a MH impr
 - $O \rightarrow P \rightarrow B$
 - $O \rightarrow M \rightarrow B$
 
-From the perspective of the first pathway, scenario **B** represents the addition of MH, whereas from the perspective of the second pathway, scenario **B** represents the addition of PH. 
+From the perspective of the first pathway, scenario **B** represents the addition of MH, whereas from the perspective of the second pathway, scenario **B** represents the addition of PH. These scenarios are shown graphically in @fig-genhealth-saf:
+
 
 ```{r}
+#| label: fig-genhealth-saf
+#| fig-cap: "Schematic representation of continuous health improvement scenarios modelled for SAFs"
+library(geomtextpath)
+library(tidyverse)
 
+pos_y <- function(x) {sqrt(1 - x^2)}
+
+x = seq(0, 1, by = 0.001)
+
+dta <- tibble(
+  x = x
+) |> 
+  mutate(
+    y = pos_y(x)
+  )
+
+dta |> 
+  ggplot(aes(x = x, y = y)) + 
+    geom_line(color = "grey") + 
+    coord_equal() + 
+    labs(x = "Physical Health (Standardised)",
+         y = "Mental Health (Standardised)",
+         title = "Health improvement scenarios modelled for SAF") + 
+  theme_minimal() + 
+  annotate("text", x = 0, y = 0, label = "O", fontface = "bold") + 
+  annotate("text", x = 1, y = 0, label = "M", fontface = "bold") + 
+  annotate("text", x = 0, y = 1, label = "P", fontface = "bold") + 
+  annotate("text", x = 1, y = 1, label = "B", fontface = "bold") +
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, xend = 0, yend = 1), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "O to M", alpha = 0.5,
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) + 
+  geom_textcurve(
+    data = data.frame(x = 0, y = 0, xend = 1, yend = 0), 
+                      mapping = aes(x, y, xend = xend,  yend = yend), 
+                      label = "O to P", alpha = 0.5,
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) +
+  geom_textcurve(
+    data = data.frame(x = 1, y = 0, xend = 1, yend = 1),
+    mapping = aes(x, y, xend = xend, yend = yend),
+    label = "P to B", alpha = 0.5,
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) +
+  geom_textcurve(
+    data = data.frame(x = 0, y = 1, xend = 1, yend = 1),
+    mapping = aes(x, y, xend = xend, yend = yend),
+    label = "M to B", alpha = 0.5,
+    curvature = 0, hjust = 0.5, arrow = arrow(),
+    vjust = 0.5
+  ) 
+
+
+```
+
+```{r}
+#| label: tbl-hlth-continuous-6ool-diffs-saf
+#| tbl-cap: The estimated economic activity state pool proportions in either the no-health-improvement scenario (O), improving MH only (M), improving PH only (P), or improving both MH and PH (B)
 df_O <- df_ind_sf12_standardised |> 
   filter(wave == 'j')
 
@@ -360,27 +512,27 @@ preds_B <- predict(mod_phmh, newdata = df_B, type = "probs")
 pop_prop_table <- 
     preds_O |> 
         as_tibble() |> 
-        mutate(scenario = "O") |> 
+        mutate(scenario = "O (Original)") |> 
         select(scenario, everything()) |> 
         pivot_longer(Employed:Unemployed, names_to = "state", values_to = "value") |>
         bind_rows(
             preds_M |> 
                 as_tibble() |> 
-                mutate(scenario = "M") |> 
+                mutate(scenario = "M (MH Only)") |> 
                 select(scenario, everything()) |> 
                 pivot_longer(Employed:Unemployed, names_to = "state", values_to = "value")
         ) |>
         bind_rows(
             preds_P |> 
                 as_tibble() |> 
-                mutate(scenario = "P") |> 
+                mutate(scenario = "P (PH Only)") |> 
                 select(scenario, everything()) |> 
                 pivot_longer(Employed:Unemployed, names_to = "state", values_to = "value")
         ) |>
         bind_rows(
             preds_B |> 
                 as_tibble() |> 
-                mutate(scenario = "B") |> 
+                mutate(scenario = "B (Both)") |> 
                 select(scenario, everything()) |> 
                 pivot_longer(Employed:Unemployed, names_to = "state", values_to = "value")
         ) |> 
@@ -396,14 +548,14 @@ pop_prop_table <-
             state = factor(state, levels = c("Employed", "Unemployed", "Inactive student", "Inactive care", "Inactive long term sick", "Inactive retired", "Inactive other"))
         ) |>
         arrange(state) |>
-        select(state, O, M, P, B) 
+        select(state, `O (Original)`, `M (MH Only)`, `P (PH Only)`, `B (Both)`) 
 
 
 pop_prop_table |>
     knitr::kable()
 ```
 
-In the baseline scenario, 72.99% of the population are projected to be employed. When mental health alone is improved (scenario **M**) this increases to 74.01%. When physical health alone is improved (scenario **P**) this increases to 74.76%. When both physical and mental health are improved (scenario **B**) this increases to 75.42%. 
+From @tbl-hlth-continuous-pool-diffs-saf we can see that, in the baseline scenario, 72.99% of the population are projected to be employed. When mental health alone is improved (scenario **M**) this increases to 74.01%. When physical health alone is improved (scenario **P**) this increases to 74.76%. When both physical and mental health are improved (scenario **B**) this increases to 75.42%. 
 
 So, what is the effect of mental health on the proportion employed? This question could either be answered from the perspective of the $O \rightarrow M \rightarrow B$ pathway, or from the perspective of the $O \rightarrow P \rightarrow B$ pathway. From the perspective of the first pathway, the effect of improving mental health is projected to increase the proportion employed by 1.03% points ($O \rightarrow M$). From the perspective of the second pathway, the effect of improving mental health is projected to increase it by 0.66% points ($P \rightarrow B$).
 

@@ -1,0 +1,257 @@
+For each of the eight foundational model specifications two types of test were performed to try to determine the best specification to use. Firstly, AIC and BIC were calculated and compared. These are measures of penalised model fit, where lower scores are by convention taken to indicate better fit. Comparison of AIC and BIC indicated that models including the interaction term were to be prefered to those without an interaction term, but the relative ranking of AIC and BIC scores for the four models with interaction terms were reversed, with AIC 'preferring' the simpler models and BIC the most complicated. 
+
+In order to select between the four model specifications with interaction terms, but differing in terms of the `df` parameter in `bs()` function, the mean accuracy scores for out-of-sample fit were calculated. This involves fitting the model as per the specification of interest on a randomly selected 80% of the dataset, then holding back 20% of the dataset as a test set. For each observation in the test set the model produced a vector of probabilities of being in each of the seven mutually exclusive and exhaustive states summing to one. The accuracy score for a single observation was determined by identifying the probability predicted from the model for the correct categorical assignment (i.e. economic state at wave + 1, i.e. the observed value for `next_status` using the terms in the formula expression above). For example, if for an observation the observed `next_status` was 'Employed', and for this observation the model predicted `Employed` with a probability of `0.90`, then the model's prediction was given an accuracy score of `0.90`. The accuracy metric of interest is the mean accuracy score across all observations in the test set. 
+
+For each of the four models, the exercise - fitting the model on the training set and calculating mean accuracy on the test test - was repeated fifty times. The mean, median, and lower upper quartiles of the ranges of the these mean accuracy scores were calculated and compared. 
+
+Using this exercise, all four model specifications were estimated to have very similar mean accuracy scores, predicting the correct `next_state` on average between 78.4% and 78.5% of the time. The only differences in the out-of-sample predictive accuracies between the models were to additional numbers of decimal places. By a very small margin, the model whose specification is described above, with `df=5` set in the `bs()` function for the age spline, outperformed models where either `df=3`, `df=4` or `df=6` was used instead. This is why this particular specification was used as the foundational model specification, even though the reasons for preferring this specification to similar alternatives are not compelling.
+
+
+```{r}
+#| label: app-mod-found-prep-load
+
+
+devtools::load_all(here::here('R'))
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+```
+
+```{r}
+#| label: app-mod-found-prep-data
+#| cache: true
+
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_standardised <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+    filter(sex %in% c("male", "female")) |>
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64)) %>% 
+    filter(complete.cases(.)) 
+```
+
+
+```{r}
+#| label: mod-found-clean-hlth
+varnames <-  c(
+  "jbstat", "dvage", "sex", "sf12mcs_dv", "sf12pcs_dv"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "values", "values"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_sf12_standardised <-
+  df_ind |>
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(c(dvage, sf12mcs_dv, sf12pcs_dv), function(x) ifelse(x < 0, NA, x))) %>%
+    filter(sex %in% c("male", "female")) %>%
+    filter(complete.cases(.)) |>
+    mutate(across(c(sf12mcs_dv, sf12pcs_dv), standardise_scores)) |> 
+  # This renames dvage to age
+    rename(age = dvage) |>
+    filter(between(age, 16, 64))  
+
+
+```
+
+```{r}
+#| label: mod-found-models-run-2
+#| cache: true
+
+set.seed(12)
+
+fnd_00 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 3),
+    data = df_ind_sf12_standardised, maxit = 200,
+    trace = FALSE
+    ) 
+
+fnd_01 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 4),
+    data = df_ind_sf12_standardised, maxit = 200,
+    trace = FALSE
+    ) 
+    
+fnd_02 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 5),
+    data = df_ind_sf12_standardised, maxit = 200,
+    trace = FALSE
+    ) 
+    
+fnd_03 <- nnet::multinom(
+    next_status ~ this_status + sex + splines::bs(age, 6),
+    data = df_ind_sf12_standardised, maxit = 200,
+    trace = FALSE
+    ) 
+    
+fnd_04 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 3),
+    data = df_ind_sf12_standardised, maxit = 200,
+    trace = FALSE
+    ) 
+
+fnd_05 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 4),
+    data = df_ind_sf12_standardised, maxit = 200,
+    trace = FALSE
+    ) 
+    
+fnd_06 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_sf12_standardised, maxit = 200,
+    trace = FALSE
+    ) 
+    
+fnd_07 <- nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 6),
+    data = df_ind_sf12_standardised, maxit = 200,
+    trace = FALSE
+    ) 
+    
+
+```
+
+
+```{r}
+#| label: tbl-aic-bic-fnd-health-only
+#| tbl-cap: AIC and BIC scores and rankings for eight candidate foundational models using only data containing health variables of interest
+AIC(fnd_00, fnd_01, fnd_02, fnd_03, fnd_04, fnd_05, fnd_06, fnd_07) |>
+    as_tibble(rownames = "model") |>
+    left_join(
+        BIC(fnd_00, fnd_01, fnd_02, fnd_03, fnd_04, fnd_05, fnd_06, fnd_07) |>
+            as_tibble(rownames = "model")
+    ) |>
+    mutate(
+        aic_rank = rank(AIC),
+        bic_rank = rank(BIC)
+    ) |>
+    knitr::kable()
+
+
+```
+
+@tbl-aic-bic-fnd-health-only shows that this does not resolve the choice of which model to use as the foundational model. 
+
+So a different approach will be used. For each interaction model, from `fnd_04` through to `fnd_07`, we will do the following: 
+
+- Sample 80% of the data as the training set 
+- Hold back 20% of the data as the test set
+- For the test set calculate the proportion of classifications that are correct in the test set. 
+
+n.b. we will use the response = `probs` argument to reduce the amount of stochastic variation in the experiment. This means that, for example, if the model predicts the correct answer with a 90% probability then it is assigned a score of 0.90, and so on. 
+
+The above process will be repeated 50 times (as the models take some time to run)
+
+
+```{r}
+#| label: mod-found-oos-longruntime
+#| cache: true
+#| eval: false
+set.seed(9)
+
+calc_mean_oos_score <- function(
+    df, model_formula, training_prop
+){
+
+    selections <- sample(c(TRUE, FALSE), nrow(df), prob = c(training_prop, 1 - training_prop), replace = TRUE)
+    training_set <- df[selections,]
+    test_set <- df[!selections,]
+
+    model_on_training <- nnet::multinom(
+        model_formula,
+        data = training_set, maxit = 200,
+        trace = FALSE
+    )
+
+    predictions <- predict(model_on_training, test_set, type = "probs")
+
+    truths <- test_set$next_status
+
+    scores <- vector(mode = "numeric", length = length(truths))
+    N <- length(scores)
+
+    for (i in 1:N){
+        scores[i] <- predictions[i, truths[i]]
+    }
+
+    mean_score <- mean(scores)
+    mean_score
+}
+
+
+
+oos_fnd_04 <- replicate(50, calc_mean_oos_score(df_ind_standardised, next_status ~ this_status * sex + splines::bs(age, 3), 0.8)
+)
+
+oos_fnd_05 <- replicate(50, calc_mean_oos_score(df_ind_standardised, next_status ~ this_status * sex + splines::bs(age, 4), 0.8)
+)
+
+oos_fnd_06 <- replicate(50, calc_mean_oos_score(df_ind_standardised, next_status ~ this_status * sex + splines::bs(age, 5), 0.8)
+)
+
+oos_fnd_07 <- replicate(50, calc_mean_oos_score(df_ind_standardised, next_status ~ this_status * sex + splines::bs(age, 6), 0.8)
+)
+
+```
+
+
+```{r}
+#| label: mod-found-oos-reshape
+#| eval: false
+df_oos <- data.frame(
+    rep = 1:50, 
+    fnd_04 = oos_fnd_04,
+    fnd_05 = oos_fnd_05,
+    fnd_06 = oos_fnd_06,
+    fnd_07 = oos_fnd_07
+) |>
+    pivot_longer(-rep, 
+    names_to = "mdl", 
+    values_to = "value")
+
+```
+
+```{r}
+#| label: tbl-oos-fnd
+#| tbl-cap: Out of sample predictive accuracy of four foundational model specifications, each based on 50 replicates. All accuracies scores are out of 100,000. lql and uql refer to lower quartile and upper quartile respectively.
+#| eval: false
+df_oos |> 
+    group_by(mdl) |> 
+    mutate(value = 100000 * value) |> 
+    summarise(
+        lql = quantile(value, 0.25), 
+        median = median(value), 
+        mean = mean(value), 
+        uql = quantile(value, 0.75)
+    ) |>
+    knitr::kable()
+
+```
+
+ This table [X] suggests that all model specifications have very similar properties in terms of out-of-sample predictive accuracy. On average all models correctly predict the next state around 78% of the time. Differences in predictive accuracy are largely detectable only after the third decimal place in the accuracy scores. 
+
+Overally, it appears model `fnd_06` has slightly higher accuracy than the other specifications. This is the specification originally selected as the baseline specification. 

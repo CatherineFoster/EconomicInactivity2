@@ -1,50 +1,70 @@
 ---
-title: "Modelling the impact of changes to health on economic status in the UK Longitudinal Household Study"
+title: "Simulating the impact of changes to health on economic status using multinomial logistic regression and the UK Household Longitudinal Study"
 author: 
     - Jon Minton
     - Martin Taulbut
+    - Neil Chalmers
     - Deborah Shipton
     - Andy Pulford
-    - Neil Chalmers
 echo: false
 warning: false
 message: false
 zotero: "economic-inactivity-modelling"
 bibliography: references.bib
+format:
+    pdf:
+        toc: true
+        number-sections: true
+    html: 
+        toc: true
+        toc-location: right
+        toc-title: "Table of Contents"
+        number-sections: true
+    docx:
+        toc: true
+        number-sections: true
 ---
+
+```{r}
+#| label: main-prep
+library(devtools)
+```
+
+{{< pagebreak >}}
+
 
 # Abstract
 
 {{< include abstract.qmd >}}
 
+{{< pagebreak >}}
 # Introduction
 
-There have been important and in some cases troubling trends in working age economic inactivity in the UK, especially in trends towards worsening economic inactivity related to ill health. 
+There have been important and in some cases troubling trends in working age economic inactivity in the UK, especially in trends towards rising economic inactivity related to ill health.
 
-The purpose of this paper is to describe and show examples of a modelling framework that allows the contribution of specific health related factors to economic activity and inactivity for a population to be estimated, having sufficiently controlled for both demography and event history (i.e. current economic status). The modelling framework is highly adaptable and extendable, much beyond the two types of extended variable shown here. 
-
+This paper describes the development and results of a modelling framework that estimates the contribution of health to population-level economic activity and inactivity, controlling for demography and current economic status. The framework is highly adaptable and could be extended to include wider determinants of economic status in addition to health.
 
 ## Economic activity and economic inactivity in the UK
 
-Working-age adults in the UK can be divided by their main economic status into the employed, unemployed and the economically inactive. Employed people include employees and the self-employed who do at least one paid hour of work a week plus those temporarily away from work because they are on holiday or sick. Unemployed people are defined as those out of work and are either actively seeking work and are available to start work within the next two weeks or who are out of work, have found work and are about to start employment within the next two weeks. Economically inactive people are those out of work who are not available for or actively seeking employment. The main reasons for working-age economic inactivity in the UK include being in full-time education, long-term illness or disability, looking after home and family and (early)retired (Leaker, 2020).
+Working-age adults in the UK can be divided by their main economic status into the employed, unemployed and the economically inactive. Employed people include employees and the self-employed who do at least one paid hour of work a week plus those temporarily away from work because they are on holiday or sick. Unemployed people are defined as those out of work and are either actively seeking work and are available to start work within the next two weeks or who are out of work, have found work and are about to start employment within the next two weeks. Economically inactive people are those out of work who are not available for or actively seeking employment. The main reasons for working-age economic inactivity in the UK include being in full-time education, long-term illness or disability, looking after home and family and (early)retired [@labourm2020].
 
-Economic status is an important determinant of public health. Working is associated with better mental and physical health, while people who are long-term sick have the worst morbidity (Wilson et al, 2015). [@brown2012] Unemployed adults and those looking after home and family have intermediate levels of health. Compared to the employed, working-age adults who become or remain unemployed or economically inactive (especially long-term sick or early retired) have an increased risk of mortality [@roelfs2011; @åhs2006; @kim2015]. For economically inactive students, the picture is more complex. Their mental health is poorer than those in employment; however, some evidence suggests this difference may be transitory, with the effect wearing off once they leave full-time education [@mccloud2023].
+Economic status is an important determinant of public health. Working is associated with better mental and physical health, while people who are long-term sick have the worst morbidity [@wilson2015; @brown2012] Unemployed adults and those looking after home and family have intermediate levels of health. Compared to the employed, working-age adults who become or remain unemployed or economically inactive (especially long-term sick or early retired) have an increased risk of mortality [@roelfs2011; @åhs2006; @kim2015]. For economically inactive students, the picture is more complex. Their mental health is poorer than those in employment; however, some evidence suggests this difference may be transitory, with the effect wearing off once they leave full-time education [@mccloud2023].
 
-Health is also an important driver of economic status. In the UK, adults of all ages were more likely to be economically inactive if they had self-reported bad/very bad health than if they had self-reported good/very good health (Dey-Chowdhury et al, 2022). Economic inactivity due to long-term sickness has also increased since 2019. While an ageing population and increased waiting lists for NHS treatment may have played a role in this, the UK’s worsening health record was also a major contributory factor (Houston et al, 2022; Office for Budget Responsibility, 2023).[@tinson2022]
+Health is also an important driver of economic status. In the UK, adults of all ages were more likely to be economically inactive if they had self-reported bad/very bad health than if they had self-reported good/very good health[@dey-chowdhury2022]. Economic inactivity due to long-term sickness has also increased since 2019. While an ageing population and increased waiting lists for NHS treatment may have played a role in this, the UK’s worsening health record was also a major contributory factor [@tinson2022; @howdoes2023].
 
-Since the 1970s in Britain, inactivity has fallen for working-age women and risen for working-age men. Within this, the numbers inactive due to looking after home and family have decreased, while those inactive because of full-time education or long-term sickness has increased (Dar, 2015, Machin and Wadsworth, 2023). [@dar2015] Alongside this, employment rates for mothers increased steadily in the 1980s and 1990s, while employment rates for people with disabilities declined until the early 1980s and did not recover in the next two decades [@berthoud2007]. Between 2000 and 2018, economic inactivity for adults aged 16-64 fell only slightly, driven by increased labour market participation for women aged 50-64 (Herz and Van Rens, 2020).[@herz]
+Since the 1970s in Britain, inactivity has fallen for working-age women and risen for working-age men. Within this, the numbers inactive due to looking after home and family have decreased, while those inactive because of full-time education or long-term sickness has increased [@machin2023; @dar2015]. Alongside this, employment rates for mothers increased steadily in the 1980s and 1990s, while employment rates for people with disabilities declined until the early 1980s and did not recover in the next two decades [@berthoud2007]. Between 2000 and 2018, economic inactivity for adults aged 16-64 fell only slightly, driven by increased labour market participation for women aged 50-64 [@herz].
 
-Of particular concern to policy makers is the number of working-age adults whose economic inactivity is due to long-term sickness. 2.8 million adults in the UK were in this position in January-March 2024 (ONS Labour Force). This reflects both long-term and short-term trends. The long-term trend is a reflection of growing numbers of working-age adults on incapacity benefits (IB) since the 1970s. Both sexes were affected. Male levels increased sharply until mid-1990s before levelling off. Female levels continued to increase after mid-1990s but also levelled off in early 2000s [@anyadike-danes2008]. These changes are likely to be due to a combination of factors: local and regional spatial differences in labour market demand and lower employment prospects linked to poor health and low skills [@beatty2013; @roberts2022; @plotnikova2020; @machin2023]. There is some evidence that economic inactivity due to long-term sickness declined in the UK between the early 2000s and early to mid-2010s. Trends in long-term sickness stopped falling around the middle to latter half of the decade and have subsequently increased [@machin2023]. Quantifying the contribution of these factors to the growth in long-term sickness could help understand what to focus on, to reverse recent increases and prevent further growth.
+Of particular concern to policy makers is the number of working-age adults whose economic inactivity is due to long-term sickness. 2.8 million adults in the UK were in this position in January-March 2024 [@labourm]. This reflects both long-term and short-term trends. The long-term trend is a reflection of growing numbers of working-age adults on incapacity benefits (IB) since the 1970s. Both sexes were affected. Male levels increased sharply until mid-1990s before levelling off. Female levels continued to increase after mid-1990s but also levelled off in early 2000s [@anyadike-danes2008]. These changes are likely to be due to a combination of factors: local and regional spatial differences in labour market demand and lower employment prospects linked to poor health and low skills [@beatty2013; @roberts2022; @plotnikova2020; @machin2023]. There is some evidence that economic inactivity due to long-term sickness declined in the UK between the early 2000s and early to mid-2010s. Trends in long-term sickness stopped falling around the middle to latter half of the decade and have subsequently increased [@machin2023]. Quantifying the contribution of these factors to the growth in long-term sickness could help understand what to focus on, to reverse recent increases and prevent further growth.
 
 ## Background to modelling strategies and approaches
 
 In this paper, we use multinominal logistic regression to predict the distribution of the working-age population by economic status in the next time period. After creating a foundational model, which includes age, sex and current economic status, we consider two extended model specifications, both of which include at least one health-related variables in addition to the variables in the foundational model.
 
-The first of these extended model specifications uses a binary variable, which is coded as `1` if the respondent reports having a limiting long-term illness, and `0` if they do not. The second extended model specification uses a continuous measure of health, derived from the physical health and mental health components of the Short Form (SF) 12 (SF-12) questionnaire. We focus here on the pre-pandemic period 2010 to 2019, because the drivers of economic inactivity during the pandemic are likely to be different from those in the pre-COVID years.
+The first of these extended model specifications uses a binary variable, which is coded as `1` if the respondent reports having a limiting long-term illness, and `0` if they do not. The second extended model specification uses a continuous measure of health, derived from the physical health and mental health components of the Short Form (SF) 12 (SF-12) questionnaire [@ware1996]. We focus here on the pre-pandemic period 2010 to 2019, because the drivers of economic inactivity during the pandemic are likely to be different from those in the pre-COVID years.
 
 # General Methodological Considerations
 
-This section of the paper will approach how we thought about problems, challenges and solutions of building a model that can answer questions on the contributions of specific factors on the levels of economic inactivity and activity in a population.We first describe what the model needs to accomplish; then describe modelling and simulation principles in general; lastly moveand towards operationalisation and the specific model structure and content that we use in this manuscript.
+This section of the paper will approach how we thought about problems, challenges and solutions of building a model that can answer questions on the contributions of specific factors on the levels of economic inactivity and activity in a population. We first describe what the model needs to accomplish; then describe modelling and simulation principles in general; lastly we move towards operationalisation and the specific model structure and content that we use in this manuscript.
 
 ## Description of the modelling challenges and how we address them
 
@@ -52,15 +72,15 @@ This section of the paper will approach how we thought about problems, challenge
 
 ## Modelling for simulation
 
-{{< include modelling-for-simulation.qmd >}}
+Appendix B contains a background to generalised linear models, how they are used for statistical simulation, and the specific type of model specification and processes and analyses conducted. This includes discussion of how the results from statistical simulation can be presented as PAFs and SAFs.
 
 ## Data Source Used: The UK Household Longitudinal Study
 
 Our first step was to build a foundational model to predict the future distribution of economic status in the population based on the current characteristics of that population. We do this using individuals’ observed economic states reported across ten waves of the UK Household Longitudinal Study (UKHLS), 2009-10 to 2018-19. Also known as Understanding Society, the UKHLS is a longitudinal household panel survey that aims to follow all individuals in households selected at random in the first wave, 2009. Even where households move, or individuals in initially selected household form new households, the UKHLS aims to interview them each subsequent year, along with any new household members.
 
-Important strengths of the UKHLS for our purposes are its longitudinal nature and the richness of the data it collects. Because of its longitudinal nature, the UKHLS is ideal for tracking changes in individuals’ economic (in)activity states over time and seeing how a variety of factors at wave T influence the subsequent state at time T+1. Its collection of data on income, employment and other labour market outcomes, education, family and health is comprehensive compared to other large-scale surveys (Benzeval et al, 2023). Other advantages of UKHLS include its large sample size compared to other longitudinal surveys, its coverage of all age groups (rather than a specific birth cohort), and its potential for linkage with ecological data and individual-level administrative data). A key limitation is attrition (people dropping-out of the survey) and loss of representativeness over time (Platt et al, 2020).
+Important strengths of the UKHLS for our purposes are its longitudinal nature and the richness of the data it collects. Because of its longitudinal nature, the UKHLS is ideal for tracking changes in individuals’ economic (in)activity states over time and seeing how a variety of factors at wave $T$ influence the subsequent state at time $T+1$. Its collection of data on income, employment and other labour market outcomes, education, family and health is comprehensive compared to other large-scale surveys [@benzeval2023]. Other advantages of UKHLS include its large sample size compared to other longitudinal surveys, its coverage of all age groups (rather than a specific birth cohort), and its potential for linkage with ecological data and individual-level administrative data. A key limitation is attrition (people dropping-out of the survey) and loss of representativeness over time [@platt2021].
 
-We use all the observations from waves i (2009-10) to waves j (2018-19) for which flows from T to T+1 are available. This means that any one individual can contribute multiple observations to the model, similar to autoregressive time-series models \[ref?\], so the model is based on unique observations, not unique individuals. We excluded waves k (2019-20) to m (2021-22), because changes in economic status are likely to have been affected by the COVID-19 epidemic during these years.
+We use all the observations from waves i (2009-10) to waves j (2018-19) for which flows from T to T+1 are available. This means that any one individual can contribute multiple observations to the model, similar to autoregressive time-series models, so the model is based on unique observations, not unique individuals. We excluded waves k (2019-20) to m (2021-22), because changes in economic status are likely to have been affected by the COVID-19 epidemic during these years.
 
 ## Categories of economic (in)activity
 
@@ -76,55 +96,69 @@ The UKHLS offers a number of levels of aggregation and disaggregation at which a
     -   Early Retired
     -   Other
 
-Our multinomial logistic regression model therefore has K=7 (and so J=6). Each of the seven states is treated as categorical, and model does not ‘know’ (in the sense there are no structural constraints) that, say, Long term Sick and Full Time Student are both types of Economic Inactivity, and that Employed and Unemployed are both types of Economic Activity.
+Using the terminology introduced in appendix B, our multinomial logistic regression model therefore has K=7 (and so J=6). Each of the seven states is treated as categorical, and model does not ‘know’ (in the sense there are no structural constraints) that, say, Long term Sick and Full Time Student are both types of Economic Inactivity, and that Employed and Unemployed are both types of Economic Activity.
 
 ## Dual uses of the dataset
 
-It is important to note that the main dataset used in this paper, the UK Household Longitudinal Study (UKHLS), is used in two distinct capacities: firstly to calibrate a model to produce a vector of conditional expected probabilities of individuals ending up in each of the mutually exclusive economic (in)activity states at the next discrete period; and secondly to construct a representative population sample frame used to produce the reference population, $X^{Ref}$, which is then artificially modified through the overwriting of factors of interest, Z, to form the counterfactual population, $X^{Alt}$. The distinction between these two uses, and ways in which the UKHLS is used in these two capacities, will now be discussed.
-
-The UKHLS is a household panel survey, which aims to follow up all individuals in households selected at random via the Postcode Address File (PAF) annually from the first 12 month period of its operation, 2009, for each subsequent 12 month period. Within the UKHLS, each 12 month period is referred to as a wave, and the first wave referred to as wave a. For our purposes, the data required for calibrating the model are those where individuals have been successfully recontacted between consecutive waves, and the economic (in)activity status at both waves $T$ and $T+1$ have been successfully recorded. The observations in our model therefore comprise $D ≡ \{y,X\}$, where $y= y_{t+1}$, the economic (in)activity status at wave $T+1$, and $X= \{W,y_t,Z\}$, i.e. sociodemographic confounders of interest $W$, economic (in)activity status at wave $T$, $y_t$, and the factor or factors of interest $Z$. (Implicitly, $W$ and $Z$ are also as recorded at wave $T$, and for an individual factors like age are of course liable to change over time.)
-
-When calibrating the model, the observations used $D$ therefore comprise paired observations from individuals who have been successfully followed up between consecutive waves, with the model response term being from wave $T+1$ and other variables from wave $T$. This means both that the same individual may contribute multiple observations to the calibration dataset if paired consecutive observations of their economic (in)activity status over multiple waves has been successfully recorded. observations from a specific individual from a given wave $T$ will not be included in the calibration dataset if their corresponding economic (in)activity status at the following wave $y_{t+1}$ has not been successfully recorded; but also that the same individual may contribute multiple observations to the calibration dataset if paired consecutive observations of their economic (in)activity status over multiple waves has been successfully recorded. These observations comprising paired statuses between consecutive waves $\{y_{t+1},y_t\}$ are therefore assumed to be conditionally independent given $W$ and $Z$. This assumption was checked by comparing the AIC and BIC of alternative model specifications that included additional historical status terms - $\{y_{t+1},y_t,y_{t-1}\}$,$\{y_{t+1},y_t,y_{t-1},y_{t-2}\}$, and so on – which were not found to lead to improvements in penalized model fit. This assessment of whether additional lagged terms on y should be included is conceptually similar to the selection of the number of autoregressive terms $p$ to use in an $AR(p)$ model specification. AIC and BIC was also used to select between a number of candidate model structures for including the effects of sociodemographic confounders, $W$. This led to the identification of what we describe as our foundational model specification, which is detailed later. Our foundational model specification includes a specific treatment of $W$ and $y_t$. Model specifications including one or more factors of interest, $Z$, are referred to as extended models, which contain all terms in the foundational model specification plus the additional term or terms contained in $Z$; the foundational model specification can therefore be considered a restricted version of each extended model specification. Again, AIC and BIC, along with researcher judgement, is used to determine which extended model specification to use for simulation.
-
-For the model calibration stage, data comprising complete data with paired consecutive economic (in)activity state observations for individuals observed between waves a (2009) and wave j (2018) were used. This means that $y_{t+1}$ for wave $j$ is 2019, the last complete pre-pandemic year. The appropriateness of treating data from different waves or pairs of waves as equivalent in our calibration dataset was further checked by looking at a model specification in which the starting wave number (wave $a=1$, $b=2$, and so on) was included as a predictor variable and comparing the AIC and BIC against models in which wave number terms were not included. The inclusion of a wave number term was not found to improve penalized model fit using either of these criteria, suggesting that the propensity to transition between economic inactivity states was largely consistent over these waves conditional on the sociodemographic controls used $W$.
-
-Regarding the use of the UKHLS data for model prediction, the last complete pre-pandemic wave, i.e. wave $j$, was used. The use of this wave represents a compromise between a range of completing considerations: on the one hand, sample attrition tends to increase over time, meaning that data from earlier waves are likely to be more completed. But on the other hand, earlier data are likely to be less representative of contemporary UK sociodemographic characteristics than later data. Finally, data covering the pandemic and earlier post pandemic period are likely to have compositions, especially of economic (in)activity states, unrepresentative of non-pandemic periods.
-
-As described above, the procedure using data from wave j for model prediction involved identifying all complete observations from this wave for variables $\{W,y_t,Z\}$ and using them to construct the reference population sample frame $X^{Ref}$. Using the procedure described above, for the counterfactual sample frame $X^{Alt}$ the values of $Z$ were ‘switched off’, i.e. set to 0, in the case of a binary indicator, or standardised and normalized, then moved one standardised unit in the ‘good’ direction for continuous indicators. In the case of the continuous indicator presented in this paper there were a number of different ways of implementing the concept of moving $Z$ one standardised unit in the good direction, due to the factor of interest – health – being recorded separately for mental health and physical health, and an interaction term between these two health subdomains being identified as important for modelling these factors appropriately. These are discussed further below.
+{{< include dual-uses-of-dataset.qmd >}}
 
 ## Model Specification
 
 {{< include model-specifications.qmd >}}
 
-
-## Foundational model
+# Results: Developing the Foundational Model
 
 {{< include models/foundational/main.qmd >}}
 
-## Extended models
+# Results: Developing the extended models
 
-### Discrete health outcome extended model
+As mentioned there are two types of extended model specification presented here, one in which health is treated as a discrete variable, and another in which health is treated as continuous variables. For both types of model we begin by detailing how the extended model specification was arrived at, before presenting the results of simulations based on the selected extended model specification
 
-#### Model selection
+## Modelling Health as a Discrete Variable
+
+### Model selection
 
 {{< include models/extended-discrete/model_selection.qmd >}}
 
-#### Model predictions and simulations 
+### Model predictions and simulations
 
 {{< include models/extended-discrete/model_prediction.qmd >}}
 
+## Modelling Health as Continuous Variables
 
-### Continuous health outcome extended model
-
-
-#### Model selection
+### Model selection
 
 {{< include models/extended-continuous/model_selection.qmd >}}
 
-#### Model predictions and simulations 
+### Model predictions and simulations
 
 {{< include models/extended-continuous/model_prediction.qmd >}}
 
-## Discussion
+# Discussion
 
 {{< include discussion.qmd >}}
+
+# References
+
+::: {#refs}
+:::
+
+{{< pagebreak >}}
+
+# Appendices
+
+## Appendix A: Further discussion of conditions the model needs to satisfy
+
+{{< include appendices/appendix-condition-justification.qmd >}}
+
+## Appendix B: Further discussion of generalised linear modelling and model simulation considerations
+
+{{< include appendices/modelling-for-simulation.qmd >}}
+
+## Appendix C: Illustrative individual level vignettes
+
+{{< include appendices/health-discrete-vignette.qmd >}}
+
+## Appendix D: Out-of-sample predictive scores for different foundational model specifications
+
+{{< include appendices/out-of-sample-foundational-specs.qmd >}}

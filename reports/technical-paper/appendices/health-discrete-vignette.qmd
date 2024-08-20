@@ -1,0 +1,145 @@
+---
+echo: false
+warning: false
+message: false
+---
+
+```{r}
+#| label: app-mod-disc-pred-setup
+#| cache: true
+devtools::load_all(here::here('R'))
+library(tidyverse)
+# library(haven)
+# library(here)
+library(nnet)
+
+# devtools::load_all(here('R'))
+# base_dir_location <- "big_data/UKDA-6614-stata/stata/stata13_se/ukhls"
+# indresp_files <- dir(here(base_dir_location), pattern = "[a-z]_indresp.dta", full.names = TRUE)
+
+varnames <-  c(
+  "jbstat", "dvage", "sex", "health"
+  )
+
+vartypes <- c(
+  "labels", "values", "labels", "labels"
+  )
+
+df_ind <- get_ind_level_vars_for_selected_waves(varnames = varnames, vartypes = vartypes, waves = letters[1:11])
+
+# Clean the data 
+df_ind_health_standardised <- 
+  df_ind |> 
+  # dvage uses negative values to indicate missing. The code below explicitly turns them all to missing values
+    mutate(across(dvage, function(x) ifelse(x < 0, NA, x))) |> 
+  # This renames dvage to age
+    rename(age = dvage) |> 
+    filter(between(age, 16, 64))  |> 
+    mutate(
+      lt_condition = case_when(
+        health %in% c("No", "no") ~ FALSE,
+        health %in% c("Yes", "yes") ~ TRUE,
+        TRUE ~ NA_integer_
+      ) |> as.logical()
+    ) %>% 
+    filter(complete.cases(.)) 
+
+```
+
+
+```{r}
+#| cache: true
+#| label: app-mod-disc-mod-run
+
+mod_health_discrete <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5) + lt_condition,
+    data = df_ind_health_standardised,
+    maxit = 200,
+    trace = FALSE
+  )
+
+mod_foundation <- 
+  nnet::multinom(
+    next_status ~ this_status * sex + splines::bs(age, 5),
+    data = df_ind_health_standardised,
+    maxit = 200,
+    trace = FALSE
+  )
+
+
+
+
+```
+
+
+#### Predictive accuracy 
+
+
+```{r}
+#| label: app-mod-disc-pred-accuracy
+true_category <- df_ind_health_standardised$next_status
+
+prediction_block_ext <- predict(mod_health_discrete, type = "probs")
+prediction_block_fnd <- predict(mod_foundation, type = "probs")
+
+N <- length(true_category)
+
+pred_score_ext <- vector(mode = "numeric", length = N)
+pred_score_fnd <- vector(mode = "numeric", length = N)
+
+for (i in 1:N){
+    pred_score_ext[i] <- prediction_block_ext[i,true_category[i]]
+    pred_score_fnd[i] <- prediction_block_fnd[i,true_category[i]]
+}
+# mean(pred_score_ext)
+# mean(pred_score_fnd)
+```
+
+The discrete health extended model specification has an average predicted model accuracy score of `0.7858`, as opposed to `0.7847` for the foundational model, when both are assessed using the data used to fit them, showing a marginal improvement in fit associated with including this variable. 
+
+#### Vignette examples: Predicted effects of health
+
+To illustrate the substantive predicted effects of health the following vignettes are presented both where an LLTI is present (`lt_condition = TRUE`) or absent (`lt_condition=FALSE`)
+
+- Male, aged 25 or 50. Either Employed, Unemployed, or Economically Inactive, Long-term sick
+- Female, aged 25 or 50. Either Employed, Unemployed, or Economically Inactive, Long-term sick
+
+These vignettes are presented in @tbl-vignettes-health-discrete
+
+```{r}
+#| label: tbl-vignettes-health-discrete
+#| tbl-cap: Illustrative vignettes of predictions for next economic status given sex, age, a long term health condition, and either employed, unemployed or inactivity due to long-term sickness as current activity states
+vignettes <- expand_grid(
+    sex = c("male", "female"),
+    age = c(25, 50),
+    this_status = c("Employed", "Unemployed", "Inactive long term sick"),
+    lt_condition = c(FALSE, TRUE)
+)
+
+vignettes_predictions <- predict(mod_health_discrete, newdata = vignettes, type = "probs")
+
+vig_pred_preds <- bind_cols(vignettes, vignettes_predictions)
+
+vig_pred_preds |> knitr::kable(digits = 3)
+```
+
+The predicted absolute effects of health for each of these vignettes are as shown in @tbl-hlth-disc-diffs:
+
+```{r}
+#| label: tbl-hlth-disc-diffs
+#| tbl-cap: Differences in proportions in different economic activity states as a result of having or not having a LLTI
+vig_pred_preds |>
+    pivot_longer(cols = Employed:Unemployed, names_to = "next_status_predicted", values_to = "prob") |>
+    group_by(sex, age, this_status, next_status_predicted) |>
+    summarise(
+        abs_diff_prob = prob[lt_condition == TRUE] - prob[lt_condition == FALSE]
+    ) |>
+    ungroup() |>
+    pivot_wider(names_from = next_status_predicted, values_from = abs_diff_prob) |>
+    knitr::kable(digits = 3)
+
+
+```
+
+The effects of `lt_condition` on the absolute changes in probability of being in each of these states therefore differs quite a lot by individual characteristics. For example, the effect of a long term condition on the probability of being predicted to be Inactive long-term sick ranges from around 45% for some vignette scenarios to less than 1% for others. 
