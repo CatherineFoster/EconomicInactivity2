@@ -1,3 +1,7 @@
+---
+bibliography: references.bib
+---
+
 ## Summary of Key Findings
 
 This paper has shown how a modelling framework, utilising multinomial logistic regression and using data from the UKHLS, can simulate the distributions of persons of working age in different economic activity states under different scenarios. This approach allows for fine-grained controls for the effects of demography and event history, enabling the estimation of the *ceteris paribus* effects of specific exposure factors on these distributions. From this, the framework can produce changes in population pool sizes, such as relative changes in the proportion of the population who are economically inactive, which are interpretable as PAFs (Population Attributable Fractions) and SAFs (Sequential Attributable Fractions).
@@ -8,8 +12,11 @@ The examples of exposures demonstrated in this paper relate to health, with one 
 
 ## Comparison with Previous Research
 
-[The provided content does not contain a direct comparison with previous research. A comparison of findings with prior 
-studies, discussing consistency or discrepancies, should be included here.]
+Population attributable fractions (PAFs) are a common summary statistic used for reporting associations between variables - one a presumed exposure the other a presumed outcome - reported in observational studies (See, for example, @altunaiji2019; @mattli2019; @lee2022). However for broad structural public health determinants it is often impossible, unrealistic or unethical to conduct the kinds of randomised controlled trials (RCTs) required to dispositively demonstrate causality beyond association. PAFs also suffer from the issue of leading to results that 'overexplain' an outcome of interest, with the sum of two or more PAFs for the same outcome potentially being greater than 100%, leading to the use of SAFs instead. A key aim of this modelling framework is to allow PAFs and SAFs to be estimated in a way that adequately controls for factors other than the exposure of interest, in order to produce estimates theoretically closer to those causal estimates which an RCT would be able to produce.
+
+The particular modelling framework developed here has features in common with, for example, the kinds of Markov models used in health technology assessments (HTAs) (e.g. @thokala2020). This includes the assumption that time progresses in discrete intervals, and that there are a number of discrete, mutually exclusive and exhaustive states that can be transitioned between. However, it is much more common in HTAs for the Markov models being developed to be population level simulations, whereas the Multinomial logistic regression modelling used here are individual level simulations, whose results are then aggregated to population level estimates.
+
+The choice of a modelling framework with discrete and fixed time intervals was largely made because of the annual-wave-like design of the UKHLS. Methodologies such as discrete event simulation (DES) (e.g. @ucar2019; @wreede2011) could potentially be used to allow for state transition changes to occur over continuous and varying time intervals.
 
 ## Implications
 
@@ -23,9 +30,10 @@ The data used for the model are from pre-pandemic years, and it is possible that
 
 Further research could investigate the degree of dependence PAF-like estimates of exposures have on the choice of foundational model specifications. This could produce estimates of structural model dependence, contributing to understanding the reliability of such estimates. Additionally, there is potential for expanding the model to include absorbing states like death or retirement, especially for multi-period simulations. Investigating the implications of these absorbing states, as well as the trade-offs involved in adding them to the model, could be a valuable area of future study.
 
+As discussed in implications, the modelling framework introduced here is inherently extendable, and can be used to estimate the effects of additional individual level factors such as education, household level factors like household composition, local area factors such as childcare availability and local unemployment rates, and broader socioeconomic factors such as rates of inequality and economic growth rates. As the number of factors simultaneously considered in a model grows, so do the demands on the data, and challenges of appropriately interpreting the effects of a single factor using a SAF-like analytical strategy.
+
 ## Conclusion
 
-This paper has rigorously described the development and operationalization of a modeling framework that simulates the effects of various exposures on economic activity states. It has highlighted the methodological contributions of the framework and its potential applications for understanding the determinants of economic activity and inactivity. The use of R and the availability of the code as open-source resources enhance the framework's accessibility, facilitating its adoption and refinement by other researchers.
+This paper has rigorously described the development and operationalization of a modelling framework that simulates the effects of various exposures on economic activity states. It has highlighted the methodological contributions of the framework and its potential applications for understanding the determinants of economic activity and inactivity. The use of R and the availability of the code as open-source resources enhance the framework's accessibility, facilitating its adoption and refinement by other researchers.
 
-[The content here is missing a direct summary and final reflection that would typically be part of a conclusion, emphasizing the broader contribution of the study to the field.]
-
+The estimation of the causal effects of broad scale public health determinants is inherently challenging given the lack of randomised trial data. This paper aims to provide a generalisable framework from which something analogous to simulated trials, modifying only exposures of interest while holding other factors constant, can be conducted to produce additional estimates of the *ceteris paribus* contributions of such exposures even in the absence of the high quality data required to produce definitive estimates of the effects of such factors.

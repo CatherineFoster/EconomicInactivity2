@@ -441,10 +441,10 @@ dta |>
          y = "Mental Health (Standardised)",
          title = "Health improvement scenarios modelled for SAF") + 
   theme_minimal() + 
-  annotate("text", x = 0, y = 0, label = "O", fontface = "bold") + 
-  annotate("text", x = 1, y = 0, label = "M", fontface = "bold") + 
-  annotate("text", x = 0, y = 1, label = "P", fontface = "bold") + 
-  annotate("text", x = 1, y = 1, label = "B", fontface = "bold") +
+  annotate("text", x = 0, y = 0, label = "O", fontface = "bold", size = 6) + 
+  annotate("text", x = 1, y = 0, label = "P", fontface = "bold", size = 6) + 
+  annotate("text", x = 0, y = 1, label = "M", fontface = "bold", size = 6) + 
+  annotate("text", x = 1, y = 1, label = "B", fontface = "bold", size = 6) +
   geom_textcurve(
     data = data.frame(x = 0, y = 0, xend = 0, yend = 1), 
                       mapping = aes(x, y, xend = xend,  yend = yend), 
@@ -478,7 +478,7 @@ dta |>
 ```
 
 ```{r}
-#| label: tbl-hlth-continuous-6ool-diffs-saf
+#| label: tbl-hlth-continuous-pool-diffs-saf
 #| tbl-cap: The estimated economic activity state pool proportions in either the no-health-improvement scenario (O), improving MH only (M), improving PH only (P), or improving both MH and PH (B)
 df_O <- df_ind_sf12_standardised |> 
   filter(wave == 'j')

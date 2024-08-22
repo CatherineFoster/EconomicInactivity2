@@ -1,0 +1,4 @@
+- source: main.qmd
+  quarto-pub:
+    - id: 1f9862e7-d111-4c9c-baf6-85fba790dd8c
+      url: 'https://jonminton.quarto.pub/simulating-the-impact-of-changes-to-health-on-economic-status-using-multinomial-logistic-regression-and-the-uk-household-longitudinal-study'

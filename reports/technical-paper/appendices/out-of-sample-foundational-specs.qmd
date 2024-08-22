@@ -170,7 +170,6 @@ The above process will be repeated 50 times (as the models take some time to run
 ```{r}
 #| label: mod-found-oos-longruntime
 #| cache: true
-#| eval: false
 set.seed(9)
 
 calc_mean_oos_score <- function(
@@ -221,7 +220,6 @@ oos_fnd_07 <- replicate(50, calc_mean_oos_score(df_ind_standardised, next_status
 
 ```{r}
 #| label: mod-found-oos-reshape
-#| eval: false
 df_oos <- data.frame(
     rep = 1:50, 
     fnd_04 = oos_fnd_04,
@@ -238,7 +236,6 @@ df_oos <- data.frame(
 ```{r}
 #| label: tbl-oos-fnd
 #| tbl-cap: Out of sample predictive accuracy of four foundational model specifications, each based on 50 replicates. All accuracies scores are out of 100,000. lql and uql refer to lower quartile and upper quartile respectively.
-#| eval: false
 df_oos |> 
     group_by(mdl) |> 
     mutate(value = 100000 * value) |> 
@@ -252,6 +249,6 @@ df_oos |>
 
 ```
 
- This table [X] suggests that all model specifications have very similar properties in terms of out-of-sample predictive accuracy. On average all models correctly predict the next state around 78% of the time. Differences in predictive accuracy are largely detectable only after the third decimal place in the accuracy scores. 
+ @tbl-oos-fnd suggests that all model specifications have very similar properties in terms of out-of-sample predictive accuracy. On average all models correctly predict the next state around 78% of the time. Differences in predictive accuracy are largely detectable only after the third decimal place in the accuracy scores. 
 
 Overally, it appears model `fnd_06` has slightly higher accuracy than the other specifications. This is the specification originally selected as the baseline specification. 

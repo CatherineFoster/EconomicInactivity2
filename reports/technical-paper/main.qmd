@@ -80,7 +80,7 @@ Our first step was to build a foundational model to predict the future distribut
 
 Important strengths of the UKHLS for our purposes are its longitudinal nature and the richness of the data it collects. Because of its longitudinal nature, the UKHLS is ideal for tracking changes in individuals’ economic (in)activity states over time and seeing how a variety of factors at wave $T$ influence the subsequent state at time $T+1$. Its collection of data on income, employment and other labour market outcomes, education, family and health is comprehensive compared to other large-scale surveys [@benzeval2023]. Other advantages of UKHLS include its large sample size compared to other longitudinal surveys, its coverage of all age groups (rather than a specific birth cohort), and its potential for linkage with ecological data and individual-level administrative data. A key limitation is attrition (people dropping-out of the survey) and loss of representativeness over time [@platt2021].
 
-We use all the observations from waves i (2009-10) to waves j (2018-19) for which flows from T to T+1 are available. This means that any one individual can contribute multiple observations to the model, similar to autoregressive time-series models, so the model is based on unique observations, not unique individuals. We excluded waves k (2019-20) to m (2021-22), because changes in economic status are likely to have been affected by the COVID-19 epidemic during these years.
+We use all the observations from waves i (2009-10) to waves j (2018-19) for which flows from $T$ to $T+1$ are available. This means that any one individual can contribute multiple observations to the model, similar to autoregressive time-series models, so the model is based on unique observations, not unique individuals. We excluded waves k (2019-20) to m (2021-22), because changes in economic status are likely to have been affected by the COVID-19 epidemic during these years.
 
 ## Categories of economic (in)activity
 
@@ -96,7 +96,7 @@ The UKHLS offers a number of levels of aggregation and disaggregation at which a
     -   Early Retired
     -   Other
 
-Using the terminology introduced in appendix B, our multinomial logistic regression model therefore has K=7 (and so J=6). Each of the seven states is treated as categorical, and model does not ‘know’ (in the sense there are no structural constraints) that, say, Long term Sick and Full Time Student are both types of Economic Inactivity, and that Employed and Unemployed are both types of Economic Activity.
+Using the terminology introduced in appendix B, our multinomial logistic regression model therefore has K=7 (and so J=6) states. Each of the seven states is treated as categorical, and model does not ‘know’ (in the sense there are no structural constraints) that, say, Long term Sick and Full Time Student are both types of Economic Inactivity, and that Employed and Unemployed are both types of Economic Activity.
 
 ## Dual uses of the dataset
 
@@ -137,6 +137,34 @@ As mentioned there are two types of extended model specification presented here,
 # Discussion
 
 {{< include discussion.qmd >}}
+
+
+{{< pagebreak >}}
+# Reproducible Analytical Code
+
+This paper was produced as a series of Quarto documents with the code required embedded in the documents themselves. These documents exist as part of an R package available freely on Github at the following address:
+
+`https://github.com/JonMinton/economic_inactivity/tree/main/reports/technical-paper`
+
+Within this location the document `main.qmd` can be used to generate this paper. 
+
+The paper is located within an R package: `https://github.com/JonMinton/economic_inactivity/` 
+
+The `readme.md` file for this package contains further instructions on how to set up the UKHLS dataset required to run the analyses. 
+
+Additionally, an online handbook with further resources and code examples is available from the following location:
+
+`https://jonminton.github.io/econ-inact-handbook/`
+
+The associated github repository for this handbook is available from the following location: 
+
+`https://github.com/JonMinton/econ-inact-handbook`
+
+All analytical results presented run correctly as of 21 August 2024. 
+
+
+
+{{< pagebreak >}}
 
 # References
 
